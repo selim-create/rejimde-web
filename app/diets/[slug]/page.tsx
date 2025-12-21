@@ -30,6 +30,18 @@ export default function DietDetailPage({ params }: { params: { slug: string } })
     loadPlan();
   }, [params.slug]);
 
+  // Parse plan data and ensure activeDay is within bounds
+  const planData = plan ? (typeof plan.meta?.plan_data === 'string' 
+    ? JSON.parse(plan.meta.plan_data) 
+    : (plan.meta?.plan_data || [])) : [];
+  
+  // Ensure activeDay is valid
+  useEffect(() => {
+    if (planData.length > 0 && activeDay > planData.length) {
+      setActiveDay(1);
+    }
+  }, [planData.length, activeDay]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -51,11 +63,7 @@ export default function DietDetailPage({ params }: { params: { slug: string } })
     );
   }
 
-  // Plan verisini parse et
-  const planData = typeof plan.meta?.plan_data === 'string' 
-    ? JSON.parse(plan.meta.plan_data) 
-    : (plan.meta?.plan_data || []);
-  
+  // Meta data
   const difficulty = plan.meta?.difficulty || 'Orta';
   const duration = plan.meta?.duration || '3 Gün';
   const calories = plan.meta?.calories || '1200';
