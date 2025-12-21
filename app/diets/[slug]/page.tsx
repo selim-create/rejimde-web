@@ -139,7 +139,7 @@ export default function DietDetailPage({ params }: { params: { slug: string } })
               
               {/* Day Selector (Tabs) */}
               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                  {planData.map((day: any, index: number) => (
+                  {planData && planData.length > 0 ? planData.map((day: any, index: number) => (
                     <button 
                         key={index}
                         onClick={() => setActiveDay(index + 1)}
@@ -147,12 +147,16 @@ export default function DietDetailPage({ params }: { params: { slug: string } })
                     >
                         {index + 1}. GÜN
                     </button>
-                  ))}
+                  )) : (
+                    <div className="w-full text-center py-4 text-gray-400 font-bold">
+                      Bu diyet için günlük plan bulunamadı.
+                    </div>
+                  )}
               </div>
 
               {/* Meals List */}
               <div className="space-y-4">
-                  {planData[activeDay - 1]?.meals?.map((meal: any, mealIndex: number) => {
+                  {planData && planData[activeDay - 1] && planData[activeDay - 1]?.meals?.map((meal: any, mealIndex: number) => {
                       // Öğün ikonu belirleme
                       const mealIcons: Record<string, string> = {
                           'Kahvaltı': 'fa-mug-hot',

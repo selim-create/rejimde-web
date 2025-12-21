@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { earnPoints, getComments, createComment } from "@/lib/api";
+import { earnPoints } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
+import CommentsSection from "@/components/CommentsSection";
+import { getUserProfileUrl } from "@/lib/helpers";
 
 interface ClientBlogPostProps {
   post: any;
@@ -311,7 +313,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                       />
                       <div>
                           <Link 
-                             href={authorDetail.isExpert ? `/experts/${authorDetail.slug}` : `/profile/${authorDetail.slug}`} 
+                             href={getUserProfileUrl(authorDetail.slug, authorDetail.isExpert)} 
                              className="font-extrabold text-gray-700 hover:text-rejimde-blue transition block"
                           >
                               {post.author_name}
@@ -435,9 +437,9 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                                       <div className={`${c.isExpert ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-200'} border-2 p-4 rounded-3xl rounded-tl-none relative`}>
                                           <div className="flex justify-between items-center mb-1">
                                               <div className="flex items-center gap-2">
-                                                  {/* PROFİL LİNKİ: Rol kontrolü (Eğer API dönmüyorsa Slugify) */}
+                                                  {/* PROFİL LİNKİ: Helper fonksiyonla */}
                                                   <Link 
-                                                    href={c.isExpert ? `/experts/${slugify(c.user)}` : `/profile/${slugify(c.user)}`} 
+                                                    href={getUserProfileUrl(slugify(c.user), c.isExpert)} 
                                                     className={`font-extrabold text-sm hover:underline ${c.isExpert ? 'text-rejimde-blueDark' : 'text-gray-700'}`}
                                                   >
                                                       {c.user}
@@ -495,9 +497,9 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                       )}
                   </div>
                   
-                  {/* Yazar Adı (Linkli - Slugify ile) */}
+                  {/* Yazar Adı (Linkli - Helper fonksiyonla) */}
                   <Link 
-                    href={authorDetail.isExpert ? `/experts/${authorDetail.slug}` : `/profile/${authorDetail.slug}`}
+                    href={getUserProfileUrl(authorDetail.slug, authorDetail.isExpert)}
                     className="text-xl font-extrabold text-gray-800 mb-1 hover:text-rejimde-blue transition block"
                   >
                       {post.author_name}
