@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation"; 
-import { getMe } from "@/lib/api"; 
+import { getMe } from "@/lib/api";
+import { getSafeAvatarUrl } from "@/lib/helpers"; 
 
 export default function Header() {
   const [userRole, setUserRole] = useState('rejimde_user'); // Varsayılan user
@@ -25,8 +26,11 @@ export default function Header() {
     if (token) {
       setIsLoggedIn(true);
       const name = localStorage.getItem('user_name') || 'Kullanıcı';
-      const avatar = localStorage.getItem('user_avatar') || "https://i.pravatar.cc/150?img=5";
-      const role = localStorage.getItem('user_role') || 'rejimde_user'; // Rolü al
+      const storedAvatar = localStorage.getItem('user_avatar') || '';
+      const slug = localStorage.getItem('user_name') || 'user';
+      // Helper fonksiyon kullanarak güvenli avatar al
+      const avatar = getSafeAvatarUrl(storedAvatar, slug);
+      const role = localStorage.getItem('user_role') || 'rejimde_user';
       setUser({ name, avatar });
       setUserRole(role);
     } else {
@@ -49,11 +53,9 @@ export default function Header() {
         if (userData) {
           // LocalStorage'ı güncelle
           localStorage.setItem('user_name', userData.name);
-          // Avatar mantığı: API'den gelen avatar_url öncelikli, yoksa avatar_urls[96], yoksa mevcut
-          const remoteAvatar = userData.avatar_url || userData.avatar_urls?.['96'];
-          if (remoteAvatar) {
-             localStorage.setItem('user_avatar', remoteAvatar);
-          }
+          // Avatar mantığı: Helper fonksiyonla güvenli avatar al
+          const remoteAvatar = getSafeAvatarUrl(userData.avatar_url, userData.username || userData.name);
+          localStorage.setItem('user_avatar', remoteAvatar);
           
           // State'i güncelle
           loadUserFromStorage();

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getBlogPosts } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
+import { getSafeAvatarUrl, isUserExpert, getUserProfileUrl } from "@/lib/helpers";
 
 // Kategori Temaları
 const CATEGORY_THEMES: Record<string, { cardBorder: string, badge: string }> = {
@@ -67,16 +68,9 @@ export default function BlogPage() {
                     // Yazar Bilgisi
                     const author = p._embedded?.author?.[0];
                     
-                    // DÜZELTME: Avatar Mantığı - Profil Sayfası ile Eşitlendi
-                    // Öncelik: Özel Avatar (avatar_url) > DiceBear (Slug'a göre)
-                    // Gravatar (avatar_urls) tamamen devre dışı bırakıldı.
-                    let authorAvatar = author?.avatar_url;
-                    
-                    if (!authorAvatar || authorAvatar.includes('gravatar')) {
-                        authorAvatar = `https://api.dicebear.com/9.x/personas/svg?seed=${author?.name || 'admin'}`;
-                    }
-                    
-                    const isExpert = author?.roles?.includes('rejimde_pro') || false;
+                    // Avatar ve Uzman Kontrolü - Helper Fonksiyonlarla
+                    const authorAvatar = getSafeAvatarUrl(author?.avatar_url, author?.slug || 'admin');
+                    const authorIsExpert = isUserExpert(author?.roles);
 
                     return {
                         id: p.id,
@@ -89,7 +83,7 @@ export default function BlogPage() {
                         author_name: author?.name || 'Rejimde Editör',
                         author_slug: author?.slug || 'admin',
                         author_avatar: authorAvatar,
-                        author_is_expert: isExpert,
+                        author_is_expert: authorIsExpert,
                         category: catName,
                         read_time: '5 dk', 
                         sticky: p.sticky 
@@ -108,12 +102,13 @@ export default function BlogPage() {
                 const leaderData = await leaderRes.json();
                 if (leaderData.status === 'success' && Array.isArray(leaderData.data) && leaderData.data.length > 0) {
                     const enrichedReaders = leaderData.data.slice(0, 3).map((reader: any) => {
-                        // Okuyucular için de aynı avatar mantığı
-                        const readerAvatar = reader.avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${reader.name}`;
+                        // Okuyucular için de aynı avatar mantığı - Helper fonksiyonla
+                        const readerAvatar = getSafeAvatarUrl(reader.avatar, reader.name);
+                        const readerSlug = reader.slug || reader.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
                         return {
                             ...reader,
                             avatar: readerAvatar,
-                            slug: reader.slug || reader.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')
+                            slug: readerSlug
                         };
                     });
                     setTopReaders(enrichedReaders);
@@ -197,8 +192,8 @@ export default function BlogPage() {
                                     alt="Author"
                                 />
                                 <div>
-                                    {/* Profil Linki: Profil sayfası otomatik redirect yaptığı için burayı /profile/slug olarak bırakmak güvenlidir */}
-                                    <Link href={`/profile/${featuredPost.author_slug}`} className="font-extrabold text-white hover:underline">
+                                    {/* Profil Linki: Helper fonksiyonla doğru URL */}
+                                    <Link href={getUserProfileUrl(featuredPost.author_slug, featuredPost.author_is_expert)} className="font-extrabold text-white hover:underline">
                                         {featuredPost.author_name}
                                     </Link>
                                     <div className="text-xs font-bold text-gray-400 uppercase">Yazar</div>
@@ -387,7 +382,8 @@ export default function BlogPage() {
                                     onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/9.x/personas/svg?seed=${reader.name}` }}
                                   />
                                   <div className="flex-1">
-                                      <Link href={`/profile/${reader.slug || '#'}`} className="text-xs font-bold text-gray-700 hover:underline hover:text-rejimde-blue block">
+                                      {/* Okuyucular normal kullanıcılar olarak varsayılır */}
+                                      <Link href={getUserProfileUrl(reader.slug || 'user', false)} className="text-xs font-bold text-gray-700 hover:underline hover:text-rejimde-blue block">
                                           {reader.name}
                                       </Link>
                                       <p className="text-[10px] font-bold text-gray-400">Puan Lideri</p>
