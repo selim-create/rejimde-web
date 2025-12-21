@@ -742,6 +742,27 @@ export async function createComment(postId: number, content: string) {
   }
 }
 
+/**
+ * DİYET PLANLARINI LİSTELE
+ */
+export async function getPlans(category?: string, difficulty?: string) {
+  try {
+    let endpoint = '/rejimde/v1/plans'; // Özel Controller Endpoint'i
+    const params = new URLSearchParams();
+    
+    // Kategori "Tümü" değilse filtrele
+    if (category && category !== 'Tümü') params.append('category', category);
+    if (difficulty) params.append('difficulty', difficulty);
+    
+    if (params.toString()) endpoint += `?${params.toString()}`;
+
+    const data = await fetchAPI(endpoint);
+    return data || [];
+  } catch (error) {
+    console.error("Planlar çekilemedi", error);
+    return [];
+  }
+}
 
 /**
  * DİYET PLANI OLUŞTUR
