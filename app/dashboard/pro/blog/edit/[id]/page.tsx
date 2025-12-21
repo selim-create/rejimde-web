@@ -1,315 +1,577 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { earnPoints } from "@/lib/api";
+import Link from "next/link";
+import { getPostById, updatePost, uploadMedia } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
-import CommentsSection from "@/components/CommentsSection"; // Modüler Yorumlar
 
-interface ClientBlogPostProps {
-  post: any;
-  relatedPosts: any[];
-  formattedTitle: React.ReactNode;
+// Blok Tipleri
+type BlockType = 'paragraph' | 'heading' | 'list' | 'image' | 'tip' | 'warning' | 'quote' | 'video';
+
+interface ContentBlock {
+    id: string;
+    type: BlockType;
+    content: string;
+    url?: string; // Resim/Video için
 }
 
-// URL Slug Yardımcısı (İsimden slug üretmek için)
-const slugify = (text: string) => {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w\-]+/g, '')
-    .replace(/\-\-+/g, '-');
-};
-
-export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: ClientBlogPostProps) {
+export default function EditBlogPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const [readingProgress, setReadingProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
   
-  // Ödül Modal State
-  const [showRewardModal, setShowRewardModal] = useState(false);
-  const [rewardMessage, setRewardMessage] = useState({ title: "", desc: "", points: 0 });
-  const [hasClaimed, setHasClaimed] = useState(false);
-  const [claiming, setClaiming] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [excerpt, setExcerpt] = useState("");
   
-  // Bilgi/Uyarı Modal State
-  const [infoModal, setInfoModal] = useState<{show: boolean, title: string, message: string, type: 'error' | 'success' | 'info'}>({
-    show: false, title: "", message: "", type: "info"
-  });
+  // Modal State
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [postSlug, setPostSlug] = useState("");
+  const [modalMessage, setModalMessage] = useState({ title: "", desc: "" });
   
-  // Kullanıcı State'i (Edit butonu ve linkleme için)
-  const [currentUser, setCurrentUser] = useState<{ role: string, name: string } | null>(null);
+  // Blok Tabanlı İçerik (Notion Style Lite)
+  const [blocks, setBlocks] = useState<ContentBlock[]>([
+      { id: '1', type: 'paragraph', content: '' }
+  ]);
 
+  // Medya
+  const [featuredImage, setFeaturedImage] = useState("");
+  const [featuredImageId, setFeaturedImageId] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Taksonomi
+  const [categories, setCategories] = useState<{id: number, name: string}[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | string>("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+
+  // SEO
+  const [seoTitle, setSeoTitle] = useState("");
+  const [seoDesc, setSeoDesc] = useState("");
+  const [focusKeyword, setFocusKeyword] = useState("");
+
+  // Post ID
+  const postId = parseInt(params.id);
+
+  // Başlangıç: Kategorileri ve Mevcut Post'u Çek
   useEffect(() => {
-      // Kullanıcı bilgisini al
-      if (typeof window !== 'undefined') {
-          const role = localStorage.getItem('user_role') || '';
-          const name = localStorage.getItem('user_name') || '';
-          if (role) setCurrentUser({ role, name });
+    async function initData() {
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
+            
+            // 1. Kategorileri Çek
+            const catRes = await fetch(`${apiUrl}/wp/v2/categories?per_page=100`);
+            if (catRes.ok) {
+                const catsData = await catRes.json();
+                setCategories(catsData);
+            }
 
-          const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-          if (claimedPosts.includes(post.id)) {
-              setHasClaimed(true);
-          }
-      }
-  }, [post.id]);
+            // 2. Mevcut Post Verisini Çek
+            const postData = await getPostById(postId);
+            
+            if (!postData) {
+                alert("Yazı bulunamadı veya erişim izniniz yok.");
+                router.push('/dashboard/pro');
+                return;
+            }
 
-  // Okuma İlerlemesi
-  useEffect(() => {
-    const updateScroll = () => {
-      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = (window.scrollY / totalHeight) * 100;
-      setReadingProgress(progress);
-    };
-    window.addEventListener("scroll", updateScroll);
-    return () => window.removeEventListener("scroll", updateScroll);
-  }, []);
+            // Post verilerini forma yerleştir
+            setTitle(postData.title || '');
+            setExcerpt(postData.excerpt || '');
+            setPostSlug(postData.slug || '');
+            
+            // Featured Image
+            setFeaturedImage(postData.featured_media_url || '');
+            setFeaturedImageId(postData.featured_media_id || 0);
+            
+            // Kategoriler
+            if (postData.categories && postData.categories.length > 0) {
+                setSelectedCategory(postData.categories[0]);
+            }
+            
+            // Etiketler - Backend'den ID olarak geliyorsa isimlerini çekmek gerekebilir
+            // Şimdilik boş bırakıyoruz, gerekirse tag isimlerini çekebiliriz
+            
+            // SEO Meta
+            setSeoTitle(postData.meta?.rank_math_title || '');
+            setSeoDesc(postData.meta?.rank_math_description || '');
+            setFocusKeyword(postData.meta?.rank_math_focus_keyword || '');
 
-  const showAlert = (title: string, message: string, type: 'error' | 'success' | 'info' = 'info') => {
-      setInfoModal({ show: true, title, message, type });
+            // İçeriği bloklara çevir (basit HTML parsing)
+            // Not: WordPress'ten gelen HTML içeriği blok yapısına çevirmek karmaşık olabilir
+            // En basit yaklaşım: Tüm içeriği tek bir paragraph bloğuna yerleştirmek
+            // Daha gelişmiş parsing için HTML parser kullanılabilir
+            
+            const htmlContent = postData.content || '';
+            
+            if (htmlContent.trim()) {
+                // Basit parsing: Paragrafları ayır
+                const paragraphs = htmlContent.split('</p>').filter(p => p.trim());
+                
+                const parsedBlocks: ContentBlock[] = paragraphs.map((p, index) => {
+                    let cleanContent = p.replace(/<p[^>]*>/g, '').trim();
+                    
+                    // Başlık kontrolü
+                    if (cleanContent.startsWith('<h2')) {
+                        cleanContent = cleanContent.replace(/<h2[^>]*>/g, '').replace('</h2>', '');
+                        return { id: `block-${index}`, type: 'heading', content: cleanContent };
+                    }
+                    
+                    // Liste kontrolü
+                    if (cleanContent.includes('<ul>') || cleanContent.includes('<ol>')) {
+                        return { id: `block-${index}`, type: 'list', content: cleanContent };
+                    }
+                    
+                    // Resim kontrolü
+                    if (cleanContent.includes('<img')) {
+                        const imgMatch = cleanContent.match(/src="([^"]+)"/);
+                        if (imgMatch) {
+                            return { id: `block-${index}`, type: 'image', content: 'Görsel', url: imgMatch[1] };
+                        }
+                    }
+                    
+                    // Varsayılan: Paragraph
+                    return { id: `block-${index}`, type: 'paragraph', content: cleanContent };
+                }).filter(block => block.content);
+                
+                if (parsedBlocks.length > 0) {
+                    setBlocks(parsedBlocks);
+                }
+            }
+
+        } catch (e) {
+            console.error("Veri yükleme hatası:", e);
+            alert("Bir hata oluştu.");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    initData();
+  }, [postId, router]);
+
+  // --- BLOK YÖNETİMİ ---
+  const addBlock = (type: BlockType) => {
+      const defaultContent = type === 'list' ? '<ul>\n<li>Liste öğesi 1</li>\n<li>Liste öğesi 2</li>\n</ul>' : '';
+      setBlocks([...blocks, { id: Date.now().toString(), type, content: defaultContent }]);
   };
 
-  // Puan Kazanma (MODAL İLE)
-  const handleClaimReward = async () => {
-      if (hasClaimed) return;
-      setClaiming(true);
-      
-      const res = await earnPoints('read_blog', post.id);
-      
-      if (res.success) {
-          setHasClaimed(true);
-          const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-          claimedPosts.push(post.id);
-          localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
+  const updateBlock = (id: string, value: string) => {
+      setBlocks(blocks.map(b => b.id === id ? { ...b, content: value } : b));
+  };
 
-          setRewardMessage({
-              title: "Harikasın! 🎉",
-              desc: `Bu yazıyı tamamladın ve ${res.data.earned} Puan kazandın!`,
-              points: res.data.earned
-          });
-          setShowRewardModal(true);
-      } else {
-          // Zaten almışsa
-          if (res.message?.includes('zaten')) {
-              setHasClaimed(true);
-              setRewardMessage({
-                  title: "Daha Önce Aldın 😎",
-                  desc: "Bu yazının puanını zaten kapmışsın. Başka yazılara göz at!",
-                  points: 0
-              });
-              setShowRewardModal(true);
+  const removeBlock = (id: string) => {
+      if (blocks.length > 1) {
+          setBlocks(blocks.filter(b => b.id !== id));
+      }
+  };
+
+  const moveBlock = (index: number, direction: 'up' | 'down') => {
+      const newBlocks = [...blocks];
+      if (direction === 'up' && index > 0) {
+          [newBlocks[index], newBlocks[index - 1]] = [newBlocks[index - 1], newBlocks[index]];
+      } else if (direction === 'down' && index < newBlocks.length - 1) {
+          [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
+      }
+      setBlocks(newBlocks);
+  };
+
+  // Blok İçi Görsel Yükleme
+  const handleBlockImageUpload = async (file: File, blockId: string) => {
+      try {
+          const res = await uploadMedia(file);
+          if (res.success && res.url) {
+              setBlocks(blocks.map(b => b.id === blockId ? { ...b, url: res.url, content: 'Görsel Yüklendi' } : b));
           } else {
-              showAlert("Hata", res.message || "Bir hata oluştu.", "error");
+              alert("Hata: " + res.message);
           }
-      }
-      setClaiming(false);
+      } catch (e) { alert("Yükleme hatası"); }
   };
 
-  const categoryName = post.category ? 
-    <span dangerouslySetInnerHTML={{ __html: post.category }} /> : "Genel";
+  // Öne Çıkan Görsel Yükleme
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setIsUploading(true);
+      const res = await uploadMedia(e.target.files[0]);
+      if (res.success && res.url) {
+          setFeaturedImage(res.url);
+          setFeaturedImageId(res.id || 0);
+      } else {
+          alert("Hata: " + res.message);
+      }
+      setIsUploading(false);
+    }
+  };
 
-  // Düzenleme Yetkisi Kontrolü
-  const canEdit = currentUser && (
-      currentUser.role === 'administrator' || 
-      (currentUser.role === 'rejimde_pro' && post.author_name === currentUser.name)
-  );
+  // Tag Yönetimi
+  const handleAddTag = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && tagInput.trim()) {
+      e.preventDefault();
+      if (!tags.includes(tagInput.trim())) setTags([...tags, tagInput.trim()]);
+      setTagInput("");
+    }
+  };
+
+  // GÜNCELLE
+  const handleUpdate = async (status: 'publish' | 'draft') => {
+    if (!title) { alert("Lütfen başlık giriniz."); return; }
+
+    setSaving(true);
+
+    // Blokları HTML'e çevir
+    let htmlContent = "";
+    blocks.forEach(block => {
+        if (!block.content && block.type !== 'image') return;
+
+        switch (block.type) {
+            case 'heading': htmlContent += `<h2>${block.content}</h2>`; break;
+            case 'paragraph': htmlContent += `<p>${block.content}</p>`; break;
+            case 'list': htmlContent += block.content; break;
+            case 'tip': 
+                htmlContent += `<div class="bg-blue-50 border-l-4 border-rejimde-blue p-4 rounded-r-xl my-4"><p class="font-bold text-rejimde-blueDark mb-0"><i class="fa-solid fa-lightbulb mr-2"></i> ${block.content}</p></div>`; 
+                break;
+            case 'warning':
+                htmlContent += `<div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl my-4"><p class="font-bold text-red-700 mb-0"><i class="fa-solid fa-triangle-exclamation mr-2"></i> ${block.content}</p></div>`;
+                break;
+            case 'quote':
+                htmlContent += `<blockquote class="border-l-4 border-gray-300 pl-4 italic text-gray-600 my-4">"${block.content}"</blockquote>`;
+                break;
+            case 'image':
+                if (block.url) htmlContent += `<img src="${block.url}" alt="Blog Görseli" class="rounded-xl w-full my-4" />`;
+                break;
+            case 'video':
+                htmlContent += `<div class="aspect-video my-4"><iframe src="${block.content}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe></div>`;
+                break;
+        }
+    });
+
+    const postData = {
+        title,
+        content: htmlContent,
+        status, 
+        excerpt,
+        featured_media_id: featuredImageId,
+        categories: [Number(selectedCategory)],
+        tags: tags,
+        meta: {
+            rank_math_title: seoTitle || title,
+            rank_math_description: seoDesc || excerpt,
+            rank_math_focus_keyword: focusKeyword
+        }
+    };
+
+    const res = await updatePost(postId, postData);
+
+    if (res.success) {
+      setModalMessage({
+          title: status === 'publish' ? "Yazı Güncellendi! 🎉" : "Taslak Kaydedildi 💾",
+          desc: status === 'publish' ? "Değişiklikler başarıyla kaydedildi." : "Daha sonra düzenlemeye devam edebilirsin."
+      });
+      setShowSuccessModal(true);
+    } else {
+      alert("Hata: " + res.message);
+    }
+    setSaving(false);
+  };
+
+  if (loading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-50">
+              <i className="fa-solid fa-circle-notch animate-spin text-4xl text-rejimde-green"></i>
+          </div>
+      );
+  }
 
   return (
-    <>
-      {/* Progress Bar */}
-      <div className="fixed top-20 left-0 w-full h-1.5 bg-gray-100 z-40">
-        <div className="h-full bg-rejimde-blue rounded-r-full shadow-[0_0_10px_#1cb0f6] transition-all duration-100 ease-out" style={{ width: `${readingProgress}%` }}></div>
+    <div className="min-h-screen bg-slate-50 pb-20 font-sans text-rejimde-text">
+      
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-30 flex items-center justify-between shadow-sm">
+         <div className="flex items-center gap-4">
+             <Link href="/dashboard/pro" className="text-gray-400 hover:text-gray-600 transition"><i className="fa-solid fa-arrow-left"></i></Link>
+             <h1 className="text-xl font-black text-gray-800">Blog Yazısını Düzenle</h1>
+         </div>
+         <div className="flex gap-3">
+             <button onClick={() => handleUpdate('draft')} disabled={saving} className="px-4 py-2 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition text-xs uppercase">Taslak Kaydet</button>
+             <button onClick={() => handleUpdate('publish')} disabled={saving} className="bg-rejimde-green text-white px-6 py-2 rounded-xl font-extrabold shadow-btn shadow-rejimde-greenDark btn-game text-xs uppercase flex items-center gap-2">
+                {saving && <i className="fa-solid fa-circle-notch animate-spin"></i>} Güncelle
+             </button>
+         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
-          
-          {/* LEFT: Article Content */}
-          <article className="lg:col-span-8 relative">
-              
-              {/* Edit Button (Yetkiliye Özel) */}
-              {canEdit && (
-                  <Link href={`/dashboard/pro/blog/edit/${post.id}`} className="absolute top-0 right-0 bg-gray-100 text-gray-600 px-4 py-2 rounded-xl font-bold text-xs hover:bg-rejimde-blue hover:text-white transition flex items-center gap-2 z-10">
-                      <i className="fa-solid fa-pen"></i> Düzenle
-                  </Link>
-              )}
+      <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* LEFT: Block Editor Area */}
+        <div className="lg:col-span-2 space-y-6">
+            
+            <input 
+                type="text" 
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Başlığınızı Buraya Yazın..." 
+                className="w-full bg-transparent text-4xl font-black text-gray-800 placeholder-gray-300 outline-none"
+            />
 
-              {/* Header */}
-              <div className="mb-8">
-                  <div className="flex items-center gap-2 mb-4">
-                      <span className="bg-blue-50 text-rejimde-blue px-3 py-1 rounded-lg text-xs font-black uppercase">{categoryName}</span>
-                      <span className="text-gray-400 text-xs font-bold"><i className="fa-regular fa-clock mr-1"></i> {post.read_time} okuma</span>
-                  </div>
-                  <h1 className="text-3xl md:text-5xl font-black text-gray-800 leading-tight mb-6">
-                      {formattedTitle}
-                  </h1>
-                  
-                  {/* Author Mini (Mobile) */}
-                  <div className="flex items-center gap-4 p-4 bg-white border-2 border-gray-100 rounded-2xl lg:hidden">
-                      <img src={post.author_avatar} className="w-12 h-12 rounded-xl border-2 border-white shadow-sm object-cover" alt={post.author_name} />
-                      <div>
-                          {/* YENİ: Doğru Linkleme */}
-                          <Link 
-                            href={post.author_is_expert ? `/experts/${post.author_slug}` : `/profile/${post.author_slug}`}
-                            className="font-extrabold text-gray-700 hover:text-rejimde-blue block"
-                          >
-                              {post.author_name}
-                          </Link>
-                          <div className="text-xs font-bold text-rejimde-blue">Yazar</div>
-                      </div>
-                  </div>
-              </div>
+            {/* Blocks List */}
+            <div className="space-y-4">
+                {blocks.map((block, index) => (
+                    <div key={block.id} className="group relative pl-10 transition-all">
+                        
+                        {/* Block Controls (Hover) */}
+                        <div className="absolute left-0 top-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
+                             <button onClick={() => removeBlock(block.id)} className="text-red-300 hover:text-red-500"><i className="fa-solid fa-trash"></i></button>
+                             <div className="flex flex-col text-gray-300">
+                                 <button onClick={() => moveBlock(index, 'up')} className="hover:text-gray-500"><i className="fa-solid fa-chevron-up"></i></button>
+                                 <button onClick={() => moveBlock(index, 'down')} className="hover:text-gray-500"><i className="fa-solid fa-chevron-down"></i></button>
+                             </div>
+                        </div>
 
-              {/* Featured Image */}
-              <div className="w-full h-80 bg-gray-200 rounded-3xl mb-10 overflow-hidden border-2 border-gray-200 relative group">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={post.image} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" alt="Featured" />
-                  {!hasClaimed && (
-                      <div className="absolute top-4 right-4 bg-rejimde-yellow text-white px-4 py-2 rounded-xl font-black text-sm shadow-btn shadow-yellow-600 rotate-3 border border-white/20 animate-pulse">
-                          <i className="fa-solid fa-star mr-1"></i> +10 Puan Fırsatı
-                      </div>
-                  )}
-              </div>
+                        {/* Block Input Types */}
+                        {block.type === 'paragraph' && (
+                            <textarea 
+                                value={block.content}
+                                onChange={(e) => {
+                                    updateBlock(block.id, e.target.value);
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = e.target.scrollHeight + 'px';
+                                }}
+                                className="w-full bg-transparent text-lg text-gray-600 outline-none resize-none overflow-hidden placeholder-gray-300 border-l-2 border-transparent focus:border-gray-200 pl-2"
+                                placeholder="Bir şeyler yazın..."
+                            />
+                        )}
+                        
+                        {block.type === 'heading' && (
+                            <input 
+                                type="text" 
+                                value={block.content}
+                                onChange={(e) => updateBlock(block.id, e.target.value)}
+                                className="w-full bg-transparent text-2xl font-bold text-gray-800 outline-none placeholder-gray-300 border-l-2 border-transparent focus:border-gray-200 pl-2"
+                                placeholder="Alt Başlık"
+                            />
+                        )}
 
-              {/* Content */}
-              <div className="bg-white border-2 border-gray-100 p-6 md:p-10 rounded-3xl shadow-sm prose prose-lg prose-headings:font-black prose-headings:text-gray-800 prose-p:text-gray-500 prose-p:font-medium prose-p:leading-relaxed prose-a:text-rejimde-blue prose-a:font-bold prose-img:rounded-2xl prose-strong:text-gray-700 max-w-none [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-xl"
-                   dangerouslySetInnerHTML={{ __html: post.content }}>
-              </div>
+                        {block.type === 'list' && (
+                             <textarea 
+                                value={block.content}
+                                onChange={(e) => {
+                                    updateBlock(block.id, e.target.value);
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = e.target.scrollHeight + 'px';
+                                }}
+                                className="w-full bg-transparent text-base text-gray-600 outline-none resize-none overflow-hidden placeholder-gray-300 border-l-4 border-gray-200 pl-4 font-mono"
+                                placeholder="<ul><li>Madde 1</li></ul> formatında yazın..."
+                            />
+                        )}
 
-              {/* Tags */}
-              {post.tags && post.tags.length > 0 && (
-                  <div className="mt-8 flex flex-wrap gap-2">
-                      {post.tags.map((tag: any, idx: number) => (
-                          <span key={idx} className="bg-gray-100 text-gray-500 px-3 py-1 rounded-lg text-xs font-bold">#{tag.name || tag}</span>
-                      ))}
-                  </div>
-              )}
+                        {block.type === 'tip' && (
+                            <div className="bg-blue-50 p-4 rounded-xl border-l-4 border-rejimde-blue flex gap-3">
+                                <i className="fa-solid fa-lightbulb text-rejimde-blue mt-1"></i>
+                                <textarea 
+                                    value={block.content}
+                                    onChange={(e) => updateBlock(block.id, e.target.value)}
+                                    className="w-full bg-transparent text-sm font-bold text-rejimde-blueDark outline-none resize-none placeholder-blue-300"
+                                    placeholder="İpucunu buraya yaz..."
+                                />
+                            </div>
+                        )}
 
-              {/* Gamification Reward */}
-              <div className="mt-8 bg-rejimde-purple text-white rounded-3xl p-8 text-center shadow-float relative overflow-hidden group cursor-pointer">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-10 -mt-10"></div>
-                  
-                  {hasClaimed ? (
-                      <div className="animate-fadeIn">
-                          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white/40">
-                              <i className="fa-solid fa-check text-3xl"></i>
-                          </div>
-                          <h3 className="text-2xl font-black mb-2">Harikasın!</h3>
-                          <p className="font-bold text-purple-100">Bu yazıyı tamamladın.</p>
-                      </div>
-                  ) : (
-                      <>
-                          <h3 className="text-2xl font-black mb-2">Tebrikler! 🎉</h3>
-                          <p className="font-bold text-purple-100 mb-6">Bu yazıyı okuyarak bir şeyler öğrendin.</p>
-                          <button 
-                            onClick={handleClaimReward} 
-                            disabled={claiming} 
-                            className="bg-white text-rejimde-purple px-8 py-4 rounded-2xl font-extrabold text-lg shadow-btn shadow-purple-900/30 btn-game uppercase tracking-wide group-hover:scale-105 transition disabled:opacity-70"
-                          >
-                              {claiming ? 'İşleniyor...' : '+10 Puanımı Al'}
-                          </button>
-                      </>
-                  )}
-              </div>
+                        {block.type === 'warning' && (
+                            <div className="bg-red-50 p-4 rounded-xl border-l-4 border-red-500 flex gap-3">
+                                <i className="fa-solid fa-triangle-exclamation text-red-500 mt-1"></i>
+                                <textarea 
+                                    value={block.content}
+                                    onChange={(e) => updateBlock(block.id, e.target.value)}
+                                    className="w-full bg-transparent text-sm font-bold text-red-800 outline-none resize-none placeholder-red-300"
+                                    placeholder="Uyarı metnini yaz..."
+                                />
+                            </div>
+                        )}
 
-              {/* COMMENTS SECTION (MODÜLER) */}
-              <CommentsSection postId={post.id} />
+                        {block.type === 'quote' && (
+                            <div className="pl-4 border-l-4 border-gray-300 italic">
+                                <textarea 
+                                    value={block.content}
+                                    onChange={(e) => updateBlock(block.id, e.target.value)}
+                                    className="w-full bg-transparent text-xl text-gray-500 outline-none resize-none placeholder-gray-300"
+                                    placeholder="Alıntı..."
+                                />
+                            </div>
+                        )}
 
-          </article>
+                        {block.type === 'image' && (
+                            <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:bg-gray-50 relative group/img">
+                                {block.url ? (
+                                    <>
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={block.url} alt="Uploaded" className="max-h-64 mx-auto rounded-lg" />
+                                        <div 
+                                            className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition"
+                                            onClick={(e) => {
+                                                const fileInput = e.currentTarget.nextElementSibling as HTMLInputElement;
+                                                fileInput?.click();
+                                            }}
+                                        >
+                                            <span className="text-white font-bold text-xs"><i className="fa-solid fa-pen mr-2"></i>Değiştir</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="py-8" onClick={(e) => {
+                                         const fileInput = e.currentTarget.nextElementSibling as HTMLInputElement;
+                                         fileInput?.click();
+                                    }}>
+                                        <i className="fa-regular fa-image text-3xl text-gray-300 mb-2"></i>
+                                        <p className="text-xs text-gray-400 font-bold">Görsel Yüklemek İçin Tıkla</p>
+                                    </div>
+                                )}
+                                <input type="file" className="hidden" onChange={(e) => {
+                                    if(e.target.files?.[0]) handleBlockImageUpload(e.target.files[0], block.id);
+                                }} />
+                            </div>
+                        )}
 
-          {/* RIGHT: Sticky Sidebar */}
-          <aside className="hidden lg:block lg:col-span-4 space-y-6">
-              
-              {/* Author Profile Card */}
-              <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 sticky top-24 shadow-card text-center z-10">
-                  <div className="w-24 h-24 mx-auto bg-gray-200 rounded-2xl border-4 border-white shadow-md overflow-hidden mb-4 relative group">
-                      <img src={post.author_avatar} className="w-full h-full object-cover" alt={post.author_name} />
-                      <div className="absolute bottom-0 right-0 w-5 h-5 bg-rejimde-green border-2 border-white rounded-full"></div>
-                  </div>
-                  
-                  {/* YENİ: Doğru Linkleme */}
-                  <Link 
-                    href={post.author_is_expert ? `/experts/${post.author_slug}` : `/profile/${post.author_slug}`}
-                    className="text-xl font-extrabold text-gray-800 mb-1 hover:text-rejimde-blue transition block"
-                  >
-                      {post.author_name}
-                  </Link>
-                  <p className="text-gray-400 font-bold text-sm mb-6">Yazar • {categoryName}</p>
-                  
-                  <button className="bg-rejimde-green text-white w-full py-3 rounded-xl font-extrabold shadow-btn shadow-rejimde-greenDark btn-game uppercase tracking-wide mb-3">
-                      Takip Et
-                  </button>
-              </div>
+                        {block.type === 'video' && (
+                             <input 
+                                type="text" 
+                                value={block.content}
+                                onChange={(e) => updateBlock(block.id, e.target.value)}
+                                className="w-full bg-gray-50 p-3 rounded-xl text-sm outline-none placeholder-gray-400"
+                                placeholder="YouTube Video URL'sini veya ID'sini yapıştır..."
+                            />
+                        )}
 
-              {/* Related Posts */}
-              <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 relative z-0">
-                  <h3 className="font-extrabold text-gray-400 text-xs uppercase mb-4">Bunları da Oku</h3>
-                  <div className="space-y-4">
-                      {relatedPosts.map((relPost: any) => (
-                          <Link href={`/blog/${relPost.slug}`} key={relPost.id} className="flex gap-3 group">
-                              <div className="w-16 h-16 bg-gray-200 rounded-xl shrink-0 border-2 border-transparent group-hover:border-rejimde-blue transition overflow-hidden relative">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img 
-                                    src={relPost.image} 
-                                    alt={relPost.title} 
-                                    className="w-full h-full object-cover" 
-                                    onError={(e) => { e.currentTarget.src = "https://placehold.co/100x100?text=Blog" }}
-                                  />
-                              </div>
-                              <div>
-                                  <h4 className="font-extrabold text-gray-700 text-sm leading-tight group-hover:text-rejimde-blue transition line-clamp-2">
-                                      {relPost.title}
-                                  </h4>
-                                  <span className="text-xs font-bold text-gray-400">{relPost.read_time} okuma</span>
-                              </div>
-                          </Link>
-                      ))}
-                  </div>
-              </div>
+                    </div>
+                ))}
+            </div>
 
-          </aside>
+            {/* Add Block Bar */}
+            <div className="flex gap-2 flex-wrap items-center pt-4 border-t border-gray-100">
+                <span className="text-xs font-bold text-gray-400 uppercase mr-2">Ekle:</span>
+                <button onClick={() => addBlock('paragraph')} className="px-3 py-1 bg-gray-100 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-200">Metin</button>
+                <button onClick={() => addBlock('heading')} className="px-3 py-1 bg-gray-100 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-200">Başlık</button>
+                <button onClick={() => addBlock('list')} className="px-3 py-1 bg-gray-100 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-200"><i className="fa-solid fa-list-ul mr-1"></i> Liste</button>
+                <button onClick={() => addBlock('image')} className="px-3 py-1 bg-gray-100 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-200"><i className="fa-regular fa-image mr-1"></i> Görsel</button>
+                <button onClick={() => addBlock('video')} className="px-3 py-1 bg-gray-100 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-200"><i className="fa-brands fa-youtube mr-1"></i> Video</button>
+                <button onClick={() => addBlock('tip')} className="px-3 py-1 bg-blue-50 text-rejimde-blue rounded-lg text-xs font-bold hover:bg-blue-100">💡 İpucu</button>
+                <button onClick={() => addBlock('warning')} className="px-3 py-1 bg-red-50 text-red-500 rounded-lg text-xs font-bold hover:bg-red-100">⚠️ Uyarı</button>
+                <button onClick={() => addBlock('quote')} className="px-3 py-1 bg-gray-100 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-200">❝ Alıntı</button>
+            </div>
+
+        </div>
+
+        {/* RIGHT: Settings Sidebar */}
+        <div className="space-y-6">
+            
+            {/* Featured Image */}
+            <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-xs font-black text-gray-400 uppercase mb-4">Öne Çıkan Görsel</h3>
+                <div 
+                    className={`aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition relative overflow-hidden group ${featuredImage ? 'border-transparent' : 'border-gray-300 hover:border-rejimde-blue hover:bg-blue-50'}`}
+                >
+                    {featuredImage ? (
+                        <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={featuredImage} alt="Featured" className="w-full h-full object-cover" />
+                            <div 
+                                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center"
+                                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                            >
+                                <span className="text-white font-bold text-xs"><i className="fa-solid fa-pen mr-2"></i>Değiştir</span>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-center p-4" onClick={() => fileInputRef.current?.click()}>
+                            {isUploading ? <i className="fa-solid fa-circle-notch animate-spin text-2xl text-rejimde-blue"></i> : <><i className="fa-regular fa-image text-3xl text-gray-300 mb-2"></i><p className="text-xs font-bold text-gray-400">Görsel Yükle</p></>}
+                        </div>
+                    )}
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                </div>
+            </div>
+
+            {/* Category */}
+            <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-xs font-black text-gray-400 uppercase mb-4">Kategori</h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                    {categories.length > 0 ? categories.map(cat => (
+                        <label key={cat.id} className="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition hover:bg-gray-50 has-[:checked]:border-rejimde-green has-[:checked]:bg-green-50">
+                            <input type="radio" name="category" value={cat.id} checked={Number(selectedCategory) === cat.id} onChange={(e) => setSelectedCategory(Number(e.target.value))} className="hidden" />
+                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${Number(selectedCategory) === cat.id ? 'border-rejimde-green' : 'border-gray-300'}`}>
+                                {Number(selectedCategory) === cat.id && <div className="w-2 h-2 rounded-full bg-rejimde-green"></div>}
+                            </div>
+                            <span className={`text-sm font-bold ${Number(selectedCategory) === cat.id ? 'text-gray-800' : 'text-gray-500'}`} dangerouslySetInnerHTML={{ __html: cat.name }}></span>
+                        </label>
+                    )) : <p className="text-sm text-gray-400">Yükleniyor...</p>}
+                </div>
+            </div>
+
+            {/* Tags */}
+            <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-xs font-black text-gray-400 uppercase mb-4">Etiketler</h3>
+                <div className="flex flex-wrap gap-2 mb-3">
+                    {tags.map(tag => (
+                        <span key={tag} className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-2">#{tag}<button onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-red-500"><i className="fa-solid fa-xmark"></i></button></span>
+                    ))}
+                </div>
+                <input type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleAddTag} placeholder="Etiket ekle ve Enter..." className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:border-rejimde-blue transition" />
+            </div>
+
+            {/* Excerpt */}
+            <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-xs font-black text-gray-400 uppercase mb-4">Kısa Özet (Excerpt)</h3>
+                <textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 text-sm font-medium outline-none focus:border-rejimde-blue transition h-24 resize-none" placeholder="Yazının kartlarda görünecek kısa özeti..."></textarea>
+            </div>
+
+            {/* SEO */}
+            <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-xs font-black text-gray-400 uppercase mb-4 flex items-center gap-2"><i className="fa-solid fa-magnifying-glass"></i> SEO Ayarları</h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">SEO Başlığı</label>
+                        <input type="text" value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} placeholder={title} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium outline-none focus:border-rejimde-blue" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Meta Açıklama</label>
+                        <textarea value={seoDesc} onChange={(e) => setSeoDesc(e.target.value)} placeholder={excerpt || "Özet..."} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium outline-none focus:border-rejimde-blue h-20 resize-none"></textarea>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Odak Anahtar Kelime</label>
+                        <input type="text" value={focusKeyword} onChange={(e) => setFocusKeyword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium outline-none focus:border-rejimde-blue" />
+                    </div>
+                </div>
+            </div>
+
+        </div>
 
       </div>
 
-      {/* REWARD SUCCESS MODAL */}
-      {showRewardModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setShowRewardModal(false)}>
+      {/* SUCCESS MODAL */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setShowSuccessModal(false)}>
             <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl p-8 text-center animate-bounce-slow" onClick={e => e.stopPropagation()}>
                 <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4 text-green-500">
-                    <i className={`fa-solid ${rewardMessage.points > 0 ? 'fa-gift' : 'fa-check'} text-4xl`}></i>
+                    <i className="fa-solid fa-check text-4xl"></i>
                 </div>
-                <h3 className="text-2xl font-black text-gray-800 mb-2">{rewardMessage.title}</h3>
-                <p className="text-gray-500 font-bold mb-6 text-sm">{rewardMessage.desc}</p>
+                <h3 className="text-2xl font-black text-gray-800 mb-2">{modalMessage.title}</h3>
+                <p className="text-gray-500 font-bold mb-6 text-sm">{modalMessage.desc}</p>
                 <div className="flex justify-center mb-6">
-                     <MascotDisplay state={rewardMessage.points > 0 ? "success_milestone" : "idle_dashboard"} size={120} showBubble={false} />
+                     <MascotDisplay state="success_milestone" size={120} showBubble={false} />
                 </div>
-                <button onClick={() => setShowRewardModal(false)} className="w-full bg-rejimde-text text-white py-3 rounded-xl font-extrabold shadow-btn btn-game uppercase">Harika!</button>
+                <div className="flex flex-col gap-3">
+                    {postSlug && (
+                        <Link href={`/blog/${postSlug}`} className="w-full bg-rejimde-green text-white py-3 rounded-xl font-extrabold shadow-btn btn-game uppercase">
+                            Yazıyı Görüntüle
+                        </Link>
+                    )}
+                    <Link href="/dashboard/pro" className="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-extrabold btn-game uppercase hover:bg-gray-200">
+                        Panele Dön
+                    </Link>
+                </div>
             </div>
         </div>
       )}
 
-      {/* INFO MODAL */}
-      {infoModal.show && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setInfoModal({...infoModal, show: false})}>
-              <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl p-6 text-center animate-bounce-slow" onClick={e => e.stopPropagation()}>
-                   <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${infoModal.type === 'error' ? 'bg-red-100 text-red-500' : (modal.type === 'success' ? 'bg-green-100 text-green-500' : 'bg-blue-100 text-blue-500')}`}>
-                        <i className={`fa-solid ${infoModal.type === 'error' ? 'fa-triangle-exclamation' : (modal.type === 'success' ? 'fa-check' : 'fa-info')} text-3xl`}></i>
-                   </div>
-                   <h3 className="text-xl font-black text-gray-800 mb-2">{infoModal.title}</h3>
-                   <p className="text-gray-500 font-bold mb-6 text-sm">{infoModal.message}</p>
-                   
-                   {infoModal.title.includes("Giriş") ? (
-                       <div className="flex gap-3">
-                           <button onClick={() => setInfoModal({...infoModal, show: false})} className="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold btn-game">İptal</button>
-                           <Link href="/login" className="flex-1 bg-rejimde-blue text-white py-3 rounded-xl font-extrabold shadow-btn btn-game uppercase text-center">Giriş Yap</Link>
-                       </div>
-                   ) : (
-                       <button onClick={() => setInfoModal({...infoModal, show: false})} className="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-extrabold btn-game uppercase">Tamam</button>
-                   )}
-              </div>
-          </div>
-      )}
-    </>
+    </div>
   );
 }

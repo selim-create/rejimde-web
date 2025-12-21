@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getComments, createComment } from "@/lib/api";
+import { getSafeAvatarUrl, isUserExpert, getUserProfileUrl } from "@/lib/helpers";
 
 interface CommentsSectionProps {
   postId: number;
@@ -86,9 +87,9 @@ export default function CommentsSection({ postId, title = "Yorumlar" }: Comments
                         const res = await fetch(`${apiUrl}/wp/v2/users/${uid}`);
                         if (res.ok) {
                             const user = await res.json();
-                            const isPro = user.roles && user.roles.includes('rejimde_pro');
-                            // Özel avatar yoksa DiceBear
-                            const userAvatar = user.avatar_url || user.avatar_urls?.['96'] || `https://api.dicebear.com/9.x/personas/svg?seed=${user.slug}`;
+                            const isPro = isUserExpert(user.roles);
+                            // Özel avatar yoksa DiceBear - Helper fonksiyonla
+                            const userAvatar = getSafeAvatarUrl(user.avatar_url, user.slug);
                             
                             userDetailsMap[uid] = {
                                 avatar: userAvatar,
@@ -107,7 +108,8 @@ export default function CommentsSection({ postId, title = "Yorumlar" }: Comments
             const formatted = rawComments.map((c: any) => {
                 const details = userDetailsMap[c.userId];
                 
-                const avatar = details ? details.avatar : (c.avatar && !c.avatar.includes('gravatar') ? c.avatar : `https://api.dicebear.com/9.x/personas/svg?seed=${c.user}`);
+                // Avatar için helper fonksiyon kullan
+                const avatar = details ? details.avatar : getSafeAvatarUrl(c.avatar, c.user);
                 const isExpert = details ? details.isExpert : false;
                 const slug = details ? details.slug : slugify(c.user);
 
@@ -260,9 +262,9 @@ export default function CommentsSection({ postId, title = "Yorumlar" }: Comments
                             <div className={`${c.isExpert ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-200'} border-2 p-4 rounded-3xl rounded-tl-none relative shadow-sm`}>
                                 <div className="flex justify-between items-center mb-2">
                                     <div className="flex items-center gap-2">
-                                        {/* DOĞRU LİNKLEME: Rol ve Slug kontrolü */}
+                                        {/* Profil Linki: Helper fonksiyonla doğru URL */}
                                         <Link 
-                                            href={c.isExpert ? `/experts/${c.slug}` : `/profile/${c.slug}`} 
+                                            href={getUserProfileUrl(c.slug, c.isExpert)} 
                                             className={`font-extrabold text-sm hover:underline ${c.isExpert ? 'text-rejimde-blueDark' : 'text-gray-700'}`}
                                         >
                                             {c.user}
