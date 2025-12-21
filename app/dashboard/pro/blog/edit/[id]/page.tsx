@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { use, useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getPostById, updatePost, uploadMedia } from "@/lib/api";
@@ -16,7 +16,10 @@ interface ContentBlock {
     url?: string; // Resim/Video için
 }
 
-export default function EditBlogPage({ params }: { params: { id: string } }) {
+export default function EditBlogPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const postId = parseInt(id);
+  
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -52,9 +55,6 @@ export default function EditBlogPage({ params }: { params: { id: string } }) {
   const [seoTitle, setSeoTitle] = useState("");
   const [seoDesc, setSeoDesc] = useState("");
   const [focusKeyword, setFocusKeyword] = useState("");
-
-  // Post ID
-  const postId = parseInt(params.id);
 
   // Başlangıç: Kategorileri ve Mevcut Post'u Çek
   useEffect(() => {
