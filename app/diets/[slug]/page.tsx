@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { getPlanBySlug } from "@/lib/api";
-import { getSafeAvatarUrl, isUserExpert, getUserProfileUrl } from "@/lib/helpers";
+import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 
 export default function DietDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -32,10 +32,8 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
     loadPlan();
   }, [slug]);
 
-  // Parse plan data and ensure activeDay is within bounds
-  const planData = plan ? (typeof plan.meta?.plan_data === 'string' 
-    ? JSON.parse(plan.meta.plan_data) 
-    : (plan.meta?.plan_data || [])) : [];
+  // Backend'den gelen plan_data zaten decode edilmiş array
+  const planData = plan?.plan_data || [];
   
   // Ensure activeDay is valid
   useEffect(() => {
@@ -73,8 +71,10 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   // Yazar bilgileri
   const authorName = plan.author?.name || 'Rejimde Uzman';
   const authorSlug = plan.author?.slug || 'expert';
-  const authorAvatar = getSafeAvatarUrl(plan.author?.avatar_url, authorSlug);
-  const authorIsExpert = isUserExpert(plan.author?.roles);
+  // avatar doğrudan author.avatar olarak geliyor
+  const authorAvatar = plan.author?.avatar || getSafeAvatarUrl(undefined, authorSlug);
+  // is_expert boolean olarak geliyor
+  const authorIsExpert = plan.author?.is_expert || false;
 
   return (
     <div className="min-h-screen pb-20">
@@ -90,7 +90,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                   <div className="relative w-full md:w-1/3">
                       <div className="aspect-video md:aspect-square rounded-3xl overflow-hidden shadow-card border-2 border-gray-100 relative">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={plan.featured_image || 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'} className="w-full h-full object-cover" alt={plan.title} />
+                          <img src={plan.image || 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'} className="w-full h-full object-cover" alt={plan.title} />
                           <div className="absolute top-4 left-4 bg-rejimde-green text-white px-3 py-1 rounded-lg text-xs font-black uppercase shadow-sm border border-white/20">
                               Diyet Planı
                           </div>

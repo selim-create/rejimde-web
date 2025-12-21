@@ -100,42 +100,64 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
             setSeoDesc(postData.meta?.rank_math_description || '');
             setFocusKeyword(postData.meta?.rank_math_focus_keyword || '');
 
-            // İçeriği bloklara çevir (basit HTML parsing)
-            // Not: WordPress'ten gelen HTML içeriği blok yapısına çevirmek karmaşık olabilir
-            // En basit yaklaşım: Tüm içeriği tek bir paragraph bloğuna yerleştirmek
-            // Daha gelişmiş parsing için HTML parser kullanılabilir
-            
+            // HTML'i bloklara çevir (gelişmiş parsing)
             const htmlContent = postData.content || '';
             
             if (htmlContent.trim()) {
-                // Basit parsing: Paragrafları ayır
-                const paragraphs = htmlContent.split('</p>').filter(p => p.trim());
+                const parsedBlocks: ContentBlock[] = [];
                 
-                const parsedBlocks: ContentBlock[] = paragraphs.map((p, index) => {
-                    let cleanContent = p.replace(/<p[^>]*>/g, '').trim();
+                // Tüm ana HTML elementlerini regex ile bul
+                const blockRegex = /<(p|h[1-6]|ul|ol|blockquote|figure|div)[^>]*>([\s\S]*?)<\/\1>/gi;
+                let match;
+                let blockIndex = 0;
+                
+                while ((match = blockRegex.exec(htmlContent)) !== null) {
+                    const tagName = match[1].toLowerCase();
+                    let content = match[2].trim();
                     
-                    // Başlık kontrolü
-                    if (cleanContent.startsWith('<h2')) {
-                        cleanContent = cleanContent.replace(/<h2[^>]*>/g, '').replace('</h2>', '');
-                        return { id: `block-${index}`, type: 'heading', content: cleanContent };
-                    }
+                    // HTML tag'lerini temizle (iç içe olanlar hariç)
+                    const cleanContent = content.replace(/<\/?[^>]+(>|$)/g, '').trim();
                     
-                    // Liste kontrolü
-                    if (cleanContent.includes('<ul>') || cleanContent.includes('<ol>')) {
-                        return { id: `block-${index}`, type: 'list', content: cleanContent };
-                    }
+                    if (!cleanContent) continue;
                     
-                    // Resim kontrolü
-                    if (cleanContent.includes('<img')) {
-                        const imgMatch = cleanContent.match(/src="([^"]+)"/);
+                    let blockType: BlockType = 'paragraph';
+                    let blockUrl: string | undefined;
+                    
+                    if (tagName.startsWith('h')) {
+                        blockType = 'heading';
+                    } else if (tagName === 'ul' || tagName === 'ol') {
+                        blockType = 'list';
+                        content = match[0]; // Orijinal HTML'i koru
+                    } else if (tagName === 'blockquote') {
+                        blockType = 'quote';
+                    } else if (tagName === 'figure' || content.includes('<img')) {
+                        blockType = 'image';
+                        const imgMatch = content.match(/src="([^"]+)"/);
                         if (imgMatch) {
-                            return { id: `block-${index}`, type: 'image', content: 'Görsel', url: imgMatch[1] };
+                            blockUrl = imgMatch[1];
+                            content = 'Görsel';
                         }
                     }
                     
-                    // Varsayılan: Paragraph
-                    return { id: `block-${index}`, type: 'paragraph', content: cleanContent };
-                }).filter(block => block.content);
+                    parsedBlocks.push({
+                        id: `block-${blockIndex++}`,
+                        type: blockType,
+                        content: blockType === 'list' ? content : cleanContent,
+                        url: blockUrl
+                    });
+                }
+                
+                // Eğer hiç blok parse edilemediyse, tüm içeriği tek bir blok olarak ekle
+                if (parsedBlocks.length === 0 && htmlContent.trim()) {
+                    const cleanHtml = htmlContent.replace(/<[^>]+>/g, '').trim();
+                    if (cleanHtml) {
+                        parsedBlocks.push({
+                            id: 'block-0',
+                            type: 'paragraph',
+                            content: cleanHtml
+                        });
+                    }
+                }
                 
                 if (parsedBlocks.length > 0) {
                     setBlocks(parsedBlocks);
