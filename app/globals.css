@@ -1,26 +1,20 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Oyunsu buton efekti için özel stil */
+.btn-game { 
+    transition: all 0.1s; 
+}
+.btn-game:active { 
+    transform: translateY(4px); 
+    box-shadow: 0 0px 0 0 !important; 
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+/* Blog İçerik Stilleri */
+.prose h2 { font-size: 1.5rem; margin-top: 2rem; margin-bottom: 1rem; }
+.prose h3 { font-size: 1.25rem; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+.prose p { margin-bottom: 1.5rem; }
+.prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+.prose li { margin-bottom: 0.5rem; font-weight: 600; color: #4b4b4b; }
+.prose img { border-radius: 1rem; margin: 2rem 0; width: 100%; height: auto; }

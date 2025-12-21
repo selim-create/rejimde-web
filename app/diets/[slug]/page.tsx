@@ -1,0 +1,292 @@
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+
+export default function DietDetailPage({ params }: { params: { slug: string } }) {
+  // In a real app, fetch data based on params.slug
+  const [activeDay, setActiveDay] = useState(1);
+
+  return (
+    <div className="min-h-screen pb-20">
+      
+      {/* Navbar is in layout */}
+
+      {/* HERO SECTION */}
+      <div className="bg-white border-b-2 border-gray-200 pb-8 pt-8">
+          <div className="max-w-6xl mx-auto px-4">
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                  
+                  {/* Left: Image & Badge */}
+                  <div className="relative w-full md:w-1/3">
+                      <div className="aspect-video md:aspect-square rounded-3xl overflow-hidden shadow-card border-2 border-gray-100 relative">
+                          <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" className="w-full h-full object-cover" alt="Detox" />
+                          <div className="absolute top-4 left-4 bg-rejimde-green text-white px-3 py-1 rounded-lg text-xs font-black uppercase shadow-sm border border-white/20">
+                              Ödem Atıcı
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Right: Info & Actions */}
+                  <div className="flex-1">
+                      <div className="flex items-center gap-2 text-sm font-bold text-gray-400 mb-2">
+                        <Link href="/diets" className="hover:text-rejimde-blue transition">Diyet Listeleri</Link>
+                        <i className="fa-solid fa-chevron-right text-xs"></i>
+                        <span className="text-rejimde-text">Detoks</span>
+                      </div>
+                      <h1 className="text-3xl md:text-4xl font-black text-gray-800 mb-2">3 Günlük Yeşil Detoks</h1>
+                      <p className="text-gray-500 font-bold text-lg mb-6 leading-relaxed">
+                          Tatil dönüşü veya düğün öncesi "acil durum" planı. Şişkinliği alır, enerji verir ve tartıda hızlı bir eksi görmeni sağlar.
+                      </p>
+
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-3 gap-4 mb-8">
+                          <div className="bg-orange-50 border-2 border-orange-100 rounded-2xl p-3 text-center">
+                              <i className="fa-solid fa-gauge-high text-orange-500 text-xl mb-1"></i>
+                              <div className="text-xs font-bold text-gray-400 uppercase">Zorluk</div>
+                              <div className="text-lg font-black text-gray-700">Orta</div>
+                          </div>
+                          <div className="bg-blue-50 border-2 border-blue-100 rounded-2xl p-3 text-center">
+                              <i className="fa-regular fa-clock text-rejimde-blue text-xl mb-1"></i>
+                              <div className="text-xs font-bold text-gray-400 uppercase">Süre</div>
+                              <div className="text-lg font-black text-gray-700">3 Gün</div>
+                          </div>
+                          <div className="bg-rejimde-green/10 border-2 border-rejimde-green/20 rounded-2xl p-3 text-center">
+                              <i className="fa-solid fa-trophy text-rejimde-green text-xl mb-1"></i>
+                              <div className="text-xs font-bold text-gray-400 uppercase">Ödül</div>
+                              <div className="text-lg font-black text-gray-700">+500 P</div>
+                          </div>
+                      </div>
+
+                      {/* CTA Buttons */}
+                      <div className="flex gap-4">
+                          <button className="flex-1 bg-rejimde-green text-white py-4 rounded-2xl font-extrabold text-lg shadow-btn shadow-rejimde-greenDark btn-game uppercase flex items-center justify-center gap-2 group">
+                              <i className="fa-solid fa-play group-hover:scale-110 transition"></i> Bu Diyete Başla
+                          </button>
+                          <button className="bg-white border-2 border-gray-200 text-gray-500 px-6 rounded-2xl font-extrabold text-2xl shadow-btn shadow-gray-200 btn-game hover:text-rejimde-red hover:border-rejimde-red transition">
+                              <i className="fa-regular fa-heart"></i>
+                          </button>
+                      </div>
+                  </div>
+
+              </div>
+          </div>
+      </div>
+
+      {/* MAIN CONTENT GRID */}
+      <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+          {/* LEFT: Meal Plan */}
+          <div className="lg:col-span-8 space-y-8">
+              
+              {/* Day Selector (Tabs) */}
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  {[1, 2, 3].map((day) => (
+                    <button 
+                        key={day}
+                        onClick={() => setActiveDay(day)}
+                        className={`px-6 py-2 rounded-xl font-black text-sm shadow-btn btn-game shrink-0 transition-colors ${activeDay === day ? 'bg-rejimde-blue text-white shadow-rejimde-blueDark' : 'bg-white border-2 border-gray-200 text-gray-400 shadow-gray-200 hover:bg-gray-50'}`}
+                    >
+                        {day}. GÜN
+                    </button>
+                  ))}
+              </div>
+
+              {/* Meals List */}
+              <div className="space-y-4">
+                  
+                  {/* Breakfast */}
+                  <div className="relative group">
+                      <label className="cursor-pointer block">
+                          <input type="checkbox" className="meal-check hidden peer" />
+                          <div className="bg-white border-2 border-gray-200 rounded-3xl p-5 flex items-start gap-4 hover:border-rejimde-green transition shadow-sm peer-checked:bg-green-50 peer-checked:border-rejimde-green peer-checked:opacity-75">
+                              <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center text-yellow-600 text-2xl shrink-0">
+                                  <i className="fa-solid fa-mug-hot"></i>
+                              </div>
+                              <div className="flex-1">
+                                  <div className="flex justify-between items-start mb-1">
+                                      <span className="text-xs font-bold text-gray-400 uppercase">Sabah (08:00 - 09:00)</span>
+                                      <span className="text-xs font-black text-rejimde-green bg-green-50 px-2 py-1 rounded">250 kcal</span>
+                                  </div>
+                                  <h4 className="font-extrabold text-lg text-gray-800 mb-2 peer-checked:line-through peer-checked:text-green-800">Yeşil Enerji Smoothie</h4>
+                                  <p className="text-sm font-bold text-gray-500 mb-3">
+                                      1 avuç ıspanak, 1 yeşil elma, yarım limon suyu, 1 dilim zencefil ve 1 bardak suyu blenderdan geçir.
+                                  </p>
+                                  <div className="flex gap-2">
+                                      <span className="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded">🌿 Vegan</span>
+                                      <span className="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded">⚡ Vitamin C</span>
+                                  </div>
+                              </div>
+                              <div className="w-8 h-8 rounded-lg border-2 border-gray-300 flex items-center justify-center text-white bg-white group-hover:border-rejimde-green peer-checked:bg-rejimde-green peer-checked:border-rejimde-green">
+                                  <i className="fa-solid fa-check text-rejimde-green opacity-0 group-hover:opacity-50 peer-checked:text-white peer-checked:opacity-100"></i>
+                              </div>
+                          </div>
+                      </label>
+                  </div>
+
+                  {/* Snack 1 */}
+                  <div className="relative group">
+                      <label className="cursor-pointer block">
+                          <input type="checkbox" className="meal-check hidden peer" />
+                          <div className="bg-white border-2 border-gray-200 rounded-3xl p-5 flex items-start gap-4 hover:border-rejimde-green transition shadow-sm peer-checked:bg-green-50 peer-checked:border-rejimde-green peer-checked:opacity-75">
+                              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-500 text-2xl shrink-0">
+                                  <i className="fa-solid fa-cookie-bite"></i>
+                              </div>
+                              <div className="flex-1">
+                                  <div className="flex justify-between items-start mb-1">
+                                      <span className="text-xs font-bold text-gray-400 uppercase">Ara Öğün (11:00)</span>
+                                      <span className="text-xs font-black text-rejimde-green bg-green-50 px-2 py-1 rounded">100 kcal</span>
+                                  </div>
+                                  <h4 className="font-extrabold text-lg text-gray-800 mb-2 peer-checked:line-through peer-checked:text-green-800">Çiğ Badem & Bitki Çayı</h4>
+                                  <p className="text-sm font-bold text-gray-500 mb-3">
+                                      10 adet çiğ badem ve 1 fincan şekersiz yeşil çay.
+                                  </p>
+                              </div>
+                              <div className="w-8 h-8 rounded-lg border-2 border-gray-300 flex items-center justify-center text-white bg-white group-hover:border-rejimde-green peer-checked:bg-rejimde-green peer-checked:border-rejimde-green">
+                                  <i className="fa-solid fa-check text-rejimde-green opacity-0 group-hover:opacity-50 peer-checked:text-white peer-checked:opacity-100"></i>
+                              </div>
+                          </div>
+                      </label>
+                  </div>
+
+                  {/* Lunch */}
+                  <div className="relative group">
+                      <label className="cursor-pointer block">
+                          <input type="checkbox" className="meal-check hidden peer" />
+                          <div className="bg-white border-2 border-gray-200 rounded-3xl p-5 flex items-start gap-4 hover:border-rejimde-green transition shadow-sm peer-checked:bg-green-50 peer-checked:border-rejimde-green peer-checked:opacity-75">
+                              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-rejimde-green text-2xl shrink-0">
+                                  <i className="fa-solid fa-bowl-food"></i>
+                              </div>
+                              <div className="flex-1">
+                                  <div className="flex justify-between items-start mb-1">
+                                      <span className="text-xs font-bold text-gray-400 uppercase">Öğle (13:00)</span>
+                                      <span className="text-xs font-black text-rejimde-green bg-green-50 px-2 py-1 rounded">350 kcal</span>
+                                  </div>
+                                  <h4 className="font-extrabold text-lg text-gray-800 mb-2 peer-checked:line-through peer-checked:text-green-800">Kinoa Salatası</h4>
+                                  <p className="text-sm font-bold text-gray-500 mb-3">
+                                      3 kaşık haşlanmış kinoa, bol yeşillik, salatalık, dereotu. Sos olarak: 1 tatlı kaşığı zeytinyağı ve limon.
+                                  </p>
+                                  <div className="bg-blue-50 border-l-4 border-rejimde-blue p-3 rounded-r-lg">
+                                      <p className="text-xs font-bold text-rejimde-blueDark">
+                                          💡 <span className="uppercase">İpucu:</span> Kinoan yoksa yerine haşlanmış yeşil mercimek kullanabilirsin.
+                                      </p>
+                                  </div>
+                              </div>
+                              <div className="w-8 h-8 rounded-lg border-2 border-gray-300 flex items-center justify-center text-white bg-white group-hover:border-rejimde-green peer-checked:bg-rejimde-green peer-checked:border-rejimde-green">
+                                  <i className="fa-solid fa-check text-rejimde-green opacity-0 group-hover:opacity-50 peer-checked:text-white peer-checked:opacity-100"></i>
+                              </div>
+                          </div>
+                      </label>
+                  </div>
+
+                  {/* Dinner */}
+                  <div className="relative group">
+                      <label className="cursor-pointer block">
+                          <input type="checkbox" className="meal-check hidden peer" />
+                          <div className="bg-white border-2 border-gray-200 rounded-3xl p-5 flex items-start gap-4 hover:border-rejimde-green transition shadow-sm peer-checked:bg-green-50 peer-checked:border-rejimde-green peer-checked:opacity-75">
+                              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-rejimde-purple text-2xl shrink-0">
+                                  <i className="fa-solid fa-utensils"></i>
+                              </div>
+                              <div className="flex-1">
+                                  <div className="flex justify-between items-start mb-1">
+                                      <span className="text-xs font-bold text-gray-400 uppercase">Akşam (19:00)</span>
+                                      <span className="text-xs font-black text-rejimde-green bg-green-50 px-2 py-1 rounded">300 kcal</span>
+                                  </div>
+                                  <h4 className="font-extrabold text-lg text-gray-800 mb-2 peer-checked:line-through peer-checked:text-green-800">Kabak Sote</h4>
+                                  <p className="text-sm font-bold text-gray-500 mb-3">
+                                      2 adet orta boy kabağı rendeleyip az yağda sotele. Üzerine dereotu ve 2 kaşık yoğurt ekle.
+                                  </p>
+                              </div>
+                              <div className="w-8 h-8 rounded-lg border-2 border-gray-300 flex items-center justify-center text-white bg-white group-hover:border-rejimde-green peer-checked:bg-rejimde-green peer-checked:border-rejimde-green">
+                                  <i className="fa-solid fa-check text-rejimde-green opacity-0 group-hover:opacity-50 peer-checked:text-white peer-checked:opacity-100"></i>
+                              </div>
+                          </div>
+                      </label>
+                  </div>
+
+              </div>
+
+              {/* Complete Day Button */}
+              <button className="w-full bg-gray-100 text-gray-400 py-4 rounded-2xl font-extrabold text-lg uppercase shadow-inner cursor-not-allowed mt-8 hover:bg-gray-200 transition">
+                  Tüm Öğünleri Tamamla (0/4)
+              </button>
+
+          </div>
+
+          {/* RIGHT: Sidebar */}
+          <div className="lg:col-span-4 space-y-6">
+              
+              {/* Shopping List Card */}
+              <div className="bg-rejimde-purple rounded-3xl p-6 text-white shadow-float relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-10 -mt-10"></div>
+                  
+                  <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center border border-white/30">
+                          <i className="fa-solid fa-basket-shopping text-2xl"></i>
+                      </div>
+                      <div>
+                          <h3 className="font-extrabold text-lg leading-tight">Alışveriş Listesi</h3>
+                          <p className="text-purple-200 text-xs font-bold">12 Malzeme Gerekli</p>
+                      </div>
+                  </div>
+                  
+                  <div className="bg-white/10 rounded-xl p-4 mb-4 backdrop-blur-sm">
+                      <ul className="text-sm font-bold space-y-2">
+                          <li className="flex items-center gap-2"><i className="fa-solid fa-check text-rejimde-green"></i> Yeşil Elma (3 adet)</li>
+                          <li className="flex items-center gap-2"><i className="fa-regular fa-circle text-white/50"></i> Ispanak (1 bağ)</li>
+                          <li className="flex items-center gap-2"><i className="fa-regular fa-circle text-white/50"></i> Kinoa (1 paket)</li>
+                          <li className="text-xs text-center text-white/60 mt-2">+9 malzeme daha</li>
+                      </ul>
+                  </div>
+
+                  <button className="bg-white text-rejimde-purple w-full py-3 rounded-xl font-extrabold text-sm shadow-btn shadow-purple-900/30 btn-game uppercase hover:bg-purple-50 transition">
+                      Listeyi Görüntüle
+                  </button>
+              </div>
+
+              {/* Author Expert */}
+              <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 text-center shadow-card">
+                  <p className="text-xs font-bold text-gray-400 uppercase mb-4">Hazırlayan Uzman</p>
+                  <div className="w-20 h-20 mx-auto bg-gray-200 rounded-2xl border-4 border-white shadow-md overflow-hidden mb-3 relative group cursor-pointer">
+                      <img src="https://i.pravatar.cc/150?img=44" className="w-full h-full object-cover group-hover:scale-110 transition duration-500" alt="Author" />
+                  </div>
+                  <h3 className="text-lg font-extrabold text-gray-800">Dyt. Selin Yılmaz</h3>
+                  <div className="flex justify-center text-rejimde-yellow text-xs mb-4">
+                      <i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i>
+                  </div>
+                  <button className="bg-white border-2 border-gray-200 text-gray-500 w-full py-2 rounded-xl font-bold text-xs shadow-btn shadow-gray-200 btn-game hover:text-rejimde-green hover:border-rejimde-green uppercase">
+                      Soru Sor
+                  </button>
+              </div>
+
+              {/* Success Stories */}
+              <div className="bg-white border-2 border-gray-200 rounded-3xl p-6">
+                  <h3 className="font-extrabold text-gray-700 text-sm uppercase mb-4">Bunu Yapanlar Ne Dedi?</h3>
+                  <div className="space-y-4">
+                      <div className="flex gap-3">
+                          <img src="https://i.pravatar.cc/150?img=5" className="w-10 h-10 rounded-xl bg-gray-200 shrink-0 border border-gray-100" alt="User" />
+                          <div>
+                              <p className="text-xs font-bold text-gray-600 leading-snug">
+                                  "3 günde -1.8 kg gitti! Ödem atmak için harika."
+                              </p>
+                              <span className="text-[10px] font-black text-gray-400 block mt-1">GelinAdayı_99</span>
+                          </div>
+                      </div>
+                      <div className="flex gap-3">
+                          <img src="https://i.pravatar.cc/150?img=12" className="w-10 h-10 rounded-xl bg-gray-200 shrink-0 border border-gray-100" alt="User" />
+                          <div>
+                              <p className="text-xs font-bold text-gray-600 leading-snug">
+                                  "Smoothie tadı beklediğimden iyiydi. Aç kalmadım."
+                              </p>
+                              <span className="text-[10px] font-black text-gray-400 block mt-1">Mehmet T.</span>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+          </div>
+
+      </div>
+    </div>
+  );
+}
