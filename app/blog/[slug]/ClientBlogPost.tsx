@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { earnPoints } from "@/lib/api";
+import { earnPoints, getComments, createComment } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
 import { getUserProfileUrl } from "@/lib/helpers";
@@ -566,7 +566,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setInfoModal({...infoModal, show: false})}>
               <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl p-6 text-center animate-bounce-slow" onClick={e => e.stopPropagation()}>
                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${infoModal.type === 'error' ? 'bg-red-100 text-red-500' : 'bg-blue-100 text-blue-500'}`}>
-                        <i className={`fa-solid ${infoModal.type === 'error' ? 'fa-triangle-exclamation' : (modal.type === 'success' ? 'fa-check' : 'fa-info')} text-3xl`}></i>
+                        <i className={`fa-solid ${infoModal.type === 'error' ? 'fa-triangle-exclamation' : (infoModal.type === 'success' ? 'fa-check' : 'fa-info')} text-3xl`}></i>
                    </div>
                    <h3 className="text-xl font-black text-gray-800 mb-2">{infoModal.title}</h3>
                    <p className="text-gray-500 font-bold mb-6 text-sm">{infoModal.message}</p>
