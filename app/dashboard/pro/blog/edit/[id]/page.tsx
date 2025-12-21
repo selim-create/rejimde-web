@@ -101,6 +101,7 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
             setFocusKeyword(postData.meta?.rank_math_focus_keyword || '');
 
             // HTML'i bloklara çevir (gelişmiş parsing)
+            // Note: Content comes from WordPress and has already been sanitized by WP on save
             const htmlContent = postData.content || '';
             
             if (htmlContent.trim()) {
@@ -127,7 +128,8 @@ export default function EditBlogPage({ params }: { params: Promise<{ id: string 
                         blockType = 'heading';
                     } else if (tagName === 'ul' || tagName === 'ol') {
                         blockType = 'list';
-                        content = match[0]; // Orijinal HTML'i koru
+                        // Preserve original HTML for lists to maintain structure
+                        content = match[0];
                     } else if (tagName === 'blockquote') {
                         blockType = 'quote';
                     } else if (tagName === 'figure' || content.includes('<img')) {

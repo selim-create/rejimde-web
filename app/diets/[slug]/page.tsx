@@ -72,7 +72,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   const authorName = plan.author?.name || 'Rejimde Uzman';
   const authorSlug = plan.author?.slug || 'expert';
   // avatar doğrudan author.avatar olarak geliyor
-  const authorAvatar = plan.author?.avatar || getSafeAvatarUrl(undefined, authorSlug);
+  const authorAvatar = plan.author?.avatar || getSafeAvatarUrl(plan.author?.avatar, authorSlug);
   // is_expert boolean olarak geliyor
   const authorIsExpert = plan.author?.is_expert || false;
 
