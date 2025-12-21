@@ -1,9 +1,11 @@
 "use client";
 
+import { use } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
-export default function ExerciseDetailPage({ params }: { params: { slug: string } }) {
+export default function ExerciseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   return (
     <div className="min-h-screen pb-24 font-sans text-rejimde-text">
       

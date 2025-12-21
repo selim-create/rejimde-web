@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { use, useState, useEffect } from "react";
 import { getPlanBySlug } from "@/lib/api";
 import { getSafeAvatarUrl, isUserExpert, getUserProfileUrl } from "@/lib/helpers";
 
-export default function DietDetailPage({ params }: { params: { slug: string } }) {
+export default function DietDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
+  
   const [activeDay, setActiveDay] = useState(1);
   const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -14,7 +16,7 @@ export default function DietDetailPage({ params }: { params: { slug: string } })
   useEffect(() => {
     async function loadPlan() {
       try {
-        const plan = await getPlanBySlug(params.slug);
+        const plan = await getPlanBySlug(slug);
         if (plan) {
           setPlan(plan);
         } else {
@@ -28,7 +30,7 @@ export default function DietDetailPage({ params }: { params: { slug: string } })
       }
     }
     loadPlan();
-  }, [params.slug]);
+  }, [slug]);
 
   // Parse plan data and ensure activeDay is within bounds
   const planData = plan ? (typeof plan.meta?.plan_data === 'string' 
