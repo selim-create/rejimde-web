@@ -784,8 +784,12 @@ export async function updatePlan(id: number, data: any) {
  */
 export async function getPlanBySlug(slug: string) {
   try {
-    const data = await fetchAPI(`/rejimde/v1/plans/${slug}`);
-    return data;
+    const response = await fetchAPI(`/rejimde/v1/plans/${slug}`);
+    // Backend { status: 'success', data: {...} } formatında dönüyor
+    if (response && response.status === 'success' && response.data) {
+      return response.data;  // Sadece data kısmını dön
+    }
+    return null;
   } catch (error) {
     console.error("Plan detayı çekilemedi", error);
     return null;

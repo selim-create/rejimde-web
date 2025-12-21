@@ -14,9 +14,9 @@ export default function DietDetailPage({ params }: { params: { slug: string } })
   useEffect(() => {
     async function loadPlan() {
       try {
-        const data = await getPlanBySlug(params.slug);
-        if (data && data.status === 'success' && data.data) {
-          setPlan(data.data);
+        const plan = await getPlanBySlug(params.slug);
+        if (plan) {
+          setPlan(plan);
         } else {
           setNotFound(true);
         }
