@@ -1,4 +1,3 @@
-// ... existing code ...
 const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
 
 // --- AVATAR PAKETİ ---
@@ -42,7 +41,16 @@ const safeParse = (data: any, fallback: any = {}) => {
  */
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  const res = await fetch(`${API_URL}${endpoint}`, { headers, ...options, cache: 'no-store' });
+  // Eğer options içinde header varsa birleştir
+  const mergedOptions = {
+      ...options,
+      headers: {
+          ...headers,
+          ...((options.headers as any) || {})
+      }
+  };
+
+  const res = await fetch(`${API_URL}${endpoint}`, { ...mergedOptions, cache: 'no-store' });
   const text = await res.text();
   if (!text) return null;
   try { return JSON.parse(text); } catch (e) { throw new Error('Sunucu hatası.'); }
@@ -57,6 +65,11 @@ export async function getMe() {
       method: 'GET',
       headers: getAuthHeaders(),
     });
+
+    if (res.status === 401 || res.status === 403) {
+        // Hata fırlatma, sadece null dön (Misafir kullanıcı)
+        return null;
+    }
 
     if (!res.ok) throw new Error('Kullanıcı bilgisi alınamadı');
 
@@ -84,6 +97,10 @@ export async function getMe() {
       activity_level: json.activity_level || 'sedentary',
       goals: safeParse(json.goals),
       notifications: safeParse(json.notifications),
+      
+      // Gaming & Social
+      clan: json.clan || null, // Klan bilgisi (Backend'den geliyor)
+      league: json.league || null,
       
       // Uzman Verileri
       profession: json.profession || '',
@@ -223,7 +240,7 @@ export const uploadCertificate = uploadMedia;
  */
 export async function loginUser(username: string, password: string) {
   try {
-    const res = await fetch(`${API_URL}/jwt-auth/v1/token`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -235,27 +252,36 @@ export async function loginUser(username: string, password: string) {
     });
 
     const text = await res.text();
-    let data;
+    let json;
     try {
-        data = JSON.parse(text);
+        json = JSON.parse(text);
     } catch (e) {
         return { success: false, message: 'Sunucudan geçersiz yanıt alındı.' };
     }
 
-    if (data.token) {
+    if (json.status === 'success' && json.data.token) {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('jwt_token', data.token);
-        localStorage.setItem('user_email', data.user_email);
-        localStorage.setItem('user_name', data.user_display_name);
-        localStorage.setItem('user_avatar', 'https://api.dicebear.com/9.x/personas/svg?seed=' + username); 
+        localStorage.setItem('jwt_token', json.data.token);
+        localStorage.setItem('user_email', json.data.user_email);
+        localStorage.setItem('user_name', json.data.user_display_name);
+        localStorage.setItem('user_avatar', json.data.avatar_url || 'https://api.dicebear.com/9.x/personas/svg?seed=' + username); 
         
-        if(data.roles && Array.isArray(data.roles) && data.roles.length > 0) {
-            localStorage.setItem('user_role', data.roles[0]);
+        if(json.data.roles && Array.isArray(json.data.roles) && json.data.roles.length > 0) {
+            localStorage.setItem('user_role', json.data.roles[0]);
         }
+        
+        // Varsa Rejimde Kullanıcı Verisini de kaydet
+        localStorage.setItem('rejimde_user', JSON.stringify({
+            id: json.data.user_id,
+            username: json.data.user_nicename,
+            first_name: json.data.user_display_name,
+            type: json.data.roles.includes('rejimde_pro') ? 'professional' : 'standard',
+            roles: json.data.roles
+        }));
       }
-      return { success: true, data };
+      return { success: true, data: json.data };
     } else {
-      return { success: false, message: data.message || 'Giriş başarısız.' };
+      return { success: false, message: json.message || 'Giriş başarısız.' };
     }
   } catch (error) {
     return { success: false, message: 'Sunucu hatası.' };
@@ -294,6 +320,15 @@ export async function loginWithGoogle(credential: string) {
         if(json.data.roles && json.data.roles.length > 0) {
             localStorage.setItem('user_role', json.data.roles[0]);
         }
+        
+        // Varsa Rejimde Kullanıcı Verisini de kaydet
+        localStorage.setItem('rejimde_user', JSON.stringify({
+            id: json.data.user_id,
+            username: json.data.user_nicename,
+            first_name: json.data.user_display_name,
+            type: json.data.roles.includes('rejimde_pro') ? 'professional' : 'standard',
+            roles: json.data.roles
+        }));
       }
       return { success: true, data: json.data };
     } else {
@@ -744,30 +779,23 @@ export async function createComment(postId: number, content: string) {
 }
 
 /**
- * DİYET PLANLARINI LİSTELE (GÜNCELLENDİ)
+ * DİYET PLANLARINI LİSTELE
  */
 export async function getPlans(category?: string, difficulty?: string) {
   try {
-    // Controller'da get_items metodu /rejimde/v1/plans endpointine bağlı
     let endpoint = '/rejimde/v1/plans'; 
     const params = new URLSearchParams();
     
-    // Filtreleme backend'de destekleniyorsa burası çalışır,
-    // şu an controller'da filtreleme yok ama yine de gönderelim
     if (category && category !== 'Tümü') params.append('category', category);
     if (difficulty) params.append('difficulty', difficulty);
     
     if (params.toString()) endpoint += `?${params.toString()}`;
 
-    // fetchAPI zaten json.parse yapıp dönüyor
     const response = await fetchAPI(endpoint);
     
-    // Backend { status: 'success', data: [...] } döner
     if (response && response.status === 'success') {
         return response.data;
     }
-    
-    // Hata veya boş dönerse
     return [];
   } catch (error) {
     console.error("Planlar çekilemedi", error);
@@ -817,9 +845,8 @@ export async function updatePlan(id: number, data: any) {
 export async function getPlanBySlug(slug: string) {
   try {
     const response = await fetchAPI(`/rejimde/v1/plans/${slug}`);
-    // Backend { status: 'success', data: {...} } formatında dönüyor
     if (response && response.status === 'success' && response.data) {
-      return response.data;  // Sadece data kısmını dön
+      return response.data;
     }
     return null;
   } catch (error) {
@@ -829,15 +856,12 @@ export async function getPlanBySlug(slug: string) {
 }
 
 /**
- * DİYET PLANI ID İLE (Edit için) - YENİ EKLENDİ
+ * DİYET PLANI ID İLE (Edit için)
  */
 export async function getPlan(id: number | string) {
     try {
-        // Doğrudan WP REST API'den context=edit ile ham veriyi çekiyoruz
-        // Not: 'rejimde_plan' özel post tipi (CPT) kullanıldığı varsayılıyor.
-        // Eğer standart 'post' tipi kullanıyorsanız '/wp/v2/posts/${id}' yapın.
         const post = await fetchAPI(`/wp/v2/rejimde_plan/${id}?context=edit&_embed`, {
-            headers: getAuthHeaders() // Auth headers ekledik ki draft olsa bile çekebilsin
+            headers: getAuthHeaders()
         });
         
         if(!post || post.code) {
@@ -845,12 +869,6 @@ export async function getPlan(id: number | string) {
              return { success: false, message: 'Plan bulunamadı.' };
         }
         
-        // Meta verilerini parse et (ACF veya Custom Fields yapısına göre)
-        // Burada meta verilerinin düzgün geldiğini varsayıyoruz. 
-        // Eğer meta verileri 'acf' altında geliyorsa ona göre düzenlemek gerekir.
-        // rejimde-core'da 'meta' olarak döndürdüğümüz için 'meta'dan okuyoruz.
-        
-        // Plan datasını güvenli parse et
         let planData = [];
         if (post.meta && post.meta.plan_data) {
              planData = typeof post.meta.plan_data === 'string' 
@@ -858,7 +876,6 @@ export async function getPlan(id: number | string) {
                 : post.meta.plan_data;
         }
 
-        // Alışveriş listesini güvenli parse et
         let shoppingList = [];
         if (post.meta && post.meta.shopping_list) {
              shoppingList = typeof post.meta.shopping_list === 'string' 
@@ -873,7 +890,7 @@ export async function getPlan(id: number | string) {
             status: post.status,
             plan_data: planData,
             shopping_list: shoppingList,
-            tags: post.tags || [], // WP tags ID array dönerse bunu populate etmek gerekebilir
+            tags: post.tags || [],
             meta: {
                 difficulty: post.meta?.difficulty,
                 duration: post.meta?.duration,
@@ -894,12 +911,6 @@ export async function getPlan(id: number | string) {
         return { success: false, message: 'Plan yüklenirken hata oluştu.' };
     }
 }
-
-/**
- * ==========================================
- * EGZERSİZ (EXERCISE) API FONKSİYONLARI
- * ==========================================
- */
 
 /**
  * Egzersiz Planlarını Listele
@@ -993,3 +1004,169 @@ export async function approveExercisePlan(id: number) {
     return { success: false, message: 'Sunucu hatası.' };
   }
 }
+
+/**
+ * ==========================================
+ * KLAN (CLAN) API FONKSİYONLARI
+ * ==========================================
+ */
+
+export async function getClans(search?: string) {
+    try {
+        let endpoint = '/rejimde/v1/clans';
+        if (search) endpoint += `?search=${encodeURIComponent(search)}`;
+        
+        const data = await fetchAPI(endpoint);
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error("Klanlar çekilemedi", error);
+        return [];
+    }
+}
+
+export async function getClanBySlug(slug: string) {
+    try {
+        const data = await fetchAPI(`/rejimde/v1/clans/${slug}`);
+        return data;
+    } catch (error) {
+        console.error("Klan detayı çekilemedi", error);
+        return null;
+    }
+}
+
+export async function createClan(data: { name: string; description: string; privacy: string; logo?: string }) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/clans`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        
+        if (res.ok) {
+            return { success: true, data: json };
+        } else {
+            throw new Error(json.message || 'Klan oluşturulamadı');
+        }
+    } catch (error: any) {
+        throw new Error(error.message || 'Sunucu hatası');
+    }
+}
+
+export async function updateClan(id: number, data: any) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/clans/${id}`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        if (res.ok) return { success: true, data: json };
+        throw new Error(json.message || 'Güncelleme başarısız');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
+export async function joinClan(clanId: number) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/clans/${clanId}/join`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        const json = await res.json();
+        if (res.ok) return { success: true, message: json.message };
+        throw new Error(json.message || 'Katılma başarısız');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
+export async function leaveClan() {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/clans/leave`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        const json = await res.json();
+        if (res.ok) return { success: true, message: json.message };
+        throw new Error(json.message || 'Ayrılma başarısız');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
+/**
+ * ==========================================
+ * LİDERLİK TABLOSU (LEADERBOARD)
+ * ==========================================
+ */
+
+export async function getLeaderboard(type: 'users' | 'clans' = 'users', limit: number = 20) {
+    try {
+        const res = await fetchAPI(`/rejimde/v1/gamification/leaderboard?type=${type}&limit=${limit}`);
+        if (res && res.status === 'success') {
+            return res.data;
+        }
+        return [];
+    } catch (error) {
+        console.error("Liderlik tablosu çekilemedi", error);
+        return [];
+    }
+}
+
+
+/**
+ * ==========================================
+ * SOSYAL & TAKİP FONKSİYONLARI
+ * ==========================================
+ */
+
+export async function toggleFollow(userId: number) {
+    try {
+        const res = await fetchAPI(`/rejimde/v1/profile/${userId}/follow`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        return res; // { success: true, is_following: bool, followers_count: int }
+    } catch (error) {
+        return { success: false, message: 'İşlem başarısız.' };
+    }
+}
+
+export async function sendHighFive(userId: number) {
+    try {
+        const res = await fetchAPI(`/rejimde/v1/profile/${userId}/high-five`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        return res; // { success: true, count: int }
+    } catch (error) {
+        return { success: false, message: 'İşlem başarısız.' };
+    }
+}
+
+
+/**
+ * AUTH OBJESİ (Toplu Kullanım İçin)
+ * Diğer sayfalardaki import { auth } from '@/lib/api' kullanımını destekler.
+ */
+export const auth = {
+    me: getMe,
+    updateUser,
+    changePassword,
+    loginUser,
+    loginWithGoogle,
+    registerUser,
+    getGamificationStats, // Gamification
+    getAllBadges,         // Badges
+    getClans,             // Clans
+    getClan: getClanBySlug, 
+    createClan,
+    updateClan,
+    joinClan,
+    leaveClan,
+    getLeaderboard,       // Leagues
+    toggleFollow,         // Social
+    sendHighFive          // Social
+};

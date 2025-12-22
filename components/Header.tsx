@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation"; 
-import { getMe } from "@/lib/api";
+import { getMe, getGamificationStats } from "@/lib/api";
 import { getSafeAvatarUrl } from "@/lib/helpers"; 
 
 export default function Header() {
@@ -12,7 +12,8 @@ export default function Header() {
   
   // Auth State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<{name: string, avatar: string} | null>(null);
+  const [user, setUser] = useState<{name: string, avatar: string, username: string} | null>(null);
+  const [score, setScore] = useState(0);
   
   const pathname = usePathname(); 
   const router = useRouter();
@@ -22,23 +23,26 @@ export default function Header() {
 
   // Kullanıcı verisini LocalStorage'dan yükle
   const loadUserFromStorage = () => {
-    const token = localStorage.getItem('jwt_token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    
     if (token) {
       setIsLoggedIn(true);
       const name = localStorage.getItem('user_name') || 'Kullanıcı';
       const storedAvatar = localStorage.getItem('user_avatar') || '';
-      const slug = localStorage.getItem('user_name') || 'user';
+      // Username genellikle email veya nicename olabilir, yoksa name kullanılır
+      const username = localStorage.getItem('user_email')?.split('@')[0] || 'user'; 
+      
       // Helper fonksiyon kullanarak güvenli avatar al
-      const avatar = getSafeAvatarUrl(storedAvatar, slug);
+      const avatar = getSafeAvatarUrl(storedAvatar, username);
       const role = localStorage.getItem('user_role') || 'rejimde_user';
-      setUser({ name, avatar });
+      
+      setUser({ name, avatar, username });
       setUserRole(role);
     } else {
       setIsLoggedIn(false);
       setUser(null);
     }
   };
-  
 
   // Sayfa yüklendiğinde ve storage değiştiğinde çalışır
   useEffect(() => {
@@ -49,29 +53,54 @@ export default function Header() {
     const syncWithServer = async () => {
       const token = localStorage.getItem('jwt_token');
       if (token) {
-        const userData = await getMe();
-        if (userData) {
-          // LocalStorage'ı güncelle
-          localStorage.setItem('user_name', userData.name);
-          // Avatar mantığı: Helper fonksiyonla güvenli avatar al
-          const remoteAvatar = getSafeAvatarUrl(userData.avatar_url, userData.username || userData.name);
-          localStorage.setItem('user_avatar', remoteAvatar);
-          
-          // State'i güncelle
-          loadUserFromStorage();
-        } else {
-          // Token geçersizse (userData null döndü)
-          console.warn("Oturum süresi dolmuş olabilir.");
+        try {
+          const userData = await getMe();
+          if (userData) {
+            // LocalStorage'ı güncelle
+            localStorage.setItem('user_name', userData.name);
+            // Avatar mantığı: Helper fonksiyonla güvenli avatar al
+            const remoteAvatar = getSafeAvatarUrl(userData.avatar_url, userData.username || userData.name);
+            localStorage.setItem('user_avatar', remoteAvatar);
+            
+            // Rol güncelleme
+            if (userData.roles && userData.roles.length > 0) {
+                 // Öncelik rejimde_pro varsa onu al, yoksa ilk rolü al
+                 const primaryRole = userData.roles.includes('rejimde_pro') ? 'rejimde_pro' : userData.roles[0];
+                 localStorage.setItem('user_role', primaryRole);
+            }
+            
+            // Puanı çek (Sadece standart kullanıcılar için)
+            if (!userData.roles.includes('rejimde_pro')) {
+                const stats = await getGamificationStats();
+                if (stats) {
+                    setScore(stats.total_score || 0);
+                }
+            }
+
+            // State'i güncelle
+            loadUserFromStorage();
+          } else {
+            // Token geçersizse (userData null döndü)
+            // console.warn("Oturum süresi dolmuş olabilir.");
+            // Otomatik logout yapmıyoruz, belki geçici bir hatadır.
+          }
+        } catch (error) {
+          console.error("Header sync error:", error);
         }
       }
     };
-    syncWithServer();
-
-    // 3. Storage olayını dinle (Ayarlar sayfasından gelen güncellemeler için)
-    window.addEventListener('storage', loadUserFromStorage);
+    
+    // Sadece client tarafında çalıştır
+    if (typeof window !== 'undefined') {
+        syncWithServer();
+        // 3. Storage olayını dinle (Ayarlar sayfasından gelen güncellemeler için)
+        window.addEventListener('storage', loadUserFromStorage);
+    }
     
     return () => {
-      window.removeEventListener('storage', loadUserFromStorage);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', loadUserFromStorage);
+      }
     };
   }, []);
 
@@ -80,12 +109,23 @@ export default function Header() {
     localStorage.removeItem('user_email');
     localStorage.removeItem('user_name');
     localStorage.removeItem('user_avatar');
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('rejimde_user');
     setIsLoggedIn(false);
     setUser(null);
     router.push('/login');
+    router.refresh(); // Sayfayı yenile ki state temizlensin
   };
-  const dashboardLink = userRole === 'rejimde_pro' ? '/dashboard/pro' : '/dashboard';
-  const settingsLink = userRole === 'rejimde_pro' ? '/dashboard/pro/settings' : '/settings';
+
+  const isPro = userRole === 'rejimde_pro';
+  const dashboardLink = isPro ? '/dashboard/pro' : '/dashboard';
+  const settingsLink = isPro ? '/dashboard/pro/settings' : '/settings';
+  // Profil linki: Uzmanlar için kendi public sayfalarına, kullanıcılar için /profile/[username]
+  // Şimdilik username'i localStorage'dan veya state'den alıyoruz. 
+  // username yoksa 'me' kullanabiliriz (Profile page bunu handle ediyor)
+  const profileLink = isPro 
+      ? `/experts/${user?.username || 'me'}` 
+      : `/profile/${user?.username || 'me'}`;
 
   return (
     <header className="bg-white border-b-2 border-gray-200 fixed top-0 w-full z-50 transition-all duration-300">
@@ -154,15 +194,14 @@ export default function Header() {
             {isLoggedIn ? (
               /* LOGGED IN STATE */
               <div className="hidden md:flex items-center gap-2 md:gap-4">
-                <div className="hidden md:flex items-center gap-2 hover:bg-gray-100 px-3 py-1.5 rounded-xl cursor-pointer transition" title="12 Günlük Seri">
-                  <i className="fa-solid fa-fire text-rejimde-red text-xl animate-pulse"></i>
-                  <span className="font-black text-rejimde-red text-lg">12</span>
-                </div>
                 
-                <div className="hidden md:flex items-center gap-2 hover:bg-gray-100 px-3 py-1.5 rounded-xl cursor-pointer transition" title="450 Elmas">
-                  <i className="fa-solid fa-gem text-rejimde-blue text-xl"></i>
-                  <span className="font-black text-rejimde-blue text-lg">450</span>
-                </div>
+                {/* Sadece standart kullanıcılar için puan gösterimi */}
+                {!isPro && (
+                    <div className="hidden md:flex items-center gap-2 hover:bg-gray-100 px-3 py-1.5 rounded-xl cursor-pointer transition" title="Toplam Puan">
+                      <i className="fa-solid fa-star text-rejimde-yellow text-xl"></i>
+                      <span className="font-black text-gray-700 text-lg">{score}</span>
+                    </div>
+                )}
 
                 {/* Profile Dropdown */}
                 <div className="relative group h-12 flex items-center">
@@ -170,34 +209,35 @@ export default function Header() {
                     <img 
                         src={user?.avatar || "https://i.pravatar.cc/150?img=5"} 
                         className="w-full h-full rounded-lg bg-gray-100 object-cover" 
-                        alt="Avatar" 
+                        alt={user?.name || "Avatar"} 
                     />
                   </button>
                   
                 {/* Dropdown Menu Kısmı */}
-                <div className="absolute right-0 top-10 w-56 pt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="absolute right-0 top-10 w-64 pt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                     <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
                       <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                          <p className="text-xs font-bold text-gray-400 uppercase truncate">{user?.name || 'Kullanıcı'}</p>
-                          <p className="text-[10px] font-black text-rejimde-blue uppercase">
-                              {userRole === 'rejimde_pro' ? 'PROFESYONEL HESAP' : 'STANDART ÜYE'}
+                          <p className="text-sm font-bold text-gray-700 truncate">{user?.name || 'Kullanıcı'}</p>
+                          <p className="text-[10px] font-black text-rejimde-blue uppercase mt-1">
+                              {isPro ? 'PROFESYONEL HESAP' : 'STANDART ÜYE'}
                           </p>
                       </div>
                       
                       <Link href={dashboardLink} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-600 hover:bg-green-50 hover:text-rejimde-green transition">
-                          <i className="fa-solid fa-gauge-high"></i> Panelim
+                          <i className="fa-solid fa-gauge-high w-5 text-center"></i> Panelim
                       </Link>
                       
-                      {/* Profil linki: Uzmanlar için kendi public sayfalarına, kullanıcılar için kendi profillerine */}
-                      {/* Not: Henüz dinamik slug yapmadık, şimdilik statik bırakabiliriz veya username ekleyebiliriz */}
+                      <Link href={profileLink} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-600 hover:bg-blue-50 hover:text-rejimde-blue transition">
+                          <i className="fa-solid fa-user w-5 text-center"></i> Profilim
+                      </Link>
                       
                       <Link href={settingsLink} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-600 hover:bg-purple-50 hover:text-rejimde-purple transition">
-                          <i className="fa-solid fa-gear"></i> Ayarlar
+                          <i className="fa-solid fa-gear w-5 text-center"></i> Ayarlar
                       </Link>
                       
-                      <div className="h-px bg-gray-100"></div>
+                      <div className="h-px bg-gray-100 my-1"></div>
                       <button onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 transition text-left">
-                          <i className="fa-solid fa-right-from-bracket"></i> Çıkış Yap
+                          <i className="fa-solid fa-right-from-bracket w-5 text-center"></i> Çıkış Yap
                       </button>
                     </div>
                 </div>
@@ -227,48 +267,70 @@ export default function Header() {
       </div>
 
       {/* 4. MOBILE MENU */}
-      <div className={`lg:hidden bg-white border-t-2 border-gray-100 shadow-lg absolute w-full left-0 top-20 z-40 transition-all duration-300 overflow-hidden ${isMobileMenuOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}>
-        <div className="px-4 py-6 space-y-2">
+      <div className={`lg:hidden bg-white border-t-2 border-gray-100 shadow-lg absolute w-full left-0 top-20 z-40 transition-all duration-300 overflow-hidden ${isMobileMenuOpen ? 'max-h-[80vh] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="px-4 py-6 space-y-4 overflow-y-auto max-h-[80vh]">
           
+          {isLoggedIn && (
+             <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <img src={user?.avatar} className="w-10 h-10 rounded-lg bg-white" alt="Avatar"/>
+                <div>
+                    <p className="font-bold text-gray-800">{user?.name}</p>
+                    <p className="text-xs text-rejimde-blue font-bold">{isPro ? 'Uzman' : 'Üye'}</p>
+                </div>
+             </div>
+          )}
+
           <div className="text-xs font-black text-gray-400 uppercase ml-2 mb-1">Yaşam</div>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-              <Link href="/calculators" className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-50 text-rejimde-blue font-bold text-xs gap-2">
+          <div className="grid grid-cols-2 gap-2">
+              <Link href="/calculators" className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-50 text-rejimde-blue font-bold text-xs gap-2" onClick={() => setIsMobileMenuOpen(false)}>
                 <i className="fa-solid fa-calculator text-xl"></i> Hesaplama
               </Link>
-              <Link href="/diets" className="flex flex-col items-center justify-center p-3 rounded-xl bg-green-50 text-rejimde-green font-bold text-xs gap-2">
+              <Link href="/diets" className="flex flex-col items-center justify-center p-3 rounded-xl bg-green-50 text-rejimde-green font-bold text-xs gap-2" onClick={() => setIsMobileMenuOpen(false)}>
                 <i className="fa-solid fa-carrot text-xl"></i> Diyetler
               </Link>
-              <Link href="/exercises" className="flex flex-col items-center justify-center p-3 rounded-xl bg-red-50 text-rejimde-red font-bold text-xs gap-2">
+              <Link href="/exercises" className="flex flex-col items-center justify-center p-3 rounded-xl bg-red-50 text-rejimde-red font-bold text-xs gap-2" onClick={() => setIsMobileMenuOpen(false)}>
                 <i className="fa-solid fa-dumbbell text-xl"></i> Egzersiz
               </Link>
-              <Link href="/blog" className="flex flex-col items-center justify-center p-3 rounded-xl bg-purple-50 text-rejimde-purple font-bold text-xs gap-2">
+              <Link href="/blog" className="flex flex-col items-center justify-center p-3 rounded-xl bg-purple-50 text-rejimde-purple font-bold text-xs gap-2" onClick={() => setIsMobileMenuOpen(false)}>
                 <i className="fa-solid fa-newspaper text-xl"></i> Blog
               </Link>
           </div>
 
-          <Link href="/experts" className="block px-4 py-3 rounded-xl font-extrabold text-gray-500 hover:bg-green-50 hover:text-rejimde-green transition flex items-center">
-            <i className="fa-solid fa-user-doctor w-6 text-center mr-2"></i> Uzmanlar
-          </Link>
-          
-          <Link href="/clans" className="block px-4 py-3 rounded-xl font-extrabold text-rejimde-purple bg-purple-50 border border-purple-100 flex items-center">
-            <i className="fa-solid fa-users w-6 text-center mr-2"></i> Klanlar
-          </Link>
+          <div className="space-y-1">
+            <Link href="/experts" className="block px-4 py-3 rounded-xl font-extrabold text-gray-500 hover:bg-green-50 hover:text-rejimde-green transition flex items-center" onClick={() => setIsMobileMenuOpen(false)}>
+                <i className="fa-solid fa-user-doctor w-6 text-center mr-2"></i> Uzmanlar
+            </Link>
+            
+            <Link href="/clans" className="block px-4 py-3 rounded-xl font-extrabold text-rejimde-purple bg-purple-50 border border-purple-100 flex items-center" onClick={() => setIsMobileMenuOpen(false)}>
+                <i className="fa-solid fa-users w-6 text-center mr-2"></i> Klanlar
+            </Link>
 
-          <Link href="/leagues" className="block px-4 py-3 rounded-xl font-extrabold text-rejimde-yellowDark bg-yellow-50 border border-yellow-100 flex items-center">
-            <i className="fa-solid fa-trophy w-6 text-center mr-2"></i> Rejimde Ligi
-          </Link>
+            <Link href="/leagues" className="block px-4 py-3 rounded-xl font-extrabold text-rejimde-yellowDark bg-yellow-50 border border-yellow-100 flex items-center" onClick={() => setIsMobileMenuOpen(false)}>
+                <i className="fa-solid fa-trophy w-6 text-center mr-2"></i> Rejimde Ligi
+            </Link>
+          </div>
           
           {isLoggedIn ? (
-             <Link href="/dashboard" className="block w-full text-center font-extrabold text-white bg-rejimde-green py-3 rounded-xl shadow-btn btn-game transition mt-4">Panelim</Link>
-          ) : (
-             <div className="flex gap-2 mt-4">
-                 <button className="flex-1 font-extrabold text-gray-500 border-2 border-gray-200 py-3 rounded-xl hover:border-gray-300 transition">Giriş Yap</button>
-                 <button className="flex-1 font-extrabold text-white bg-rejimde-green py-3 rounded-xl shadow-btn btn-game">Kayıt Ol</button>
+             <div className="pt-2 border-t border-gray-100 space-y-2">
+                 <Link href={dashboardLink} className="block w-full text-center font-extrabold text-white bg-rejimde-green py-3 rounded-xl shadow-btn btn-game transition" onClick={() => setIsMobileMenuOpen(false)}>
+                    Panelim
+                 </Link>
+                 <Link href={profileLink} className="block w-full text-center font-extrabold text-gray-600 bg-gray-100 py-3 rounded-xl transition" onClick={() => setIsMobileMenuOpen(false)}>
+                    Profilim
+                 </Link>
+                 <button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} className="w-full font-extrabold text-red-500 border-2 border-red-200 py-3 rounded-xl hover:bg-red-50 transition">
+                    Çıkış Yap
+                 </button>
              </div>
-          )}
-          
-          {isLoggedIn && (
-             <button onClick={handleLogout} className="w-full mt-2 font-extrabold text-red-500 border-2 border-red-200 py-3 rounded-xl hover:bg-red-50 transition">Çıkış Yap</button>
+          ) : (
+             <div className="flex gap-2 pt-2 border-t border-gray-100">
+                 <Link href="/login" className="flex-1 text-center font-extrabold text-gray-500 border-2 border-gray-200 py-3 rounded-xl hover:border-gray-300 transition" onClick={() => setIsMobileMenuOpen(false)}>
+                    Giriş Yap
+                 </Link>
+                 <Link href="/register/user" className="flex-1 text-center font-extrabold text-white bg-rejimde-green py-3 rounded-xl shadow-btn btn-game" onClick={() => setIsMobileMenuOpen(false)}>
+                    Kayıt Ol
+                 </Link>
+             </div>
           )}
         </div>
       </div>

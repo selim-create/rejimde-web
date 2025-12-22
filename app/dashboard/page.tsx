@@ -1,30 +1,60 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import LayoutWrapper from '@/components/LayoutWrapper';
 import MascotDisplay from "@/components/MascotDisplay";
-import { earnPoints, getMe, getGamificationStats } from "@/lib/api"; 
+import { earnPoints, getMe, getGamificationStats, getPlans, getExercisePlans } from "@/lib/api"; 
 import { MascotState } from "@/lib/mascot-config";
 
 export default function DashboardPage() {
+  // User & Gamification States
+  const [user, setUser] = useState<any>(null);
   const [score, setScore] = useState(0); 
   const [totalScore, setTotalScore] = useState(0);
+  const [leagueInfo, setLeagueInfo] = useState<any>(null);
+  
+  // Content States
+  const [activeDiet, setActiveDiet] = useState<any>(null);
+  const [todaysExercise, setTodaysExercise] = useState<any>(null);
+  
+  // UI States
   const [mascotState, setMascotState] = useState<MascotState>("idle_dashboard");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [userFirstName, setUserFirstName] = useState("Şampiyon");
+  const [loading, setLoading] = useState(true);
 
   // Veri Çekme
   useEffect(() => {
     async function loadData() {
-        const user = await getMe();
-        if (user) {
-            setUserFirstName(user.name?.split(' ')[0] || "Şampiyon");
-        }
-        
-        const stats = await getGamificationStats();
-        if (stats) {
-            setScore(stats.daily_score); // Günlük puan
-            setTotalScore(stats.total_score); // Toplam puan
+        try {
+            // 1. Kullanıcı Verisi
+            const userData = await getMe();
+            if (userData) {
+                setUser(userData);
+                // Lig bilgisini manuel oluştur veya backend'den al
+                setLeagueInfo(userData.league || { name: 'Bronz Lig', icon: 'fa-medal', color: 'text-amber-700' });
+            }
+            
+            // 2. Gamification İstatistikleri
+            const stats = await getGamificationStats();
+            if (stats) {
+                setScore(stats.daily_score);
+                setTotalScore(stats.total_score);
+                if (stats.league) setLeagueInfo(stats.league);
+            }
+
+            // 3. Aktif Diyet Planı
+            const diets = await getPlans();
+            if (diets && diets.length > 0) setActiveDiet(diets[0]);
+
+            // 4. Egzersiz Planı
+            const exercises = await getExercisePlans();
+            if (exercises && exercises.length > 0) setTodaysExercise(exercises[0]);
+
+        } catch (error) {
+            console.error("Dashboard veri hatası:", error);
+        } finally {
+            setLoading(false);
         }
     }
     loadData();
@@ -38,7 +68,6 @@ export default function DashboardPage() {
     const result = await earnPoints(action);
 
     if (result.success) {
-        // API'den dönen güncel puanları set et
         setScore(result.data.daily_score);
         setTotalScore(result.data.total_score);
         
@@ -53,44 +82,66 @@ export default function DashboardPage() {
     setLoadingAction(null);
   };
 
+  if (loading) {
+      return (
+        <LayoutWrapper>
+            <div className="flex items-center justify-center min-h-[80vh]">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
+            </div>
+        </LayoutWrapper>
+      );
+  }
+
   return (
-    <div className="min-h-screen pb-24 font-sans text-rejimde-text">
+    <LayoutWrapper>
+    <div className="min-h-screen pb-24 font-sans text-gray-800">
       
       {/* Main Grid */}
-      <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
 
           {/* LEFT SIDEBAR: Tools & Nav */}
-          <div className="hidden lg:block lg:col-span-3 space-y-4">
-              <div className="bg-white border-2 border-gray-200 rounded-3xl p-2 sticky top-24">
-                  <Link href="/dashboard" className="flex items-center gap-4 p-3 rounded-2xl bg-blue-50 border-2 border-blue-100 text-rejimde-blue mb-2 shadow-sm">
-                      <i className="fa-solid fa-house text-xl w-8 text-center"></i>
-                      <span className="font-extrabold uppercase text-sm">Panelim</span>
-                  </Link>
-                  <Link href="/clans" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-400 transition group">
-                      <i className="fa-solid fa-shield-halved text-xl w-8 text-center group-hover:text-rejimde-yellow"></i>
-                      <span className="font-extrabold uppercase text-sm group-hover:text-gray-600">Klanım</span>
-                  </Link>
-                  <Link href="/dashboard/score" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-400 transition group">
-                      <i className="fa-solid fa-chart-line text-xl w-8 text-center group-hover:text-rejimde-purple"></i>
-                      <span className="font-extrabold uppercase text-sm group-hover:text-gray-600">Analizler</span>
-                  </Link>
-                  <Link href="/experts" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-400 transition group">
-                      <i className="fa-solid fa-user-doctor text-xl w-8 text-center group-hover:text-rejimde-green"></i>
-                      <span className="font-extrabold uppercase text-sm group-hover:text-gray-600">Diyetisyenim</span>
-                  </Link>
-                  <div className="h-px bg-gray-200 my-2"></div>
-                  <Link href="/settings" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-400 transition group">
-                      <i className="fa-solid fa-gear text-xl w-8 text-center"></i>
-                      <span className="font-extrabold uppercase text-sm group-hover:text-gray-600">Ayarlar</span>
-                  </Link>
+          <div className="hidden lg:block lg:col-span-3 space-y-6">
+              <div className="bg-white border-2 border-gray-200 rounded-[2rem] p-4 sticky top-24 shadow-sm">
+                  <nav className="space-y-2">
+                      <Link href="/dashboard" className="flex items-center gap-4 p-3 rounded-2xl bg-blue-50 border-2 border-blue-100 text-blue-600 mb-2 shadow-sm transition-transform hover:scale-105">
+                          <i className="fa-solid fa-house text-xl w-8 text-center"></i>
+                          <span className="font-extrabold uppercase text-sm">Panelim</span>
+                      </Link>
+                      <Link href={user?.clan ? `/clans/${user.clan.slug}` : "/clans"} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className={`fa-solid ${user?.clan ? 'fa-shield-cat' : 'fa-shield-halved'} text-xl w-8 text-center group-hover:text-purple-500`}></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Klanım</span>
+                      </Link>
+                      <Link href="/leagues" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-trophy text-xl w-8 text-center group-hover:text-yellow-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Ligler</span>
+                      </Link>
+                      <Link href="/dashboard/score" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-chart-pie text-xl w-8 text-center group-hover:text-orange-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Skor & Analiz</span>
+                      </Link>
+                      <Link href="/diets" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-utensils text-xl w-8 text-center group-hover:text-green-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Diyetler</span>
+                      </Link>
+                      <Link href="/exercises" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-dumbbell text-xl w-8 text-center group-hover:text-red-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Egzersiz</span>
+                      </Link>
+                      <div className="h-px bg-gray-100 my-2"></div>
+                      <Link href="/settings" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-gear text-xl w-8 text-center"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Ayarlar</span>
+                      </Link>
+                  </nav>
               </div>
 
-              {/* Ad / Promo Box */}
-              <div className="bg-rejimde-text rounded-3xl p-6 text-center shadow-card sticky top-[420px]">
-                  <i className="fa-solid fa-crown text-rejimde-yellow text-4xl mb-2 animate-bounce-slow"></i>
+              {/* Premium Promo */}
+              <div className="bg-gray-900 rounded-[2rem] p-6 text-center shadow-lg sticky top-[550px] border-4 border-gray-800 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-150"></div>
+                  <i className="fa-solid fa-crown text-yellow-400 text-4xl mb-3 animate-bounce-slow"></i>
                   <h3 className="text-white font-extrabold text-lg mb-1">Rejimde Premium</h3>
                   <p className="text-gray-400 text-xs font-bold mb-4">Sınırsız AI analizi ve reklamsız deneyim.</p>
-                  <button className="w-full bg-rejimde-green text-white py-2 rounded-xl font-extrabold text-xs uppercase shadow-btn shadow-rejimde-greenDark btn-game">
+                  <button className="w-full bg-green-500 text-white py-3 rounded-xl font-extrabold text-xs uppercase shadow-[0_4px_0_rgb(21,128,61)] hover:bg-green-600 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(21,128,61)] active:translate-y-[4px] active:shadow-none transition-all">
                       Yükselt
                   </button>
               </div>
@@ -99,23 +150,22 @@ export default function DashboardPage() {
           {/* CENTER: Feed & Actions */}
           <div className="lg:col-span-6 space-y-8">
               
-              {/* MASCOT HERO (Dynamic) */}
-              <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
-                  <div className="shrink-0 transition-all duration-300 transform hover:scale-105">
+              {/* MASCOT HERO */}
+              <div className="flex flex-col sm:flex-row items-center gap-6 mb-6">
+                  {/* DÜZELTME: wave_hello yerine success_milestone veya idle kullanıldı */}
+                  <div className="shrink-0 transition-all duration-300 transform hover:scale-105 filter drop-shadow-xl cursor-pointer" onClick={() => setMascotState("success_milestone")}>
                       <MascotDisplay 
                         state={mascotState} 
-                        size={160} 
+                        size={180} 
                         showBubble={false} 
-                        className="drop-shadow-lg"
                       />
                   </div>
-                  <div className="bg-white border-2 border-gray-200 p-6 rounded-3xl relative flex-1 shadow-sm transition-all duration-300">
-                      {/* Konuşma Balonu Oku */}
+                  <div className="bg-white border-2 border-gray-200 p-6 rounded-[2rem] relative flex-1 shadow-sm transition-all duration-300 hover:shadow-md">
                       <div className="hidden sm:block absolute -left-3 top-1/2 w-6 h-6 bg-white border-l-2 border-b-2 border-gray-200 transform -translate-y-1/2 rotate-45"></div>
                       
-                      <h2 className="font-extrabold text-gray-700 text-lg mb-1">Selam {userFirstName}! 👋</h2>
-                      <p className="text-gray-500 font-bold text-sm">
-                        {mascotState === 'idle_dashboard' && '"Bugün hava çok güzel, biraz hareket etmeye ne dersin?"'}
+                      <h2 className="font-black text-gray-800 text-xl mb-2">Selam {user?.name?.split(' ')[0] || 'Şampiyon'}! 👋</h2>
+                      <p className="text-gray-500 font-bold text-base leading-relaxed">
+                        {mascotState === 'idle_dashboard' && '"Bugün hava çok güzel, hedeflerine ulaşmak için harika bir gün!"'}
                         {mascotState === 'water_reminder' && '"Ohh! Su gibisi yok. Hücrelerin bayram etti! 💧"'}
                         {mascotState === 'cheat_meal_detected' && '"Hmmm... Bunu kaydettim ama akşamı hafif geçirmen lazım!"'}
                         {mascotState === 'success_milestone' && '"Harikasın! Adım adım hedefe yaklaşıyoruz! 🚀"'}
@@ -123,104 +173,123 @@ export default function DashboardPage() {
                   </div>
               </div>
 
-              {/* SCORE CARD (Live Data) */}
-              <Link href="/dashboard/score" className="block bg-rejimde-green rounded-3xl p-6 shadow-float relative overflow-hidden text-white group cursor-pointer hover:scale-[1.02] transition duration-300">
-                  {/* Pattern */}
-                  <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(#fff 2px, transparent 2px)', backgroundSize: '20px 20px'}}></div>
+              {/* SCORE CARD */}
+              <Link href="/dashboard/score" className="block bg-green-500 rounded-[2.5rem] p-8 shadow-[0_10px_20px_-5px_rgba(34,197,94,0.4)] relative overflow-hidden text-white group cursor-pointer hover:scale-[1.02] transition duration-300">
+                  <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(#fff 2px, transparent 2px)', backgroundSize: '24px 24px'}}></div>
                   
                   <div className="relative z-10 flex justify-between items-center">
                       <div>
-                          <p className="font-black text-green-100 text-xs uppercase mb-1">GÜNLÜK REJİMDE SKORUN</p>
-                          <div className="flex items-baseline gap-2">
-                             <div className="text-5xl font-black tracking-tighter transition-all duration-500">{score}</div>
-                             <div className="text-xl font-bold text-green-100">/ {totalScore} T.</div>
+                          <p className="font-black text-green-100 text-xs uppercase tracking-widest mb-2">GÜNLÜK SKORUN</p>
+                          <div className="flex items-baseline gap-3">
+                             <div className="text-6xl font-black tracking-tighter transition-all duration-500 drop-shadow-sm">{score}</div>
+                             <div className="text-2xl font-bold text-green-100 opacity-80">/ 100</div>
                           </div>
-                          
-                          <div className="inline-flex items-center gap-1 bg-white/20 px-2 py-1 rounded-lg text-xs font-bold backdrop-blur-sm mt-1">
-                              <i className="fa-solid fa-arrow-trend-up"></i> Yükselişte
+                          <div className="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-xl text-xs font-bold backdrop-blur-sm mt-3 border border-white/10">
+                              <i className="fa-solid fa-star text-yellow-300"></i> Toplam: {totalScore} XP
                           </div>
                       </div>
-                      <div className="w-24 h-24 relative flex items-center justify-center">
-                          <i className="fa-solid fa-trophy text-4xl absolute animate-wiggle"></i>
+                      <div className="w-28 h-28 relative flex items-center justify-center bg-white/10 rounded-full border-4 border-white/20">
+                          <i className="fa-solid fa-trophy text-5xl absolute animate-wiggle drop-shadow-md"></i>
                       </div>
                   </div>
               </Link>
               
-              {/* DAILY ACTIONS (Functional Buttons) */}
+              {/* QUICK ACTIONS */}
               <div className="space-y-4">
-                  <h3 className="font-extrabold text-gray-400 text-sm uppercase tracking-wider ml-2">Hızlı Eylemler</h3>
+                  <h3 className="font-extrabold text-gray-400 text-sm uppercase tracking-wider ml-2 flex items-center gap-2">
+                      <i className="fa-solid fa-bolt text-yellow-400"></i> Hızlı Eylemler
+                  </h3>
                   
-                  {/* Action 1: Water */}
-                  <div className="bg-white border-2 border-b-4 border-gray-200 rounded-2xl p-4 flex items-center justify-between group hover:border-rejimde-blue transition cursor-pointer">
-                      <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-rejimde-blue text-2xl group-hover:scale-110 transition">
+                  {/* Water */}
+                  <div className="bg-white border-2 border-b-4 border-gray-200 rounded-3xl p-4 flex items-center justify-between group hover:border-blue-400 transition cursor-pointer">
+                      <div className="flex items-center gap-5">
+                          <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500 text-3xl group-hover:scale-110 transition border-2 border-blue-100">
                               <i className="fa-solid fa-glass-water"></i>
                           </div>
                           <div>
-                              <h4 className="font-extrabold text-gray-700">Su İçtim (200ml)</h4>
-                              <p className="text-xs font-bold text-gray-400">+5 Puan</p>
+                              <h4 className="font-black text-gray-700 text-lg">Su İçtim</h4>
+                              <p className="text-xs font-bold text-gray-400">+5 Puan (200ml)</p>
                           </div>
                       </div>
                       <button 
                         onClick={() => handleAction('log_water', 'water_reminder')}
                         disabled={loadingAction === 'log_water'}
-                        className="bg-rejimde-blue text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-btn shadow-blue-600 btn-game hover:bg-blue-500 disabled:opacity-50"
+                        className="bg-blue-500 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-[0_4px_0_rgb(37,99,235)] hover:bg-blue-600 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(37,99,235)] active:translate-y-[4px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                         {loadingAction === 'log_water' ? <i className="fa-solid fa-spinner animate-spin"></i> : <i className="fa-solid fa-plus font-black"></i>}
+                         {loadingAction === 'log_water' ? <i className="fa-solid fa-spinner animate-spin text-xl"></i> : <i className="fa-solid fa-plus font-black text-xl"></i>}
                       </button>
                   </div>
 
-                  {/* Action 2: Meal (AI) */}
-                  <div className="bg-white border-2 border-b-4 border-gray-200 rounded-2xl p-4 flex items-center justify-between group hover:border-rejimde-green transition cursor-pointer">
-                      <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-rejimde-green text-2xl group-hover:scale-110 transition">
+                  {/* Meal (AI) */}
+                  <div className="bg-white border-2 border-b-4 border-gray-200 rounded-3xl p-4 flex items-center justify-between group hover:border-green-400 transition cursor-pointer">
+                      <div className="flex items-center gap-5">
+                          <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center text-green-500 text-3xl group-hover:scale-110 transition border-2 border-green-100">
                               <i className="fa-solid fa-camera"></i>
                           </div>
                           <div>
-                              <h4 className="font-extrabold text-gray-700">Öğün Ekle</h4>
+                              <h4 className="font-black text-gray-700 text-lg">Öğün Ekle</h4>
                               <p className="text-xs font-bold text-gray-400">+15 Puan</p>
                           </div>
                       </div>
                       <button 
                         onClick={() => handleAction('log_meal', 'cheat_meal_detected')}
                         disabled={loadingAction === 'log_meal'}
-                        className="bg-rejimde-green text-white px-4 py-2 rounded-xl shadow-btn shadow-rejimde-greenDark btn-game font-extrabold text-sm uppercase hover:bg-green-500 disabled:opacity-50"
+                        className="bg-green-500 text-white px-6 h-14 rounded-2xl shadow-[0_4px_0_rgb(21,128,61)] font-extrabold text-sm uppercase hover:bg-green-600 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(21,128,61)] active:translate-y-[4px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
-                          {loadingAction === 'log_meal' ? '...' : 'FOTO ÇEK'}
+                          {loadingAction === 'log_meal' ? <i className="fa-solid fa-spinner animate-spin"></i> : <><i className="fa-solid fa-camera"></i> Foto Çek</>}
                       </button>
                   </div>
 
-                  {/* Action 3: Steps / Workout */}
-                  <div className="bg-white border-2 border-b-4 border-gray-200 rounded-2xl p-4 flex items-center justify-between group hover:border-rejimde-red transition cursor-pointer">
-                      <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center text-rejimde-red text-2xl group-hover:scale-110 transition">
-                              <i className="fa-solid fa-person-walking"></i>
+                  {/* Workout */}
+                  <div className="bg-white border-2 border-b-4 border-gray-200 rounded-3xl p-4 flex items-center justify-between group hover:border-red-400 transition cursor-pointer">
+                      <div className="flex items-center gap-5">
+                          <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 text-3xl group-hover:scale-110 transition border-2 border-red-100">
+                              <i className="fa-solid fa-person-running"></i>
                           </div>
                           <div>
-                              <h4 className="font-extrabold text-gray-700">Antrenman Yaptım</h4>
+                              <h4 className="font-black text-gray-700 text-lg">Antrenman</h4>
                               <p className="text-xs font-bold text-gray-400">+50 Puan</p>
                           </div>
                       </div>
                       <button 
                         onClick={() => handleAction('complete_workout', 'success_milestone')}
                         disabled={loadingAction === 'complete_workout'}
-                        className="text-right bg-rejimde-red text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-btn shadow-red-700 btn-game disabled:opacity-50"
+                        className="text-right bg-red-500 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-[0_4px_0_rgb(220,38,38)] hover:bg-red-600 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(220,38,38)] active:translate-y-[4px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                         {loadingAction === 'complete_workout' ? <i className="fa-solid fa-spinner animate-spin"></i> : <i className="fa-solid fa-check font-black"></i>}
+                         {loadingAction === 'complete_workout' ? <i className="fa-solid fa-spinner animate-spin text-xl"></i> : <i className="fa-solid fa-check font-black text-xl"></i>}
                       </button>
                   </div>
               </div>
 
-              {/* AI FEEDBACK */}
-              <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-sm">
-                  <div className="flex justify-between items-center mb-4">
-                      <h3 className="font-extrabold text-gray-700">Diyetisyen Notu</h3>
-                      <span className="text-xs font-bold text-gray-400">2 saat önce</span>
+              {/* ACTIVE PLANS (Diet & Exercise) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Diet Plan */}
+                  <div className="bg-white border-2 border-gray-200 rounded-3xl p-5 shadow-sm hover:border-orange-300 transition">
+                      <div className="flex justify-between items-start mb-3">
+                          <div className="bg-orange-100 text-orange-600 w-10 h-10 rounded-xl flex items-center justify-center">
+                              <i className="fa-solid fa-utensils"></i>
+                          </div>
+                          <Link href="/diets" className="text-xs font-black text-orange-500 uppercase hover:underline">Değiştir</Link>
+                      </div>
+                      <h4 className="font-black text-gray-800 mb-1 line-clamp-1">{activeDiet?.title || "Diyet Planı Seç"}</h4>
+                      <p className="text-xs font-bold text-gray-400 mb-3 line-clamp-2">{activeDiet?.excerpt || "Henüz bir plan seçmedin."}</p>
+                      <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                          <div className="bg-orange-500 h-full w-1/3 rounded-full"></div>
+                      </div>
                   </div>
-                  <div className="flex gap-4">
-                      <img src="https://i.pravatar.cc/150?img=44" className="w-10 h-10 rounded-xl border-2 border-white shadow-sm" alt="Diyetisyen" />
-                      <div className="bg-gray-50 p-4 rounded-2xl rounded-tl-none text-sm font-bold text-gray-600 border border-gray-100">
-                          &quot;Harika gidiyorsun! Akşam yemeğinde karbonhidratı biraz daha kısalım, yarın tartıda sürpriz olabilir. 💪&quot;
+
+                  {/* Exercise Plan */}
+                  <div className="bg-white border-2 border-gray-200 rounded-3xl p-5 shadow-sm hover:border-purple-300 transition">
+                      <div className="flex justify-between items-start mb-3">
+                          <div className="bg-purple-100 text-purple-600 w-10 h-10 rounded-xl flex items-center justify-center">
+                              <i className="fa-solid fa-dumbbell"></i>
+                          </div>
+                          <Link href="/exercises" className="text-xs font-black text-purple-500 uppercase hover:underline">Değiştir</Link>
+                      </div>
+                      <h4 className="font-black text-gray-800 mb-1 line-clamp-1">{todaysExercise?.title || "Egzersiz Planı Seç"}</h4>
+                      <p className="text-xs font-bold text-gray-400 mb-3 line-clamp-2">{todaysExercise?.excerpt || "Bugün için plan yok."}</p>
+                      <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                          <div className="bg-purple-500 h-full w-0 rounded-full"></div>
                       </div>
                   </div>
               </div>
@@ -230,74 +299,93 @@ export default function DashboardPage() {
           {/* RIGHT SIDEBAR: League & Social */}
           <div className="lg:col-span-3 space-y-6">
               
-              {/* LEAGUE CARD */}
-              <Link href="/leagues" className="block bg-white border-2 border-gray-200 rounded-3xl overflow-hidden shadow-card group hover:border-rejimde-yellow transition cursor-pointer">
-                  <div className="bg-rejimde-yellow p-4 border-b-2 border-rejimde-yellowDark flex justify-between items-center">
-                      <h3 className="font-extrabold text-white uppercase text-sm">🏆 Düğün Ligi</h3>
-                      <span className="text-white/80 text-xs font-black hover:text-white transition">TÜMÜ</span>
+              {/* LEAGUE WIDGET */}
+              <Link href="/leagues" className="block bg-white border-2 border-gray-200 rounded-[2rem] overflow-hidden shadow-card group hover:border-yellow-400 transition cursor-pointer">
+                  <div className={`p-4 border-b-2 flex justify-between items-center ${leagueInfo?.bg ? leagueInfo.bg.replace('bg-gradient-to-br', 'bg') : 'bg-gray-400'} text-white`}>
+                      <h3 className="font-extrabold uppercase text-sm flex items-center gap-2">
+                          <i className={`fa-solid ${leagueInfo?.icon || 'fa-trophy'}`}></i> {leagueInfo?.name || 'Ligler'}
+                      </h3>
+                      <i className="fa-solid fa-chevron-right text-xs"></i>
                   </div>
-                  <div className="p-2 space-y-1">
-                      {/* Rank 1 */}
-                      <div className="flex items-center gap-2 p-2 rounded-xl bg-yellow-50 border border-yellow-100">
-                          <span className="font-black text-rejimde-yellowDark w-4 text-center">1</span>
-                          <img src="https://i.pravatar.cc/150?img=12" className="w-8 h-8 rounded-lg bg-white" alt="Avatar" />
-                          <div className="flex-1 min-w-0">
-                              <p className="font-bold text-xs text-gray-700 truncate">FitGörümce</p>
-                              <p className="text-[10px] text-gray-400 font-bold">890 P</p>
-                          </div>
+                  <div className="p-4 text-center">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-50 border-2 border-gray-100 mb-2">
+                          <i className={`fa-solid ${leagueInfo?.icon || 'fa-trophy'} text-3xl ${leagueInfo?.color || 'text-gray-400'}`}></i>
                       </div>
-                      {/* Me */}
-                      <div className="flex items-center gap-2 p-2 rounded-xl bg-rejimde-green/10 border border-rejimde-green/20">
-                          <span className="font-black text-rejimde-green w-4 text-center">2</span>
-                          <img src="https://i.pravatar.cc/150?img=5" className="w-8 h-8 rounded-lg bg-white" alt="Avatar" />
-                          <div className="flex-1 min-w-0">
-                              <p className="font-bold text-xs text-rejimde-green truncate">SEN</p>
-                              <p className="text-[10px] text-rejimde-green font-bold">{score} P</p>
-                          </div>
-                          <i className="fa-solid fa-caret-up text-rejimde-green"></i>
+                      <p className="text-xs font-bold text-gray-400 uppercase">Sıralaman</p>
+                      <div className="text-3xl font-black text-gray-800 leading-none">#7</div>
+                      <div className="mt-3 bg-green-50 text-green-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase inline-block">
+                          Yükselme Hattı
                       </div>
-                      {/* Rank 3 */}
-                      <div className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-50">
-                          <span className="font-black text-gray-400 w-4 text-center">3</span>
-                          <img src="https://i.pravatar.cc/150?img=32" className="w-8 h-8 rounded-lg bg-white bg-gray-200" alt="Avatar" />
-                          <div className="flex-1 min-w-0">
-                              <p className="font-bold text-xs text-gray-700 truncate">DamatBey</p>
-                              <p className="text-[10px] text-gray-400 font-bold">820 P</p>
-                          </div>
-                      </div>
-                  </div>
-                  <div className="p-3 text-center border-t-2 border-gray-100 bg-gray-50">
-                      <p className="text-[10px] text-gray-400 font-bold">Ligi ilk 3&apos;te bitirirsen <span className="text-rejimde-yellowDark">500 Elmas</span> kazanacaksın!</p>
                   </div>
               </Link>
 
-              {/* CLAN CHAT SNIPPET */}
-              <div className="bg-white border-2 border-gray-200 rounded-3xl p-4 shadow-card">
-                  <h3 className="font-extrabold text-gray-400 text-xs uppercase mb-3 px-1">Klan Sohbeti</h3>
-                  <div className="space-y-3">
-                      <div className="flex gap-2">
-                          <img src="https://i.pravatar.cc/150?img=12" className="w-6 h-6 rounded-md bg-gray-200" alt="Av" />
-                          <div className="bg-gray-100 p-2 rounded-xl rounded-tl-none text-xs font-bold text-gray-600">
-                              Bugün sporu aksatmayın kızlar! 🏃‍♀️
+              {/* CLAN WIDGET */}
+              {user?.clan ? (
+                  <Link href={`/clans/${user.clan.slug}`} className="block bg-white border-2 border-gray-200 rounded-[2rem] p-5 shadow-card group hover:border-purple-400 transition">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-extrabold text-gray-400 text-xs uppercase px-1 flex items-center gap-2">
+                            <i className="fa-solid fa-shield-cat text-purple-500"></i> Klanın
+                        </h3>
+                        <span className="bg-purple-100 text-purple-600 text-[10px] font-black px-2 py-1 rounded-lg">{user.clan.member_count || 1} Üye</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 mb-4">
+                          <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center border-2 border-purple-100 overflow-hidden shrink-0">
+                              {user.clan.logo ? (
+                                  <img src={user.clan.logo} className="w-full h-full object-cover" alt="Clan" />
+                              ) : (
+                                  <i className="fa-solid fa-shield text-purple-300 text-2xl"></i>
+                              )}
+                          </div>
+                          <div className="min-w-0">
+                              <h4 className="font-black text-gray-800 text-base group-hover:text-purple-600 transition truncate">{user.clan.name}</h4>
+                              <p className="text-xs text-gray-400 font-bold truncate">Birlikte güçlüyüz! 💪</p>
                           </div>
                       </div>
-                      <div className="flex gap-2 flex-row-reverse">
-                          <div className="bg-rejimde-blue/10 p-2 rounded-xl rounded-tr-none text-xs font-bold text-rejimde-blueDark">
-                              Ben akşam yürüyüşüne çıkıyorum, gelen?
+
+                      <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden mb-1">
+                          <div className="bg-purple-500 h-full w-3/4 rounded-full"></div>
+                      </div>
+                      <p className="text-[10px] text-gray-400 font-bold text-right">Haftalık Hedef: %75</p>
+                  </Link>
+              ) : (
+                  <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-[2rem] p-6 text-center">
+                      <i className="fa-solid fa-users-slash text-4xl text-gray-300 mb-2"></i>
+                      <p className="text-xs font-bold text-gray-400 mb-4">Henüz bir klanın yok.</p>
+                      <Link href="/clans" className="block w-full bg-white border-2 border-gray-200 text-gray-600 py-3 rounded-xl font-extrabold text-xs uppercase hover:border-purple-400 hover:text-purple-600 transition shadow-sm">
+                          Klan Bul
+                      </Link>
+                  </div>
+              )}
+
+              {/* FRIEND ACTIVITY (Mock) */}
+              <div className="bg-white border-2 border-gray-200 rounded-[2rem] p-5 shadow-sm">
+                  <h3 className="font-extrabold text-gray-400 text-xs uppercase mb-3 px-1">Arkadaşların</h3>
+                  <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                          <img src="https://api.dicebear.com/9.x/personas/svg?seed=Felix" className="w-10 h-10 rounded-xl bg-gray-100" alt="Friend" />
+                          <div>
+                              <p className="text-xs font-bold text-gray-700">Ahmet Y.</p>
+                              <p className="text-[10px] text-green-500 font-bold">5000 adım attı ⚡</p>
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                          <img src="https://api.dicebear.com/9.x/personas/svg?seed=Aneka" className="w-10 h-10 rounded-xl bg-gray-100" alt="Friend" />
+                          <div>
+                              <p className="text-xs font-bold text-gray-700">Zeynep K.</p>
+                              <p className="text-[10px] text-blue-500 font-bold">Su hedefini tamamladı 💧</p>
                           </div>
                       </div>
                   </div>
-                  <div className="mt-3 relative">
-                      <input type="text" placeholder="Mesaj yaz..." className="w-full bg-gray-100 border-none rounded-xl text-xs font-bold p-3 focus:ring-2 focus:ring-rejimde-blue outline-none" />
-                      <button className="absolute right-2 top-2 text-rejimde-blue hover:bg-blue-100 p-1 rounded-lg transition">
-                          <i className="fa-solid fa-paper-plane"></i>
-                      </button>
-                  </div>
+                  <button className="w-full mt-4 text-xs font-bold text-gray-400 hover:text-gray-600 uppercase border-t-2 border-gray-50 pt-2">
+                      Tümünü Gör
+                  </button>
               </div>
 
           </div>
 
       </div>
     </div>
+    </LayoutWrapper>
   );
 }
