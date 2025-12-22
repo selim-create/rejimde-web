@@ -1,3 +1,4 @@
+// ... existing code ...
 const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
 
 // --- AVATAR PAKETİ ---
@@ -743,21 +744,31 @@ export async function createComment(postId: number, content: string) {
 }
 
 /**
- * DİYET PLANLARINI LİSTELE
+ * DİYET PLANLARINI LİSTELE (GÜNCELLENDİ)
  */
 export async function getPlans(category?: string, difficulty?: string) {
   try {
-    let endpoint = '/rejimde/v1/plans'; // Özel Controller Endpoint'i
+    // Controller'da get_items metodu /rejimde/v1/plans endpointine bağlı
+    let endpoint = '/rejimde/v1/plans'; 
     const params = new URLSearchParams();
     
-    // Kategori "Tümü" değilse filtrele
+    // Filtreleme backend'de destekleniyorsa burası çalışır,
+    // şu an controller'da filtreleme yok ama yine de gönderelim
     if (category && category !== 'Tümü') params.append('category', category);
     if (difficulty) params.append('difficulty', difficulty);
     
     if (params.toString()) endpoint += `?${params.toString()}`;
 
-    const data = await fetchAPI(endpoint);
-    return data || [];
+    // fetchAPI zaten json.parse yapıp dönüyor
+    const response = await fetchAPI(endpoint);
+    
+    // Backend { status: 'success', data: [...] } döner
+    if (response && response.status === 'success') {
+        return response.data;
+    }
+    
+    // Hata veya boş dönerse
+    return [];
   } catch (error) {
     console.error("Planlar çekilemedi", error);
     return [];
@@ -818,36 +829,167 @@ export async function getPlanBySlug(slug: string) {
 }
 
 /**
- * DİYET PLANI ID İLE (Edit için)
+ * DİYET PLANI ID İLE (Edit için) - YENİ EKLENDİ
  */
-export async function getPlanById(id: number) {
-    // Edit endpoint'i henüz yoksa slug'dan gitmek zor olabilir, 
-    // ama create/update endpoint'leri dönüşte data veriyor.
-    // En temizi WP REST API'den ID ile çekmektir.
+export async function getPlan(id: number | string) {
     try {
-        const post = await fetchAPI(`/wp/v2/rejimde_plan/${id}?context=edit&_embed`);
-        if(!post) return null;
+        // Doğrudan WP REST API'den context=edit ile ham veriyi çekiyoruz
+        // Not: 'rejimde_plan' özel post tipi (CPT) kullanıldığı varsayılıyor.
+        // Eğer standart 'post' tipi kullanıyorsanız '/wp/v2/posts/${id}' yapın.
+        const post = await fetchAPI(`/wp/v2/rejimde_plan/${id}?context=edit&_embed`, {
+            headers: getAuthHeaders() // Auth headers ekledik ki draft olsa bile çekebilsin
+        });
         
-        // Plan datasını parse et
-        const planData = typeof post.meta?.plan_data === 'string' 
-            ? JSON.parse(post.meta.plan_data) 
-            : (post.meta?.plan_data || []);
+        if(!post || post.code) {
+             console.warn("Plan çekilemedi:", post);
+             return { success: false, message: 'Plan bulunamadı.' };
+        }
+        
+        // Meta verilerini parse et (ACF veya Custom Fields yapısına göre)
+        // Burada meta verilerinin düzgün geldiğini varsayıyoruz. 
+        // Eğer meta verileri 'acf' altında geliyorsa ona göre düzenlemek gerekir.
+        // rejimde-core'da 'meta' olarak döndürdüğümüz için 'meta'dan okuyoruz.
+        
+        // Plan datasını güvenli parse et
+        let planData = [];
+        if (post.meta && post.meta.plan_data) {
+             planData = typeof post.meta.plan_data === 'string' 
+                ? safeParse(post.meta.plan_data, []) 
+                : post.meta.plan_data;
+        }
 
-        return {
+        // Alışveriş listesini güvenli parse et
+        let shoppingList = [];
+        if (post.meta && post.meta.shopping_list) {
+             shoppingList = typeof post.meta.shopping_list === 'string' 
+                ? safeParse(post.meta.shopping_list, []) 
+                : post.meta.shopping_list;
+        }
+
+        const formattedData = {
             id: post.id,
-            title: post.title.raw,
-            content: post.content.raw,
+            title: post.title.raw || post.title.rendered,
+            content: post.content.raw || post.content.rendered,
             status: post.status,
             plan_data: planData,
+            shopping_list: shoppingList,
+            tags: post.tags || [], // WP tags ID array dönerse bunu populate etmek gerekebilir
             meta: {
                 difficulty: post.meta?.difficulty,
                 duration: post.meta?.duration,
-                calories: post.meta?.calories
+                calories: post.meta?.calories,
+                score_reward: post.meta?.score_reward,
+                diet_category: post.meta?.diet_category,
+                rank_math_title: post.meta?.rank_math_title,
+                rank_math_description: post.meta?.rank_math_description,
+                rank_math_focus_keyword: post.meta?.rank_math_focus_keyword
             },
             featured_media_id: post.featured_media,
             featured_media_url: post._embedded?.['wp:featuredmedia']?.[0]?.source_url || ''
         };
+
+        return { success: true, data: formattedData };
     } catch (e) {
-        return null;
+        console.error("getPlan hatası:", e);
+        return { success: false, message: 'Plan yüklenirken hata oluştu.' };
     }
+}
+
+/**
+ * ==========================================
+ * EGZERSİZ (EXERCISE) API FONKSİYONLARI
+ * ==========================================
+ */
+
+/**
+ * Egzersiz Planlarını Listele
+ */
+export async function getExercisePlans(category?: string, difficulty?: string) {
+  try {
+    let endpoint = '/rejimde/v1/exercises'; 
+    const params = new URLSearchParams();
+    
+    if (category && category !== 'Tümü') params.append('category', category);
+    if (difficulty) params.append('difficulty', difficulty);
+    
+    if (params.toString()) endpoint += `?${params.toString()}`;
+
+    const response = await fetchAPI(endpoint);
+    if (response && response.status === 'success') {
+        return response.data;
+    }
+    return [];
+  } catch (error) {
+    console.error("Egzersiz planları çekilemedi", error);
+    return [];
+  }
+}
+
+/**
+ * Egzersiz Planı Detay (Slug)
+ */
+export async function getExercisePlanBySlug(slug: string) {
+  try {
+    const response = await fetchAPI(`/rejimde/v1/exercises/${slug}`);
+    if (response && response.status === 'success') {
+      return response.data;
+    }
+    return null;
+  } catch (error) {
+    console.error("Egzersiz planı detayı çekilemedi", error);
+    return null;
+  }
+}
+
+/**
+ * Egzersiz Planı Oluştur
+ */
+export async function createExercisePlan(data: any) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/exercises/create`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (json.status === 'success') return { success: true, data: json.data };
+    return { success: false, message: json.message };
+  } catch (error) {
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+/**
+ * Egzersiz Planı Güncelle
+ */
+export async function updateExercisePlan(id: number, data: any) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/exercises/update/${id}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (json.status === 'success') return { success: true, data: json.data };
+    return { success: false, message: json.message };
+  } catch (error) {
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+/**
+ * Egzersiz Planı Onayla (Uzman)
+ */
+export async function approveExercisePlan(id: number) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/exercises/approve/${id}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    const json = await res.json();
+    if (json.status === 'success') return { success: true };
+    return { success: false, message: json.message };
+  } catch (error) {
+    return { success: false, message: 'Sunucu hatası.' };
+  }
 }

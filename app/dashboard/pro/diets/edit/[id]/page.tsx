@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createPlan, uploadMedia } from "@/lib/api";
+// NOT: updatePlan fonksiyonunu api.ts dosyanıza eklemeniz gerekecek. 
+// Şimdilik createPlan ve getPlan'ı import ediyoruz.
+import { getPlan, updatePlan, uploadMedia } from "@/lib/api";
 
 // --- TİPLER ---
 
@@ -73,12 +75,16 @@ const MEAL_TYPES = [
     { value: 'post-workout', label: 'Antrenman Sonrası', icon: 'fa-bolt' },
 ];
 
-export default function CreateDietPage() {
+export default function EditDietPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Params'ı unwrap et
+  const { id } = use(params);
+
   // --- STATE ---
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); 
+  const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   
@@ -86,7 +92,7 @@ export default function CreateDietPage() {
   const [modal, setModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void, onCancel?: () => void }>({
       isOpen: false, title: '', message: '', type: 'success'
   });
-
+  
   // Meta
   const [difficulty, setDifficulty] = useState("medium");
   const [caloriesAvg, setCaloriesAvg] = useState("");
@@ -99,9 +105,7 @@ export default function CreateDietPage() {
   const [tagInput, setTagInput] = useState("");
 
   // Plan Data
-  const [days, setDays] = useState<DayPlan[]>([
-      { id: '1', dayNumber: 1, meals: [{ id: 'm1', type: 'breakfast', time: '08:00', title: '', content: '', calories: '', tags: [], tip: '' }] }
-  ]);
+  const [days, setDays] = useState<DayPlan[]>([]);
 
   // Alışveriş Listesi
   const [shoppingList, setShoppingList] = useState<string[]>([""]);
@@ -131,20 +135,93 @@ export default function CreateDietPage() {
       });
   };
 
-  // --- EFFECTS ---
-
-  // SEO Otomatik Doldurma
+  // --- VERİ ÇEKME (INIT) ---
   useEffect(() => {
-    if (!seoTitle || seoTitle === title.slice(0, -1)) {
-        setSeoTitle(title);
-    }
-  }, [title]);
+    const loadPlan = async () => {
+        if (!id) return;
+        
+        try {
+            const res = await getPlan(id);
+            if (res.success && res.data) {
+                const data = res.data;
+                
+                // Temel Bilgiler
+                setTitle(data.title || "");
+                setDescription(data.content || "");
+                
+                // Medya
+                if (data.featured_media_url) setFeaturedImage(data.featured_media_url);
+                if (data.featured_media_id) setFeaturedImageId(data.featured_media_id);
 
-  useEffect(() => {
-    if (!seoDesc || seoDesc === description.slice(0, -1)) {
-        setSeoDesc(description.slice(0, 160));
-    }
-  }, [description]);
+                // Meta - DÜZELTİLDİ: Tüm alanlar güvenli şekilde meta'dan çekiliyor
+                if (data.meta) {
+                    setDifficulty(data.meta.difficulty || "medium");
+                    setCaloriesAvg(data.meta.calories || "");
+                    setDuration(data.meta.duration || "1");
+                    setScoreReward(data.meta.score_reward || "100");
+                    setSelectedCategory(data.meta.diet_category || "Hızlı Sonuç");
+                    
+                    // SEO
+                    setSeoTitle(data.meta.rank_math_title || "");
+                    setSeoDesc(data.meta.rank_math_description || "");
+                    setFocusKeyword(data.meta.rank_math_focus_keyword || "");
+
+                    // Alışveriş Listesi (Meta'dan geliyorsa)
+                    // Not: any kullanarak tip hatasını geçiyoruz
+                    let metaShoppingList = (data.meta as any).shopping_list;
+                    // String gelirse parse et
+                    if (typeof metaShoppingList === 'string') {
+                        try { metaShoppingList = JSON.parse(metaShoppingList); } catch(e) { metaShoppingList = []; }
+                    }
+
+                    if (metaShoppingList && Array.isArray(metaShoppingList)) {
+                        setShoppingList([...metaShoppingList, ""]);
+                    } else if (data.shopping_list && Array.isArray(data.shopping_list)) {
+                        // Root seviyesinden geliyorsa (yedek)
+                        setShoppingList([...data.shopping_list, ""]);
+                    }
+
+                    // Etiketler (Meta'dan geliyorsa) - DÜZELTME: String Parse Kontrolü Eklendi
+                    let metaTags = (data.meta as any).tags;
+                    // Eğer string gelirse parse et (API tarafında parse edilmemiş olma ihtimaline karşı)
+                    if (typeof metaTags === 'string') {
+                        try {
+                            metaTags = JSON.parse(metaTags);
+                        } catch (e) {
+                            metaTags = [];
+                        }
+                    }
+
+                    if (metaTags && Array.isArray(metaTags)) {
+                        setTags(metaTags);
+                    } else if (data.tags && Array.isArray(data.tags)) {
+                        // Root seviyesinden geliyorsa (yedek)
+                        setTags(data.tags);
+                    }
+                }
+
+                // Plan Data (Günler)
+                if (data.plan_data && Array.isArray(data.plan_data)) {
+                    setDays(data.plan_data);
+                } else {
+                    setDays([{ id: '1', dayNumber: 1, meals: [{ id: 'm1', type: 'breakfast', time: '08:00', title: '', content: '', calories: '', tags: [], tip: '' }] }]);
+                }
+
+            } else {
+                showModal("Hata", "Plan bulunamadı veya yüklenirken hata oluştu.", "error", () => {
+                    router.push("/dashboard/pro");
+                });
+            }
+        } catch (error) {
+            console.error("Plan yükleme hatası:", error);
+            showModal("Hata", "Bir hata oluştu.", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    loadPlan();
+  }, [id, router]);
 
 
   // --- FONKSİYONLAR: GÜN VE ÖĞÜN YÖNETİMİ ---
@@ -215,7 +292,7 @@ export default function CreateDietPage() {
           if (!meal.tags.includes(newTag)) {
              meal.tags = [...(meal.tags || []), newTag];
           }
-          meal.tagInput = "";
+          meal.tagInput = ""; 
           setDays(newDays);
       }
   };
@@ -296,24 +373,24 @@ export default function CreateDietPage() {
     }
   };
 
-  // --- YAYINLA ---
+  // --- GÜNCELLE (UPDATE) ---
 
-  const handlePublish = async () => {
+  const handleUpdate = async () => {
       if (!title) return showModal("Eksik Bilgi", "Lütfen bir plan başlığı giriniz.", "error");
-      if (featuredImageId === 0) return showModal("Eksik Bilgi", "Lütfen bir kapak görseli yükleyiniz.", "error");
-
-      setLoading(true);
+      
+      setSaving(true);
 
       const planData = {
+          id: parseInt(id),
           title,
           content: description,
           status: 'publish',
           featured_media_id: featuredImageId,
           plan_data: days,
-          // Alışveriş listesi ve etiketler hem root seviyesinde hem de meta içinde gönderiliyor
-          // Backend'in beklentisine göre garanti olsun.
+          // Root seviyesinde gönderim
           shopping_list: shoppingList.filter(i => i.trim() !== ""),
           tags: tags,
+          // Meta içinde gönderim
           meta: {
               difficulty,
               duration,
@@ -329,20 +406,36 @@ export default function CreateDietPage() {
       };
 
       try {
-        const res = await createPlan(planData);
+        const res = await updatePlan(parseInt(id), planData); 
         
         if (res.success) {
-            showModal("Başarılı", "Diyet planı başarıyla yayınlandı! 🎉", "success", () => {
-                if (res.data && res.data.slug) router.push("/diets/" + res.data.slug);
+            showModal("Başarılı", "Plan başarıyla güncellendi! ✅", "success", () => {
+                if (res.data && res.data.slug) {
+                    router.push(`/diets/${res.data.slug}`);
+                } else {
+                    router.push("/dashboard/pro");
+                }
             });
         } else {
-            showModal("Hata", res.message || "Bir hata oluştu", "error");
+            showModal("Hata", "Güncelleme hatası: " + res.message, "error");
         }
       } catch (err) {
         showModal("Hata", "Bir hata oluştu. Lütfen tekrar deneyiniz.", "error");
+        console.error(err);
       }
-      setLoading(false);
+      setSaving(false);
   };
+
+  if (loading) {
+      return (
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                  <i className="fa-solid fa-circle-notch animate-spin text-4xl text-rejimde-blue"></i>
+                  <p className="text-gray-500 font-bold">Plan Yükleniyor...</p>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-32 font-sans text-gray-800">
@@ -356,22 +449,22 @@ export default function CreateDietPage() {
                     <i className="fa-solid fa-arrow-left"></i>
                 </Link>
                 <div>
-                    <h1 className="text-lg font-black text-gray-800 leading-tight">Diyet Planı Oluştur</h1>
-                    <p className="text-xs text-gray-400 font-medium hidden md:block">Profesyonel Diyetisyen Editörü v2.0</p>
+                    <h1 className="text-lg font-black text-gray-800 leading-tight">Planı Düzenle</h1>
+                    <p className="text-xs text-gray-400 font-medium hidden md:block">ID: {id}</p>
                 </div>
             </div>
             <div className="flex items-center gap-3">
                  <div className="hidden md:flex flex-col items-end mr-2">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Durum</span>
-                    <span className="text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded">Taslak</span>
+                    <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">Yayında</span>
                  </div>
                 <button 
-                    onClick={handlePublish} 
-                    disabled={loading} 
-                    className="bg-rejimde-green hover:bg-green-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-green-200 text-sm flex items-center gap-2 transition disabled:opacity-70 disabled:cursor-not-allowed"
+                    onClick={handleUpdate} 
+                    disabled={saving} 
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-200 text-sm flex items-center gap-2 transition disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                    {loading ? <i className="fa-solid fa-circle-notch animate-spin"></i> : <i className="fa-solid fa-rocket"></i>}
-                    <span>Yayınla</span>
+                    {saving ? <i className="fa-solid fa-circle-notch animate-spin"></i> : <i className="fa-solid fa-floppy-disk"></i>}
+                    <span>Güncelle</span>
                 </button>
             </div>
         </div>
@@ -383,7 +476,7 @@ export default function CreateDietPage() {
                 
                 {/* 1. Temel Bilgiler */}
                 <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-100/50 space-y-4 relative overflow-hidden group">
-                    <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-rejimde-blue to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                     
                     <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Plan Başlığı</label>
@@ -436,7 +529,6 @@ export default function CreateDietPage() {
                                 {day.meals.map((meal, mIndex) => (
                                     <div key={meal.id} className="relative group/meal pl-0 md:pl-4 transition-all duration-300">
                                         
-                                        {/* Sol Çizgi (Timeline Effect) */}
                                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-200 rounded-full group-hover/meal:bg-rejimde-yellow transition-colors hidden md:block"></div>
 
                                         <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:border-rejimde-blue/30 hover:shadow-lg hover:shadow-blue-500/5 transition-all">
@@ -666,10 +758,6 @@ export default function CreateDietPage() {
                             <i className="fa-solid fa-plus"></i> Manuel Ekle
                         </button>
                     </div>
-                    <p className="mt-4 text-xs text-gray-400 flex items-center gap-2">
-                        <i className="fa-solid fa-circle-info"></i>
-                        Akıllı sihirbaz ile eklenen malzemeler buraya otomatik düşer.
-                    </p>
                 </div>
 
             </div>
