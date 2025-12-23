@@ -15,22 +15,6 @@ const approvePlan = async (id: number) => {
     return res.json();
 };
 
-const startPlan = async (id: number) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
-    const res = await fetch(`${process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json'}/rejimde/v1/plans/start/${id}`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
-    });
-    return res.json();
-};
-
-const completePlanAPI = async (id: number) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
-    const res = await fetch(`${process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json'}/rejimde/v1/plans/complete/${id}`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
-    });
-    return res.json();
-};
-
 // --- MODAL BİLEŞENİ ---
 const Modal = ({ isOpen, title, message, type, onConfirm, onCancel }: { isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void, onCancel?: () => void }) => {
     if (!isOpen) return null;
