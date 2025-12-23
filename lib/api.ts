@@ -1291,6 +1291,121 @@ export async function sendHighFive(userId: number) {
 
 
 /**
+ * ==========================================
+ * PROGRESS API FONKSİYONLARI
+ * ==========================================
+ */
+
+/**
+ * Kullanıcının belirli bir içerik için ilerlemesini getir
+ * @param contentType - 'diet', 'exercise', veya 'blog'
+ * @param contentId - İçeriğin ID'si
+ */
+export async function getProgress(contentType: string, contentId: number | string) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+        
+        if (!res.ok) {
+            // Progress yoksa boş obje dön
+            if (res.status === 404) return null;
+            return null;
+        }
+        
+        const json = await res.json();
+        if (json.status === 'success') return json.data;
+        return null;
+    } catch (error) {
+        console.error('getProgress error:', error);
+        return null;
+    }
+}
+
+/**
+ * Kullanıcının ilerleme durumunu güncelle
+ * @param contentType - 'diet', 'exercise', veya 'blog'
+ * @param contentId - İçeriğin ID'si
+ * @param data - Güncellenecek progress verisi (completed_items, progress_percentage, vb.)
+ */
+export async function updateProgress(contentType: string, contentId: number | string, data: any) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        
+        const json = await res.json();
+        if (json.status === 'success') return { success: true, data: json.data };
+        return { success: false, message: json.message };
+    } catch (error) {
+        return { success: false, message: 'İlerleme güncellenemedi.' };
+    }
+}
+
+/**
+ * İçeriğe başladığını işaretle
+ * @param contentType - 'diet', 'exercise', veya 'blog'
+ * @param contentId - İçeriğin ID'si
+ */
+export async function startProgress(contentType: string, contentId: number | string) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}/start`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+        });
+        
+        const json = await res.json();
+        if (json.status === 'success') return { success: true, data: json.data };
+        return { success: false, message: json.message };
+    } catch (error) {
+        return { success: false, message: 'Başlatma kaydedilemedi.' };
+    }
+}
+
+/**
+ * İçeriği tamamladığını işaretle
+ * @param contentType - 'diet', 'exercise', veya 'blog'
+ * @param contentId - İçeriğin ID'si
+ */
+export async function completeProgress(contentType: string, contentId: number | string) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}/complete`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+        });
+        
+        const json = await res.json();
+        if (json.status === 'success') return { success: true, data: json.data };
+        return { success: false, message: json.message };
+    } catch (error) {
+        return { success: false, message: 'Tamamlama kaydedilemedi.' };
+    }
+}
+
+/**
+ * İçerik için ödül talep et
+ * @param contentType - 'diet', 'exercise', veya 'blog'
+ * @param contentId - İçeriğin ID'si
+ */
+export async function claimReward(contentType: string, contentId: number | string) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}/claim`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+        });
+        
+        const json = await res.json();
+        if (json.status === 'success') return { success: true, data: json.data };
+        return { success: false, message: json.message };
+    } catch (error) {
+        return { success: false, message: 'Ödül talep edilemedi.' };
+    }
+}
+
+/**
  * AUTH OBJESİ (Toplu Kullanım İçin)
  * Diğer sayfalardaki import { auth } from '@/lib/api' kullanımını destekler.
  */

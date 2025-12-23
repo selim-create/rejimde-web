@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { earnPoints, getComments, createComment } from "@/lib/api";
+import { earnPoints, getComments, createComment, getProgress, claimReward } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
 import { getUserProfileUrl } from "@/lib/helpers";
@@ -86,6 +86,22 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
   
   const [canEdit, setCanEdit] = useState(false);
 
+  // Check if user has already claimed reward via API
+  const checkRewardStatus = async () => {
+      try {
+          const progressData = await getProgress('blog', post.id);
+          if (progressData && progressData.reward_claimed) {
+              setHasClaimed(true);
+          }
+      } catch (e) {
+          // Fallback to localStorage
+          const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
+          if (claimedPosts.includes(post.id)) {
+              setHasClaimed(true);
+          }
+      }
+  };
+
   useEffect(() => {
       if (typeof window !== 'undefined') {
           // 1. Mevcut Kullanıcı Bilgisi
@@ -94,12 +110,17 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
           const id = parseInt(localStorage.getItem('user_id') || '0');
           const avatar = localStorage.getItem('user_avatar') || `https://api.dicebear.com/9.x/personas/svg?seed=${name || 'guest'}`;
           
-          if (role) setCurrentUser({ role, name, id, avatar });
-
-          // 2. Ödül Kontrolü
-          const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-          if (claimedPosts.includes(post.id)) {
-              setHasClaimed(true);
+          if (role) {
+              setCurrentUser({ role, name, id, avatar });
+              
+              // 2. Ödül Kontrolü - API'den çek
+              checkRewardStatus();
+          } else {
+              // Guest user - localStorage fallback
+              const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
+              if (claimedPosts.includes(post.id)) {
+                  setHasClaimed(true);
+              }
           }
 
           // 3. Yazar Bilgisini Doğrula (API'den Rol ve Slug Çek)
@@ -138,6 +159,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               verifyAuthor();
           }
       }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post.id, post.author_name]);
 
   // Yorumları Çek
@@ -190,6 +212,32 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       if (hasClaimed) return;
       setClaiming(true);
       
+      // Try new Progress API first
+      if (currentUser) {
+          try {
+              const result = await claimReward('blog', post.id);
+              if (result.success) {
+                  setHasClaimed(true);
+                  // Also update localStorage as fallback
+                  const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
+                  claimedPosts.push(post.id);
+                  localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
+                  
+                  setRewardMessage({
+                      title: "Harikasın! 🎉",
+                      desc: `Bu yazıyı tamamladın ve ${result.data?.earned || 10} Puan kazandın!`,
+                      points: result.data?.earned || 10
+                  });
+                  setShowRewardModal(true);
+                  setClaiming(false);
+                  return;
+              }
+          } catch (e) {
+              console.error('Progress API error, falling back to old method:', e);
+          }
+      }
+      
+      // Fallback to old earnPoints API
       const res = await earnPoints('read_blog', post.id);
       
       if (res.success) {

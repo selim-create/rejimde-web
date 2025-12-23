@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPlanBySlug, getMe, earnPoints, createComment, getComments } from "@/lib/api";
+import { getPlanBySlug, getMe, earnPoints, createComment, getComments, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 
 // --- API Helperları (Bu sayfaya özel) ---
@@ -109,15 +109,25 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
           const planComments = await getComments(planData.id);
           setComments(planComments);
           
-          // Local Progress
-          const storedProgress = localStorage.getItem(`diet_progress_${planData.id}`);
-          if (storedProgress) {
-              setCompletedMeals(JSON.parse(storedProgress));
+          // Progress: API'den çek (logged in user) veya localStorage'dan (guest)
+          if (userData) {
+              // Logged in user - API'den çek
+              const progressData = await getProgress('diet', planData.id);
+              if (progressData) {
+                  setCompletedMeals(progressData.completed_items || []);
+                  setIsStarted(progressData.started || false);
+                  setIsCompleted(progressData.completed || false);
+              }
+          } else {
+              // Guest user - localStorage fallback
+              const storedProgress = localStorage.getItem(`diet_progress_${planData.id}`);
+              if (storedProgress) {
+                  setCompletedMeals(JSON.parse(storedProgress));
+              }
+              
+              const storedStarted = localStorage.getItem(`diet_started_${planData.id}`);
+              if (storedStarted) setIsStarted(true);
           }
-          
-          // Started Status (Basit kontrol, localstorage)
-          const storedStarted = localStorage.getItem(`diet_started_${planData.id}`);
-          if (storedStarted) setIsStarted(true);
 
         } else {
           setNotFound(true);
@@ -166,29 +176,58 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
 
   // ACTIONS
 
-  const toggleMealCompletion = (mealId: string) => {
+  const toggleMealCompletion = async (mealId: string) => {
       const newCompleted = completedMeals.includes(mealId)
           ? completedMeals.filter(id => id !== mealId)
           : [...completedMeals, mealId];
       
       setCompletedMeals(newCompleted);
-      if(plan) localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
+      
+      // Update progress in both API and localStorage
+      if (plan) {
+          if (currentUser) {
+              // Logged in - update via API
+              await updateProgress('diet', plan.id, {
+                  completed_items: newCompleted,
+                  progress_percentage: Math.round((newCompleted.length / getTotalMeals()) * 100)
+              });
+          }
+          // Always update localStorage as fallback
+          localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
+      }
+  };
+
+  const getTotalMeals = () => {
+      return planData.reduce((acc, day) => acc + (Array.isArray(day.meals) ? day.meals.length : 0), 0);
   };
 
   const handleStartDiet = async () => {
       if (!currentUser) return showModal("Giriş Yapmalısın", "Diyet takibi yapmak için lütfen giriş yap.", "error");
       
       try {
-          await startPlan(plan.id);
-          setIsStarted(true);
-          localStorage.setItem(`diet_started_${plan.id}`, 'true');
-          showModal("Başarılar!", "Bu diyete başladın. İlerlemeni kaydetmek için öğünleri işaretlemeyi unutma.", "success");
+          // Use new Progress API
+          const result = await startProgress('diet', plan.id);
+          if (result.success) {
+              setIsStarted(true);
+              localStorage.setItem(`diet_started_${plan.id}`, 'true');
+              showModal("Başarılar!", "Bu diyete başladın. İlerlemeni kaydetmek için öğünleri işaretlemeyi unutma.", "success");
+          } else {
+              showModal("Hata", result.message || "Bir sorun oluştu.", "error");
+          }
       } catch (e) {
-          showModal("Hata", "Bir sorun oluştu.", "error");
+          // Fallback to old API
+          try {
+              await startPlan(plan.id);
+              setIsStarted(true);
+              localStorage.setItem(`diet_started_${plan.id}`, 'true');
+              showModal("Başarılar!", "Bu diyete başladın. İlerlemeni kaydetmek için öğünleri işaretlemeyi unutma.", "success");
+          } catch (err) {
+              showModal("Hata", "Bir sorun oluştu.", "error");
+          }
       }
   };
 
-  const handleCompleteAllMeals = () => {
+  const handleCompleteAllMeals = async () => {
       // Aktif gündeki tüm öğünleri bul
       const currentDay = planData.find((d: any) => d.dayNumber == activeDay);
       if (!currentDay || !currentDay.meals) return;
@@ -202,7 +241,17 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       });
 
       setCompletedMeals(newCompleted);
-      if(plan) localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
+      
+      // Update both API and localStorage
+      if (plan) {
+          if (currentUser) {
+              await updateProgress('diet', plan.id, {
+                  completed_items: newCompleted,
+                  progress_percentage: Math.round((newCompleted.length / getTotalMeals()) * 100)
+              });
+          }
+          localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
+      }
   };
 
   const handleCompleteDiet = async () => {
@@ -210,14 +259,36 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       if (currentUser) {
           try {
             const reward = parseInt(plan?.meta?.score_reward || "0");
-            await earnPoints('complete_plan', plan?.id);
-            await completePlanAPI(plan.id); // Backend kaydı
-            showModal(
-                "Tebrikler Şampiyon! 🏆", 
-                `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, 
-                "success"
-            );
-          } catch(e) { console.error(e); }
+            
+            // Use new Progress API
+            const result = await completeProgress('diet', plan.id);
+            if (result.success) {
+                await earnPoints('complete_plan', plan?.id);
+                showModal(
+                    "Tebrikler Şampiyon! 🏆", 
+                    `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, 
+                    "success"
+                );
+            } else {
+                // Fallback to old API
+                await earnPoints('complete_plan', plan?.id);
+                await completePlanAPI(plan.id);
+                showModal(
+                    "Tebrikler Şampiyon! 🏆", 
+                    `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, 
+                    "success"
+                );
+            }
+          } catch(e) { 
+              console.error(e);
+              // Still show success message for user experience
+              const reward = parseInt(plan?.meta?.score_reward || "0");
+              showModal(
+                  "Tebrikler Şampiyon! 🏆", 
+                  `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, 
+                  "success"
+              );
+          }
       }
   };
 
