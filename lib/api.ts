@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
+const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://aoi.rejimde.com/wp-json';
 
 // --- AVATAR PAKETİ ---
 export const AVATAR_PACK = [
@@ -760,45 +760,34 @@ export async function getUserHistory() {
 }
 
 /**
- * YORUMLARI GETİR (User ID Dahil)
+ * YORUMLARI GETİR
  */
-export async function getComments(postId: number) {
+export async function getComments(postId: number, context: string = 'general') {
   try {
-    const res = await fetch(`${API_URL}/wp/v2/comments?post=${postId}&_embed`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-store'
-    });
-    
-    if (!res.ok) return [];
-    
-    const json = await res.json();
-    
-    return json.map((comment: any) => ({
-        id: comment.id,
-        user: comment.author_name,
-        userId: comment.author, // User ID'yi alıyoruz (Kritik!)
-        text: comment.content.rendered.replace(/<[^>]+>/g, ''), 
-        date: comment.date,
-        // Varsayılan avatarı koyuyoruz, CommentsSection'da gerçek veriyi ID ile çekeceğiz
-        avatar: comment.author_avatar_urls?.['96'] 
-    }));
+    const res = await fetchAPI(`/rejimde/v1/comments?post=${postId}&context=${context}`);
+    // Backend: { comments: [], stats: {} }
+    if (res && res.comments) {
+        return res; 
+    }
+    // Eski yapıya fallback veya boş dönüş
+    if (Array.isArray(res)) return { comments: res, stats: null };
+    return { comments: [], stats: null };
   } catch (error) {
     console.error("Yorumlar çekilemedi", error);
-    return [];
+    return { comments: [], stats: null };
   }
 }
 
 /**
  * YORUM YAP
  */
-export async function createComment(postId: number, content: string) {
+export async function createComment(postId: number, content: string, context: string = 'general', rating: number = 0, parentId: number = 0) {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
     
     if (!token) return { success: false, message: 'Yorum yapmak için giriş yapmalısınız.' };
 
-    const res = await fetch(`${API_URL}/wp/v2/comments`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/comments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -806,7 +795,10 @@ export async function createComment(postId: number, content: string) {
       },
       body: JSON.stringify({
         post: postId,
-        content: content
+        content: content,
+        context: context,
+        rating: rating,
+        parent: parentId
       })
     });
 
@@ -815,14 +807,9 @@ export async function createComment(postId: number, content: string) {
     if (res.ok) {
         return { 
             success: true, 
-            data: {
-                id: json.id,
-                user: json.author_name, 
-                text: content,
-                date: "Şimdi",
-                avatar: json.author_avatar_urls?.['96'] || "https://i.pravatar.cc/150?img=12",
-                isExpert: false
-            } 
+            data: json.data,
+            earned_points: json.earned_points,
+            message: json.message
         };
     } else {
         return { success: false, message: json.message || 'Yorum gönderilemedi.' };
@@ -831,6 +818,7 @@ export async function createComment(postId: number, content: string) {
     return { success: false, message: 'Bağlantı hatası.' };
   }
 }
+
 
 /**
  * DİYET PLANLARINI LİSTELE
@@ -1423,6 +1411,8 @@ export const auth = {
     loginUser,
     loginWithGoogle,
     registerUser,
+    getComments,
+    createComment,
     uploadMedia,          // Medya Yükleme Eklendi
     uploadAvatar,         // Alias
     uploadCertificate,    // Alias

@@ -1,330 +1,287 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
-import { getComments, createComment } from "@/lib/api";
-import { getSafeAvatarUrl, isUserExpert, getUserProfileUrl } from "@/lib/helpers";
+import { useState, useEffect } from 'react';
+import { auth, createComment, getComments } from '@/lib/api';
+import Link from 'next/link';
 
 interface CommentsSectionProps {
   postId: number;
+  context: 'expert' | 'blog' | 'diet' | 'exercise' | 'general';
   title?: string;
+  expertId?: number; // Uzman ID'si (Cevaplarda vurgulamak için)
 }
 
-// Zaman Formatı
-const timeAgo = (dateString: string) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const now = new Date();
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (seconds < 60) return "Şimdi";
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} dk önce`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} saat önce`;
-    const days = Math.floor(hours / 24);
-    return `${days} gün önce`;
-};
-
-// URL Slug Yardımcısı
-const slugify = (text: string) => {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w\-]+/g, '')
-    .replace(/\-\-+/g, '-');
-};
-
-export default function CommentsSection({ postId, title = "Yorumlar" }: CommentsSectionProps) {
-  // State'ler
+export default function CommentsSection({ postId, context, title = "Yorumlar", expertId }: CommentsSectionProps) {
   const [comments, setComments] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [comment, setComment] = useState("");
-  const [posting, setPosting] = useState(false);
-  const [replyTo, setReplyTo] = useState<{id: number, user: string} | null>(null);
-  const [likedComments, setLikedComments] = useState<number[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   
-  const [currentUser, setCurrentUser] = useState<{ role: string, name: string, avatar: string } | null>(null);
-  
-  // Basit Modal State
-  const [modal, setModal] = useState<{show: boolean, title: string, msg: string, type: 'info'|'error'|'success'}>({
-      show: false, title: "", msg: "", type: "info"
-  });
+  // Form State
+  const [newComment, setNewComment] = useState('');
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [replyTo, setReplyTo] = useState<{id: number, name: string} | null>(null);
 
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
+  // Verileri Çek
   useEffect(() => {
-    // 1. Mevcut Kullanıcıyı Al
-    if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('jwt_token');
-        if (token) {
-            const role = localStorage.getItem('user_role') || 'rejimde_user';
-            const name = localStorage.getItem('user_name') || 'Kullanıcı';
-            const storedAvatar = localStorage.getItem('user_avatar');
-            const avatar = storedAvatar && storedAvatar.startsWith('http') ? storedAvatar : `https://api.dicebear.com/9.x/personas/svg?seed=${name}`;
-            
-            setCurrentUser({ role, name, avatar });
-        }
+    async function init() {
+      const user = await auth.me();
+      setCurrentUser(user);
+
+      const res = await getComments(postId, context);
+      if (res) {
+          setComments(res.comments || []);
+          setStats(res.stats || null);
+      }
+      setLoading(false);
     }
+    init();
+  }, [postId, context]);
 
-    // 2. Yorumları Çek ve Zenginleştir
-    const fetchAndEnrichComments = async () => {
-        try {
-            const rawComments = await getComments(postId);
-            
-            // Yorum yapanların ID'lerini topla
-            const userIds = Array.from(new Set(rawComments.map((c: any) => c.userId).filter((id: any) => id)));
-            const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
-            
-            const userDetailsMap: Record<number, any> = {};
-
-            // Kullanıcı detaylarını çek (Rol, Slug, Avatar için)
-            if (userIds.length > 0) {
-                 await Promise.all(userIds.map(async (uid: any) => {
-                    try {
-                        const res = await fetch(`${apiUrl}/wp/v2/users/${uid}`);
-                        if (res.ok) {
-                            const user = await res.json();
-                            const isPro = isUserExpert(user.roles);
-                            // Özel avatar yoksa DiceBear - Helper fonksiyonla
-                            const userAvatar = getSafeAvatarUrl(user.avatar_url, user.slug);
-                            
-                            userDetailsMap[uid] = {
-                                avatar: userAvatar,
-                                isExpert: isPro,
-                                slug: user.slug,
-                                role: isPro ? 'rejimde_pro' : 'rejimde_user'
-                            };
-                        }
-                    } catch (e) {
-                        console.error(`User fetch error for ID ${uid}`, e);
-                    }
-                }));
-            }
-            
-            // Yorumları eşle
-            const formatted = rawComments.map((c: any) => {
-                const details = userDetailsMap[c.userId];
-                
-                // Avatar için helper fonksiyon kullan
-                const avatar = details ? details.avatar : getSafeAvatarUrl(c.avatar, c.user);
-                const isExpert = details ? details.isExpert : false;
-                const slug = details ? details.slug : slugify(c.user);
-
-                return {
-                    ...c,
-                    avatar: avatar,
-                    timeAgo: timeAgo(c.date),
-                    likes: c.likes || Math.floor(Math.random() * 5),
-                    isExpert: isExpert,
-                    slug: slug
-                };
-            });
-
-            setComments(formatted);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
+  // Yorum Gönder
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
     
-    fetchAndEnrichComments();
-  }, [postId]);
-
-  const handleSend = async () => {
-    if (!comment.trim()) return;
-    
-    if (!currentUser) {
-        setModal({ show: true, title: "Giriş Yapmalısın", msg: "Yorum yapmak için giriş yapmalısın.", type: "info" });
+    // Uzman değerlendirmesi için puan zorunlu
+    if (context === 'expert' && rating === 0 && !replyTo) {
+        alert("Lütfen bir puan verin.");
         return;
     }
 
-    setPosting(true);
-    
-    const contentToSend = replyTo ? `<b>@${replyTo.user}</b> ${comment}` : comment;
+    setSubmitting(true);
+    const res = await createComment(postId, newComment, context, rating, replyTo?.id || 0);
 
-    const res = await createComment(postId, contentToSend);
-
-    if (res.success && res.data) {
-        const isPro = currentUser.role === 'rejimde_pro';
+    if (res.success) {
+        // Listeyi güncelle (Basitçe en başa ekleyelim veya reload edelim)
+        // Eğer cevap ise ilgili yorumun altına eklemek gerekir ama şimdilik reload mantığı
+        const updatedRes = await getComments(postId, context);
+        setComments(updatedRes.comments || []);
+        setStats(updatedRes.stats || null);
         
-        // Optimistik UI
-        const newComment = {
-            ...res.data,
-            id: res.data.id || Date.now(),
-            user: currentUser.name,
-            text: contentToSend,
-            date: new Date().toISOString(),
-            timeAgo: "Şimdi",
-            avatar: currentUser.avatar,
-            isExpert: isPro,
-            likes: 0,
-            slug: localStorage.getItem('user_name') || slugify(currentUser.name), // Geçici slug
-            userId: 0
-        };
-        
-        setComments([newComment, ...comments]);
-        setComment("");
+        setNewComment('');
+        setRating(0);
         setReplyTo(null);
-        setModal({ show: true, title: "Başarılı! 🎉", msg: "Yorumun paylaşıldı. +2 Puan kazandın!", type: "success" });
+        if (res.earned_points > 0) alert(`Tebrikler! ${res.earned_points} puan kazandın! 🎉`);
     } else {
-        setModal({ show: true, title: "Hata", msg: res.message || "Yorum gönderilemedi.", type: "error" });
+        alert(res.message);
     }
-    setPosting(false);
+    setSubmitting(false);
   };
 
-  const handleLike = (id: number) => {
-      if (likedComments.includes(id)) return;
-      setComments(comments.map(c => c.id === id ? { ...c, likes: (c.likes || 0) + 1 } : c));
-      setLikedComments([...likedComments, id]);
-  };
-
-  const handleReply = (id: number, user: string) => {
-      setReplyTo({ id, user });
-      if (textAreaRef.current) {
-          textAreaRef.current.focus();
-          textAreaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-  };
+  if (loading) return <div className="text-center py-8"><i className="fa-solid fa-circle-notch fa-spin text-gray-400"></i></div>;
 
   return (
-    <div className="mt-16">
-        <h3 className="text-2xl font-extrabold text-gray-800 mb-6 flex items-center gap-2">
-            {title} <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded-lg text-sm">{comments.length}</span>
-        </h3>
-
-        {/* Input Area */}
-        <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 mb-8 flex gap-4 shadow-sm">
-            <div className="w-12 h-12 bg-gray-100 rounded-2xl shrink-0 overflow-hidden relative border-2 border-gray-100">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                    src={currentUser?.avatar || "https://api.dicebear.com/9.x/personas/svg?seed=Guest"} 
-                    alt="Me" 
-                    className="w-full h-full object-cover"
-                />
-            </div>
-            <div className="flex-1">
-                {replyTo && (
-                    <div className="flex items-center justify-between bg-blue-50 px-3 py-2 rounded-lg mb-2 text-xs font-bold text-rejimde-blue border border-blue-100">
-                        <span><i className="fa-solid fa-reply mr-1"></i> @{replyTo.user} yanıtlanıyor...</span>
-                        <button onClick={() => setReplyTo(null)} className="hover:text-red-500"><i className="fa-solid fa-xmark"></i></button>
-                    </div>
-                )}
-                <textarea 
-                    ref={textAreaRef}
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Düşüncelerini paylaş..." 
-                    className="w-full bg-gray-50 border-2 border-transparent focus:border-rejimde-green rounded-xl p-3 text-sm font-bold resize-none h-24 outline-none transition placeholder-gray-400"
-                ></textarea>
-                <div className="flex justify-between items-center mt-3">
-                    <span className="text-xs font-bold text-gray-400 flex items-center gap-1">
-                        <i className="fa-solid fa-star text-rejimde-yellow"></i> Yorum yaz, +2 puan kazan
+    <div className="space-y-8">
+        
+        {/* 1. REVIEW SUMMARY (Sadece Expert Context İçin) */}
+        {context === 'expert' && stats && (
+            <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-200">
+                <h2 className="text-2xl font-black text-gray-800 mb-6 flex items-center gap-3">
+                    <span className="bg-yellow-100 text-yellow-600 w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-sm border border-yellow-200">
+                        <i className="fa-solid fa-star"></i>
                     </span>
-                    <button 
-                        onClick={handleSend} 
-                        disabled={posting}
-                        className="bg-rejimde-green text-white px-6 py-2.5 rounded-xl font-extrabold text-xs shadow-btn shadow-rejimde-greenDark btn-game uppercase disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {posting && <i className="fa-solid fa-circle-notch animate-spin"></i>}
-                        Gönder
-                    </button>
-                </div>
-            </div>
-        </div>
+                    Danışan Değerlendirmeleri
+                </h2>
 
-        {/* Comments List */}
-        <div className="space-y-6">
-            {loading ? (
-                <div className="flex justify-center p-8"><i className="fa-solid fa-circle-notch animate-spin text-3xl text-gray-300"></i></div>
-            ) : comments.length === 0 ? (
-                <div className="text-center py-8 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                    <i className="fa-regular fa-comments text-4xl text-gray-300 mb-2"></i>
-                    <p className="text-gray-400 font-bold">Henüz yorum yok. İlk yorumu sen yap!</p>
-                </div>
-            ) : (
-                comments.map((c, i) => (
-                    <div key={i} className={`flex gap-4 ${c.isExpert ? 'pl-4 md:pl-12' : ''} animate-fadeIn`}>
-                        <div className="shrink-0">
-                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img 
-                                src={c.avatar} 
-                                className={`w-12 h-12 rounded-2xl border-2 object-cover ${c.isExpert ? 'border-rejimde-blue shadow-sm' : 'border-gray-100'}`} 
-                                alt={c.user} 
-                                onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/9.x/personas/svg?seed=${c.user}` }}
-                            />
+                <div className="flex flex-col md:flex-row gap-10 items-center">
+                    <div className="text-center bg-gray-50 p-6 rounded-[2rem] border border-gray-100 min-w-[180px]">
+                        <div className="text-6xl font-black text-gray-800 leading-none tracking-tighter">{stats.average}</div>
+                        <div className="flex text-yellow-400 text-lg my-2 justify-center gap-1">
+                             {[1,2,3,4,5].map(i => (
+                                 <i key={i} className={`fa-solid fa-star ${i <= Math.round(stats.average) ? '' : 'text-gray-200'}`}></i>
+                             ))}
                         </div>
-                        
-                        <div className="flex-1 min-w-0">
-                            <div className={`${c.isExpert ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-200'} border-2 p-4 rounded-3xl rounded-tl-none relative shadow-sm`}>
-                                <div className="flex justify-between items-center mb-2">
-                                    <div className="flex items-center gap-2">
-                                        {/* Profil Linki: Helper fonksiyonla doğru URL */}
-                                        <Link 
-                                            href={getUserProfileUrl(c.slug, c.isExpert)} 
-                                            className={`font-extrabold text-sm hover:underline ${c.isExpert ? 'text-rejimde-blueDark' : 'text-gray-700'}`}
-                                        >
-                                            {c.user}
-                                        </Link>
-                                        {c.isExpert && (
-                                            <span className="bg-rejimde-blue text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase flex items-center gap-1">
-                                                <i className="fa-solid fa-check"></i> Uzman
-                                            </span>
-                                        )}
-                                    </div>
-                                    <span className={`text-[10px] font-bold ${c.isExpert ? 'text-blue-300' : 'text-gray-400'}`}>
-                                        {c.timeAgo || c.date}
-                                    </span>
-                                </div>
-                                
-                                <div className="text-gray-600 font-bold text-sm break-words leading-relaxed" dangerouslySetInnerHTML={{ __html: c.text }}></div>
-                                
-                                <div className="flex gap-4 mt-3 pt-3 border-t border-gray-100/50">
-                                    <button 
-                                        onClick={() => handleLike(c.id)}
-                                        className={`text-xs font-bold flex items-center gap-1.5 transition ${likedComments.includes(c.id) ? 'text-rejimde-green' : 'text-gray-400 hover:text-rejimde-green'}`}
-                                    >
-                                        <i className={`fa-${likedComments.includes(c.id) ? 'solid' : 'regular'} fa-thumbs-up`}></i> 
-                                        {likedComments.includes(c.id) ? `Faydalı (${(c.likes || 0) + 1})` : 'Faydalı'}
-                                    </button>
-                                    <button 
-                                        onClick={() => handleReply(c.id, c.user)}
-                                        className="text-xs font-bold text-gray-400 hover:text-rejimde-blue flex items-center gap-1.5 transition"
-                                    >
-                                        <i className="fa-solid fa-reply"></i> Yanıtla
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <p className="text-gray-400 font-bold text-xs uppercase tracking-wide bg-white px-3 py-1 rounded-lg border border-gray-100 shadow-sm">{stats.total} Yorum</p>
                     </div>
-                ))
-            )}
-        </div>
 
-        {/* INFO MODAL */}
-        {modal.show && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setModal({...modal, show: false})}>
-                <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl p-6 text-center animate-bounce-slow" onClick={e => e.stopPropagation()}>
-                     <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${modal.type === 'error' ? 'bg-red-100 text-red-500' : (modal.type === 'success' ? 'bg-green-100 text-green-500' : 'bg-blue-100 text-blue-500')}`}>
-                          <i className={`fa-solid ${modal.type === 'error' ? 'fa-triangle-exclamation' : (modal.type === 'success' ? 'fa-check' : 'fa-info')} text-3xl`}></i>
-                     </div>
-                     <h3 className="text-xl font-black text-gray-800 mb-2">{modal.title}</h3>
-                     <p className="text-gray-500 font-bold mb-6 text-sm">{modal.msg}</p>
-                     
-                     {modal.title.includes("Giriş") ? (
-                         <div className="flex gap-3">
-                             <button onClick={() => setModal({...modal, show: false})} className="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold btn-game">İptal</button>
-                             <Link href="/login" className="flex-1 bg-rejimde-blue text-white py-3 rounded-xl font-extrabold shadow-btn btn-game uppercase text-center">Giriş Yap</Link>
-                         </div>
-                     ) : (
-                         <button onClick={() => setModal({...modal, show: false})} className="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-extrabold btn-game uppercase">Tamam</button>
-                     )}
+                    <div className="flex-1 w-full space-y-2">
+                        {[5, 4, 3, 2, 1].map(r => {
+                            const dist = stats.distribution[r] || { count: 0, percent: 0 };
+                            return (
+                                <div key={r} className="flex items-center gap-3 text-xs font-bold text-gray-500">
+                                    <span className="w-4 font-black">{r}</span> <i className="fa-solid fa-star text-yellow-400 text-[10px]"></i>
+                                    <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden border border-gray-100">
+                                        <div className="h-full bg-yellow-400 rounded-full" style={{width: `${dist.percent}%`}}></div>
+                                    </div>
+                                    <span className="w-8 text-right font-black text-gray-700">{dist.percent}%</span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         )}
+
+        {/* 2. COMMENT FORM */}
+        {!currentUser ? (
+             <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-8 text-center">
+                 <p className="text-gray-500 font-bold mb-4">Yorum yapmak ve puan kazanmak için giriş yapmalısın.</p>
+                 <Link href="/login" className="bg-blue-600 text-white px-8 py-3 rounded-xl font-extrabold uppercase shadow-lg hover:bg-blue-700 transition inline-block">Giriş Yap</Link>
+             </div>
+        ) : (
+            <div className={`rounded-[2rem] p-1 shadow-sm relative overflow-hidden transition-all ${context === 'expert' ? 'bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-100' : 'bg-white border-2 border-gray-100'}`}>
+                <div className="bg-white rounded-[1.8rem] p-6">
+                    {/* Header: Reply Info or Gamification Hint */}
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="flex gap-4 items-center">
+                            <img src={currentUser.avatar_url || `https://api.dicebear.com/9.x/personas/svg?seed=${currentUser.name}`} className="w-12 h-12 rounded-xl bg-gray-100 border-2 border-gray-100" alt="Me" />
+                            <div>
+                                <h3 className="font-black text-gray-800 text-lg leading-tight">
+                                    {replyTo ? `Yanıtla: ${replyTo.name}` : (context === 'expert' ? 'Deneyimini Paylaş' : 'Düşüncelerini Paylaş')}
+                                </h3>
+                                {replyTo && <button onClick={() => setReplyTo(null)} className="text-xs text-red-500 font-bold hover:underline">İptal</button>}
+                            </div>
+                        </div>
+                        <div className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-xl text-[10px] font-black uppercase border border-yellow-200 flex items-center gap-1 shadow-sm">
+                            <i className="fa-solid fa-bolt"></i> +{context === 'expert' && !replyTo ? '20' : '5'} Puan
+                        </div>
+                    </div>
+
+                    {/* Star Rating (Only for Expert & No Reply) */}
+                    {context === 'expert' && !replyTo && (
+                        <div className="flex gap-2 mb-4 justify-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <i 
+                                    key={star}
+                                    className={`fa-solid fa-star text-3xl cursor-pointer transition transform hover:scale-110 ${star <= (hoverRating || rating) ? 'text-yellow-400' : 'text-gray-200'}`}
+                                    onClick={() => setRating(star)}
+                                    onMouseEnter={() => setHoverRating(star)}
+                                    onMouseLeave={() => setHoverRating(0)}
+                                ></i>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="relative">
+                        <textarea 
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-4 text-sm font-bold text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-indigo-400 focus:bg-white transition resize-none h-28" 
+                            placeholder={context === 'expert' ? "Tecrübelerini diğer danışanlarla paylaş..." : "Yorumunu buraya yaz..."}
+                        ></textarea>
+                    </div>
+                    
+                    <div className="flex justify-end mt-4">
+                        <button 
+                            onClick={handleSubmit}
+                            disabled={submitting}
+                            className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-extrabold text-sm uppercase shadow-[0_4px_0_rgb(67,56,202)] hover:bg-indigo-500 hover:shadow-[0_2px_0_rgb(67,56,202)] hover:translate-y-[2px] active:translate-y-[4px] active:shadow-none transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {submitting ? 'Gönderiliyor...' : (replyTo ? 'Yanıtla' : (context === 'expert' ? 'Değerlendir' : 'Yorum Yap'))} <i className="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* 3. COMMENT LIST */}
+        <div className="space-y-6">
+            {comments.map((comment) => (
+                <div key={comment.id} className="group">
+                    {/* Main Comment */}
+                    <div className="flex gap-4">
+                        {/* Avatar Column */}
+                        <div className="flex flex-col items-center gap-1 shrink-0">
+                            <div className={`w-14 h-14 rounded-2xl p-0.5 overflow-hidden ring-2 ring-offset-2 transition relative ${comment.author.details.is_expert ? 'bg-blue-50 border-2 border-blue-200 ring-blue-50' : 'bg-white border-2 border-gray-200 ring-transparent'}`}>
+                                <img src={comment.author.details.avatar} className="w-full h-full object-cover rounded-xl" alt="User" />
+                                {comment.author.details.is_expert && (
+                                    <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px] border-2 border-white">
+                                        <i className="fa-solid fa-check"></i>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Score/Rating Badge */}
+                            {comment.author.details.is_expert ? (
+                                <div className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-lg mt-1 border border-blue-700 shadow-sm flex items-center gap-1">
+                                    <i className="fa-solid fa-star text-yellow-300"></i> {comment.author.details.score || '5.0'}
+                                </div>
+                            ) : (
+                                <div className="bg-yellow-100 text-yellow-700 text-[10px] font-black px-2 py-0.5 rounded-lg mt-1 border border-yellow-200 shadow-sm flex items-center gap-1">
+                                    <i className="fa-solid fa-bolt text-yellow-500"></i> {comment.author.details.score}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1">
+                            <div className={`p-5 rounded-[1.5rem] rounded-tl-none border-2 shadow-sm relative transition ${comment.author.details.is_expert ? 'bg-blue-50/50 border-blue-100' : 'bg-white border-gray-100 hover:border-purple-100'}`}>
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`font-extrabold text-sm ${comment.author.details.is_expert ? 'text-blue-900' : 'text-gray-800'}`}>{comment.author.name}</span>
+                                            {comment.author.details.is_expert && (
+                                                <span className="bg-blue-100 text-blue-600 text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider border border-blue-200">UZMAN</span>
+                                            )}
+                                        </div>
+                                        <span className={`text-[10px] font-bold ${comment.author.details.is_expert ? 'text-blue-400' : 'text-gray-400'} mt-0.5 block`}>{comment.date}</span>
+                                    </div>
+                                    {comment.rating > 0 && (
+                                        <div className="flex text-yellow-400 text-xs">
+                                            {[1,2,3,4,5].map(i => <i key={i} className={`fa-solid fa-star ${i <= comment.rating ? '' : 'text-gray-200'}`}></i>)}
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-sm font-bold text-gray-700 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                            </div>
+                            
+                            {/* Actions */}
+                            <div className="flex items-center gap-4 mt-2 ml-4">
+                                <button className="flex items-center gap-1.5 text-gray-400 hover:text-green-500 text-xs font-black uppercase transition hover:bg-green-50 px-3 py-1.5 rounded-xl">
+                                    <i className="fa-regular fa-thumbs-up text-lg"></i> Beğen
+                                </button>
+                                <button 
+                                    onClick={() => setReplyTo({id: comment.id, name: comment.author.name})}
+                                    className="text-gray-400 hover:text-purple-600 text-xs font-black uppercase transition hover:bg-purple-50 px-3 py-1.5 rounded-xl"
+                                >
+                                    Yanıtla
+                                </button>
+                            </div>
+
+                            {/* REPLIES (Nested) */}
+                            {comment.replies && comment.replies.length > 0 && (
+                                <div className="mt-4 space-y-4">
+                                    {comment.replies.map((reply: any) => (
+                                        <div key={reply.id} className="flex gap-4">
+                                            <div className="flex flex-col items-center gap-1 shrink-0">
+                                                <div className={`w-10 h-10 rounded-xl p-0.5 overflow-hidden ${reply.author.details.is_expert ? 'bg-blue-50 border border-blue-200' : 'bg-white border border-gray-100'}`}>
+                                                    <img src={reply.author.details.avatar} className="w-full h-full object-cover rounded-lg" alt="User" />
+                                                </div>
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className={`p-4 rounded-[1.5rem] rounded-tl-none border relative ${reply.author.details.is_expert ? 'bg-blue-50/80 border-blue-200' : 'bg-gray-50 border-gray-100'}`}>
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`font-extrabold text-xs ${reply.author.details.is_expert ? 'text-blue-900' : 'text-gray-700'}`}>{reply.author.name}</span>
+                                                            {reply.author.details.is_expert && <i className="fa-solid fa-certificate text-blue-500 text-[10px]" title="Uzman"></i>}
+                                                        </div>
+                                                        <span className="text-[9px] font-bold text-gray-400">{reply.date}</span>
+                                                    </div>
+                                                    <p className="text-xs font-bold text-gray-600 leading-relaxed">{reply.content}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                        </div>
+                    </div>
+                </div>
+            ))}
+
+            {comments.length === 0 && (
+                <div className="text-center py-10 text-gray-400 font-bold bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
+                    <i className="fa-regular fa-comments text-3xl mb-2 opacity-50"></i>
+                    <p>Henüz yorum yapılmamış. İlk yorumu sen yap!</p>
+                </div>
+            )}
+        </div>
+
     </div>
   );
 }
