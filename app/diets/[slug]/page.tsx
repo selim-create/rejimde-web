@@ -155,7 +155,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   // Progress Hesaplama
   useEffect(() => {
     if (planData.length === 0) return;
-    const totalMeals = planData.reduce((acc, day) => acc + (Array.isArray(day.meals) ? day.meals.length : 0), 0);
+    const totalMeals = getTotalMeals();
     if (totalMeals === 0) return;
 
     const currentProgress = Math.round((completedMeals.length / totalMeals) * 100);

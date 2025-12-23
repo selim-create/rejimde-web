@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { earnPoints, getComments, createComment, getProgress, claimReward } from "@/lib/api";
@@ -87,7 +88,8 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
   const [canEdit, setCanEdit] = useState(false);
 
   // Check if user has already claimed reward via API
-  const checkRewardStatus = async () => {
+  // Using useCallback to memoize the function and avoid re-creating it on every render
+  const checkRewardStatus = React.useCallback(async () => {
       try {
           const progressData = await getProgress('blog', post.id);
           if (progressData && progressData.reward_claimed) {
@@ -100,7 +102,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               setHasClaimed(true);
           }
       }
-  };
+  }, [post.id]);
 
   useEffect(() => {
       if (typeof window !== 'undefined') {
@@ -159,10 +161,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               verifyAuthor();
           }
       }
-  // checkRewardStatus is intentionally not in the dependency array
-  // because it's called conditionally and we don't want to re-run the effect when it changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [post.id, post.author_name]);
+  }, [post.id, post.author_name, checkRewardStatus]);
 
   // Yorumları Çek
   useEffect(() => {

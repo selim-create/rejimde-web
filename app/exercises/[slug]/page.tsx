@@ -277,7 +277,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   
   useEffect(() => {
     if (planData.length === 0) return;
-    const totalExercises = planData.reduce((acc, day) => acc + (Array.isArray(day.exercises) ? day.exercises.length : 0), 0);
+    const totalExercises = getTotalExercises();
     if (totalExercises === 0) return;
 
     const currentProgress = Math.round((completedExercises.length / totalExercises) * 100);

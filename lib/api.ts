@@ -1310,7 +1310,6 @@ export async function getProgress(contentType: string, contentId: number | strin
         
         if (!res.ok) {
             // Progress yoksa null döndür
-            if (res.status === 404) return null;
             return null;
         }
         
@@ -1329,7 +1328,7 @@ export async function getProgress(contentType: string, contentId: number | strin
  * @param contentId - İçeriğin ID'si
  * @param data - Güncellenecek progress verisi (completed_items, progress_percentage, vb.)
  */
-export async function updateProgress(contentType: string, contentId: number | string, data: any) {
+export async function updateProgress(contentType: string, contentId: number | string, data: { completed_items?: string[], progress_percentage?: number, [key: string]: any }) {
     try {
         const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}`, {
             method: 'POST',
