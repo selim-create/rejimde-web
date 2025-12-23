@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, createComment, getComments } from "@/lib/api";
+import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, createComment, getComments, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 
 // --- TİPLER ---
@@ -235,11 +235,23 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           const planComments = await getComments(planData.id);
           setComments(planComments);
 
-          const storedProgress = localStorage.getItem(`exercise_progress_${planData.id}`);
-          if (storedProgress) setCompletedExercises(JSON.parse(storedProgress));
-          
-          const storedStarted = localStorage.getItem(`exercise_started_${planData.id}`);
-          if (storedStarted) setIsStarted(true);
+          // Progress: API'den çek (logged in user) veya localStorage'dan (guest)
+          if (userData) {
+              // Logged in user - API'den çek
+              const progressData = await getProgress('exercise', planData.id);
+              if (progressData) {
+                  setCompletedExercises(progressData.completed_items || []);
+                  setIsStarted(progressData.started || false);
+                  setIsCompleted(progressData.completed || false);
+              }
+          } else {
+              // Guest user - localStorage fallback
+              const storedProgress = localStorage.getItem(`exercise_progress_${planData.id}`);
+              if (storedProgress) setCompletedExercises(JSON.parse(storedProgress));
+              
+              const storedStarted = localStorage.getItem(`exercise_started_${planData.id}`);
+              if (storedStarted) setIsStarted(true);
+          }
 
         } else {
           setNotFound(true);
@@ -265,7 +277,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   
   useEffect(() => {
     if (planData.length === 0) return;
-    const totalExercises = planData.reduce((acc, day) => acc + (Array.isArray(day.exercises) ? day.exercises.length : 0), 0);
+    const totalExercises = getTotalExercises();
     if (totalExercises === 0) return;
 
     const currentProgress = Math.round((completedExercises.length / totalExercises) * 100);
@@ -283,12 +295,28 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
     }
   }, [planData.length, activeDay]);
 
-  const toggleExerciseCompletion = (exerciseId: string) => {
+  const getTotalExercises = () => {
+      return planData.reduce((acc, day) => acc + (Array.isArray(day.exercises) ? day.exercises.length : 0), 0);
+  };
+
+  const toggleExerciseCompletion = async (exerciseId: string) => {
       const newCompleted = completedExercises.includes(exerciseId)
           ? completedExercises.filter(id => id !== exerciseId)
           : [...completedExercises, exerciseId];
       setCompletedExercises(newCompleted);
-      if(plan) localStorage.setItem(`exercise_progress_${plan.id}`, JSON.stringify(newCompleted));
+      
+      // Update progress in both API and localStorage
+      if (plan) {
+          if (currentUser) {
+              // Logged in - update via API
+              await updateProgress('exercise', plan.id, {
+                  completed_items: newCompleted,
+                  progress_percentage: Math.round((newCompleted.length / getTotalExercises()) * 100)
+              });
+          }
+          // Always update localStorage as fallback
+          localStorage.setItem(`exercise_progress_${plan.id}`, JSON.stringify(newCompleted));
+      }
   };
 
   const handleStartPlan = async () => {
@@ -307,11 +335,28 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
       }
   };
 
-  const startPlanLogic = () => {
+  const startPlanLogic = async () => {
       if (!currentUser) return showAlert("Giriş Yapmalısın", "Antrenman takibi yapmak için lütfen giriş yap.", "error");
-      setIsStarted(true);
-      localStorage.setItem(`exercise_started_${plan?.id}`, 'true');
-      showAlert("Başarılar!", "Antrenman programına başladın. Hedefine ulaşman dileğiyle!", "success");
+      
+      try {
+          // Use new Progress API
+          const result = await startProgress('exercise', plan?.id);
+          if (result.success) {
+              setIsStarted(true);
+              localStorage.setItem(`exercise_started_${plan?.id}`, 'true');
+              showAlert("Başarılar!", "Antrenman programına başladın. Hedefine ulaşman dileğiyle!", "success");
+          } else {
+              // Fallback - still mark as started locally
+              setIsStarted(true);
+              localStorage.setItem(`exercise_started_${plan?.id}`, 'true');
+              showAlert("Başarılar!", "Antrenman programına başladın. Hedefine ulaşman dileğiyle!", "success");
+          }
+      } catch (e) {
+          // Fallback - still mark as started locally
+          setIsStarted(true);
+          localStorage.setItem(`exercise_started_${plan?.id}`, 'true');
+          showAlert("Başarılar!", "Antrenman programına başladın. Hedefine ulaşman dileğiyle!", "success");
+      }
   };
 
   const handleCompletePlan = async () => {
@@ -319,13 +364,35 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
       if (currentUser) {
           try {
             const reward = parseInt(plan?.meta?.score_reward || "0");
-            await earnPoints('complete_exercise_plan', plan?.id); 
-            showAlert(
-                "Tebrikler Şampiyon! 🏆", 
-                `Bu antrenman programını başarıyla tamamladın ve ${reward} puan kazandın! Gücüne güç kattın.`, 
-                "success"
-            );
-          } catch(e) { console.error(e); }
+            
+            // Use new Progress API
+            const result = await completeProgress('exercise', plan?.id);
+            if (result.success) {
+                await earnPoints('complete_exercise_plan', plan?.id);
+                showAlert(
+                    "Tebrikler Şampiyon! 🏆", 
+                    `Bu antrenman programını başarıyla tamamladın ve ${reward} puan kazandın! Gücüne güç kattın.`, 
+                    "success"
+                );
+            } else {
+                // Fallback - still award points
+                await earnPoints('complete_exercise_plan', plan?.id);
+                showAlert(
+                    "Tebrikler Şampiyon! 🏆", 
+                    `Bu antrenman programını başarıyla tamamladın ve ${reward} puan kazandın! Gücüne güç kattın.`, 
+                    "success"
+                );
+            }
+          } catch(e) { 
+              console.error(e);
+              // Still show success message for user experience
+              const reward = parseInt(plan?.meta?.score_reward || "0");
+              showAlert(
+                  "Tebrikler Şampiyon! 🏆", 
+                  `Bu antrenman programını başarıyla tamamladın ve ${reward} puan kazandın! Gücüne güç kattın.`, 
+                  "success"
+              );
+          }
       }
   };
 
