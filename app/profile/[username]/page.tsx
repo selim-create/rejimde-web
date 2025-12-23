@@ -320,7 +320,7 @@ export default function PublicProfilePage() {
                             <i className="fa-solid fa-location-dot text-lg text-gray-400"></i>
                             <div className="text-left">
                                 <span className="block text-xs font-black uppercase opacity-70">Konum</span>
-                                <span className="block text-sm font-black leading-none">{profile.location.split(',')[0]}</span>
+                                <span className="block text-sm font-black leading-none">{profile.location?.split(',')[0] || 'Belirtilmemiş'}</span>
                             </div>
                         </div>
                     </div>
