@@ -45,7 +45,7 @@ const mapSafeComment = (c: any): CommentData => {
     // Backend'den gelen veri yapıları: c.author (object), c.author_name (string), c.user (string) 
     let authorName = 'Anonim Kullanıcı';
     let authorSlug = '';
-    let authorRole = 'guest';
+    let authorRole = 'guest';  // Default to 'guest' for unknown/anonymous users
     let isExpertUser = false;
     let authorLevel = 1;
     
@@ -53,31 +53,31 @@ const mapSafeComment = (c: any): CommentData => {
     if (c.author && typeof c.author === 'object') {
         authorName = c.author.name || c.author.username || 'Anonim Kullanıcı';
         authorSlug = c.author.slug || c.author.username || '';
-        authorRole = c.author.role || 'rejimde_user';
+        authorRole = c.author.role || 'rejimde_user';  // Known user, default to rejimde_user
         isExpertUser = c.author.is_expert || c.author.role === 'rejimde_pro' || false;
         authorLevel = c.author.level || 1;
     } 
-    // Eğer author_name string olarak geliyorsa
+    // Eğer author_name string olarak geliyorsa (registered user)
     else if (c.author_name) {
         authorName = c.author_name;
         authorSlug = c.author_slug || '';
-        authorRole = c.author_role || 'rejimde_user';
+        authorRole = c.author_role || 'rejimde_user';  // Has author_name, likely a registered user
         isExpertUser = c.is_expert || c.author_role === 'rejimde_pro' || false;
         authorLevel = c.author_level || 1;
     }
-    // Eğer user string olarak geliyorsa
+    // Eğer user string olarak geliyorsa (registered user)
     else if (c.user) {
         authorName = c.user;
         authorSlug = c.user_slug || '';
-        authorRole = c.user_role || 'rejimde_user';
+        authorRole = c.user_role || 'rejimde_user';  // Has user field, likely a registered user
         isExpertUser = c.is_expert || c.user_role === 'rejimde_pro' || false;
         authorLevel = c.user_level || 1;
     }
-    // WordPress standart comment_author alanı
+    // WordPress standart comment_author alanı (often anonymous/guest comments)
     else if (c.comment_author) {
         authorName = c.comment_author;
         authorSlug = '';
-        authorRole = 'guest';
+        authorRole = 'guest';  // WordPress comments are typically guest users
         isExpertUser = false;
         authorLevel = 1;
     }
@@ -108,6 +108,16 @@ const mapSafeComment = (c: any): CommentData => {
 
     // 4. Beğeni Sayısı Çözümleme
     const likes = typeof c.likes === 'number' ? c.likes : (parseInt(c.likes_count || '0'));
+    
+    // 5. Parent ID validation
+    let parentId = 0;
+    if (c.parent !== undefined && c.parent !== null) {
+        const parsedParent = typeof c.parent === 'number' ? c.parent : parseInt(c.parent);
+        parentId = !isNaN(parsedParent) && parsedParent >= 0 ? parsedParent : 0;
+    } else if (c.comment_parent !== undefined && c.comment_parent !== null) {
+        const parsedParent = typeof c.comment_parent === 'number' ? c.comment_parent : parseInt(c.comment_parent);
+        parentId = !isNaN(parsedParent) && parsedParent >= 0 ? parsedParent : 0;
+    }
 
     return {
         id: c.id || c.comment_ID,
@@ -115,7 +125,7 @@ const mapSafeComment = (c: any): CommentData => {
         date: c.date || c.comment_date,
         timeAgo: c.human_date || c.timeAgo || 'Az önce',
         rating: c.rating,
-        parent: c.parent || c.comment_parent || 0,
+        parent: parentId,
         likes_count: likes, 
         is_liked: !!c.is_liked,
         author: {

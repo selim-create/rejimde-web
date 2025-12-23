@@ -117,7 +117,7 @@ export default function CommentsSection({
     // Ensure author exists with default values
     const author = comment.author || { 
         name: 'Anonim Kullanıcı', 
-        avatar: 'https://api.dicebear.com/9.x/notionists/svg?seed=Anonymous', 
+        avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Anonymous',  // Consistent with comment-service.ts
         slug: '',
         role: 'guest', 
         is_expert: false,
@@ -160,7 +160,7 @@ export default function CommentsSection({
             <Link href={getProfileLink(author)} className={avatarContainerClass}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img 
-                src={author.avatar || `https://api.dicebear.com/9.x/notionists/svg?seed=${author.name}`} 
+                src={author.avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${author.name}`} 
                 alt={author.name} 
                 className="w-full h-full object-cover rounded-lg"
               />
