@@ -37,8 +37,8 @@ export default function ProDashboardLayout({ children }: { children: React.React
           }
           
           // Rol uyumsuzluğu varsa yönlendir
-          const hasAccess = user.roles && Array.isArray(user.roles) && 
-                           user.roles.some((r: string) => allowedRoles.includes(r));
+          const hasAccess = user.roles && Array.isArray(user.roles) &&
+            user.roles.some((r: string) => allowedRoles.includes(r));
           
           if (!hasAccess) {
             console.warn('Pro layout: API rol kontrolü başarısız, dashboard\'a yönlendiriliyor');

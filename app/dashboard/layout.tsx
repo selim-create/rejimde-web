@@ -30,7 +30,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Arka planda API doğrulaması
       try {
         const user = await getMe();
-        if (user && user.roles?.includes('rejimde_pro')) {
+        if (user && user.roles && Array.isArray(user.roles) &&
+          user.roles.some((r: string) => r === 'rejimde_pro')) {
           router.replace('/dashboard/pro');
         }
       } catch (error) {
