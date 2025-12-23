@@ -9,6 +9,8 @@ export default function ProDashboardLayout({ children }: { children: React.React
   const [authState, setAuthState] = useState<'checking' | 'authorized' | 'unauthorized'>('checking');
 
   useEffect(() => {
+    const allowedRoles = ['rejimde_pro', 'administrator', 'editor'];
+    
     async function checkAccess() {
       try {
         // Önce localStorage'dan hızlı kontrol
@@ -21,7 +23,6 @@ export default function ProDashboardLayout({ children }: { children: React.React
         }
 
         // Hızlı rol kontrolü (localStorage'dan)
-        const allowedRoles = ['rejimde_pro', 'administrator', 'editor'];
         if (role && allowedRoles.includes(role)) {
           setAuthState('authorized');
         }
@@ -49,7 +50,6 @@ export default function ProDashboardLayout({ children }: { children: React.React
         console.error('Pro layout auth error:', error);
         // Hata durumunda localStorage'daki role güven
         const role = localStorage.getItem('user_role');
-        const allowedRoles = ['rejimde_pro', 'administrator', 'editor'];
         if (role && allowedRoles.includes(role)) {
           setAuthState('authorized');
         } else {
