@@ -42,29 +42,27 @@ export default function LoginPage() {
   // Veya @react-oauth/google kütüphanesinin 'GoogleLogin' bileşenini kullanırız.
 
   // API Girişi
-  const handleLogin = async () => {
-    setLoading(true);
-    setError("");
+const handleLogin = async () => {
+  setLoading(true);
+  setError("");
+  
+  const result = await loginUser(email, password);
+  
+  if (result.success) {
+    // loginUser zaten localStorage'a role kaydetti
+    // Sadece role'a göre yönlendir
+    const role = localStorage.getItem('user_role');
     
-    // 1. Giriş Yap
-    const result = await loginUser(email, password);
-    
-    if (result.success) {
-      // 2. Rolü Öğrenmek İçin Profil Çek
-      const user = await getMe();
-      
-      if (user && user.roles.includes('rejimde_pro')) {
-          localStorage.setItem('user_role', 'rejimde_pro');
-          router.push("/dashboard/pro"); // Uzman Paneli
-      } else {
-          localStorage.setItem('user_role', 'rejimde_user');
-          router.push("/dashboard"); // Kullanıcı Paneli
-      }
+    if (role === 'rejimde_pro') {
+      router.push("/dashboard/pro");
     } else {
-      setError("Kullanıcı adı veya şifre hatalı!");
-      setLoading(false);
+      router.push("/dashboard");
     }
-  };
+  } else {
+    setError(result. message || "Kullanıcı adı veya şifre hatalı!");
+    setLoading(false);
+  }
+};
   
   // Google Wrapper Fonksiyonu
   const handleGoogleSuccess = async (credentialResponse: any) => {
