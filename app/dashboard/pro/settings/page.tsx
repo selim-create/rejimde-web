@@ -43,6 +43,14 @@ export default function ProSettingsPage() {
 
   useEffect(() => {
     async function loadData() {
+      // Fallback helper to get basic user data from localStorage
+      const getLocalStorageFallback = () => {
+          const name = localStorage.getItem('user_name') || '';
+          const email = localStorage.getItem('user_email') || '';
+          const avatar = localStorage.getItem('user_avatar') || 'https://api.dicebear.com/9.x/personas/svg?seed=pro';
+          return { name, email, avatar_url: avatar };
+      };
+
       try {
         const user = await getMe();
         
@@ -67,27 +75,19 @@ export default function ProSettingsPage() {
           });
         } else {
           // API başarısız - localStorage'dan temel bilgileri al
-          const name = localStorage.getItem('user_name') || '';
-          const email = localStorage.getItem('user_email') || '';
-          const avatar = localStorage.getItem('user_avatar') || 'https://api.dicebear.com/9.x/personas/svg?seed=pro';
+          const fallback = getLocalStorageFallback();
           setFormData(prev => ({
               ...prev,
-              name,
-              email,
-              avatar_url: avatar
+              ...fallback
           }));
         }
       } catch (error) {
         console.error("Settings veri hatası", error);
         // Hata durumunda localStorage'dan bilgi al
-        const name = localStorage.getItem('user_name') || '';
-        const email = localStorage.getItem('user_email') || '';
-        const avatar = localStorage.getItem('user_avatar') || 'https://api.dicebear.com/9.x/personas/svg?seed=pro';
+        const fallback = getLocalStorageFallback();
         setFormData(prev => ({
             ...prev,
-            name,
-            email,
-            avatar_url: avatar
+            ...fallback
         }));
       } finally {
         setLoading(false);

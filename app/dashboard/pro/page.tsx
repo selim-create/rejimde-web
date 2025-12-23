@@ -20,6 +20,13 @@ export default function ProDashboardPage() {
 
   useEffect(() => {
     async function loadData() {
+        // Fallback helper to get user data from localStorage
+        const getLocalStorageFallback = () => {
+            const name = localStorage.getItem('user_name') || 'Uzman';
+            const avatar = localStorage.getItem('user_avatar') || 'https://api.dicebear.com/9.x/personas/svg?seed=pro';
+            return { name, avatar_url: avatar, title: '' };
+        };
+
         try {
             // Layout zaten rol kontrolü yapıyor, burada sadece veriyi çek
             const user = await getMe();
@@ -28,16 +35,12 @@ export default function ProDashboardPage() {
                 setPro(user);
             } else {
                 // API başarısız - localStorage'dan temel bilgileri al
-                const name = localStorage.getItem('user_name') || 'Uzman';
-                const avatar = localStorage.getItem('user_avatar') || 'https://api.dicebear.com/9.x/personas/svg?seed=pro';
-                setPro({ name, avatar_url: avatar, title: '' });
+                setPro(getLocalStorageFallback());
             }
         } catch (error) {
             console.error("Pro veri hatası", error);
             // Hata durumunda da localStorage'dan bilgi al
-            const name = localStorage.getItem('user_name') || 'Uzman';
-            const avatar = localStorage.getItem('user_avatar') || 'https://api.dicebear.com/9.x/personas/svg?seed=pro';
-            setPro({ name, avatar_url: avatar, title: '' });
+            setPro(getLocalStorageFallback());
         } finally {
             setLoading(false);
         }
