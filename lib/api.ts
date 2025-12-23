@@ -92,6 +92,7 @@ export async function getMe() {
       activity_level: json.activity_level || 'sedentary',
       goals: safeParse(json.goals),
       notifications: safeParse(json.notifications),
+      location: json.location || '', // YENİ
       
       // Gaming & Social
       clan: json.clan || null, 
@@ -140,6 +141,7 @@ export async function updateUser(data: any) {
         activity_level: data.activity_level,
         goals: data.goals,
         notifications: data.notifications,
+        location: data.location, // YENİ
         
         // Uzman Alanları
         profession: data.profession,
@@ -264,9 +266,15 @@ export async function loginUser(username: string, password: string) {
         localStorage.setItem('user_name', json.data.user_display_name);
         localStorage.setItem('user_avatar', json.data.avatar_url || 'https://api.dicebear.com/9.x/personas/svg?seed=' + username); 
         
-        if(json.data.roles && Array.isArray(json.data.roles) && json.data.roles.length > 0) {
-            localStorage.setItem('user_role', json.data.roles[0]);
-        }
+        // Rol belirleme
+        const primaryRole = json.data.roles && Array.isArray(json.data.roles) && json.data.roles.length > 0 
+            ? json.data.roles[0] 
+            : 'rejimde_user';
+        localStorage.setItem('user_role', primaryRole);
+        
+        // Cookie'leri ayarla (7 gün)
+        document.cookie = `jwt_token=${json.data.token}; path=/; max-age=604800; SameSite=Lax`;
+        document.cookie = `user_role=${primaryRole}; path=/; max-age=604800; SameSite=Lax`;
         
         // Varsa Rejimde Kullanıcı Verisini de kaydet
         localStorage.setItem('rejimde_user', JSON.stringify({
@@ -315,9 +323,16 @@ export async function loginWithGoogle(credential: string) {
         localStorage.setItem('user_email', json.data.user_email);
         localStorage.setItem('user_name', json.data.user_display_name);
         if(json.data.avatar_url) localStorage.setItem('user_avatar', json.data.avatar_url);
-        if(json.data.roles && json.data.roles.length > 0) {
-            localStorage.setItem('user_role', json.data.roles[0]);
-        }
+        
+        // Rol belirleme
+        const primaryRole = json.data.roles && json.data.roles.length > 0 
+            ? json.data.roles[0] 
+            : 'rejimde_user';
+        localStorage.setItem('user_role', primaryRole);
+        
+        // Cookie'leri ayarla (7 gün)
+        document.cookie = `jwt_token=${json.data.token}; path=/; max-age=604800; SameSite=Lax`;
+        document.cookie = `user_role=${primaryRole}; path=/; max-age=604800; SameSite=Lax`;
         
         // Varsa Rejimde Kullanıcı Verisini de kaydet
         localStorage.setItem('rejimde_user', JSON.stringify({
@@ -400,6 +415,25 @@ export async function registerUser(data: any) {
   } catch (error) {
     console.error("Register Fetch Hatası:", error);
     return { success: false, message: 'Sunucu ile bağlantı kurulamadı.' };
+  }
+}
+
+/**
+ * ÇIKIŞ YAP (Logout)
+ */
+export function logoutUser() {
+  if (typeof window !== 'undefined') {
+    // LocalStorage temizle
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('user_name');
+    localStorage.removeItem('user_avatar');
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('rejimde_user');
+    
+    // Cookie'leri temizle
+    document.cookie = 'jwt_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
   }
 }
 
