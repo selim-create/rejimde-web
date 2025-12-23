@@ -37,6 +37,22 @@ const safeParse = (data: any, fallback: any = {}) => {
 };
 
 /**
+ * Kullanıcı rollerinden birincil rolü belirle
+ * Öncelik sırası: rejimde_pro > administrator > editor > diğerleri
+ */
+const getPrimaryRole = (roles: string[] | undefined): string => {
+    if (!roles || !Array.isArray(roles) || roles.length === 0) {
+        return 'rejimde_user';
+    }
+    
+    if (roles.includes('rejimde_pro')) return 'rejimde_pro';
+    if (roles.includes('administrator')) return 'administrator';
+    if (roles.includes('editor')) return 'editor';
+    
+    return roles[0] || 'rejimde_user';
+};
+
+/**
  * Temel Fetch Fonksiyonu
  */
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
@@ -278,9 +294,7 @@ export async function loginUser(username: string, password: string) {
         localStorage.setItem('user_avatar', json.data.avatar_url || 'https://api.dicebear.com/9.x/personas/svg?seed=' + username); 
         
         // Rol belirleme
-        const primaryRole = json.data.roles && Array.isArray(json.data.roles) && json.data.roles.length > 0 
-            ? json.data.roles[0] 
-            : 'rejimde_user';
+        const primaryRole = getPrimaryRole(json.data.roles);
         localStorage.setItem('user_role', primaryRole);
         
         // Cookie'leri ayarla (7 gün)
@@ -336,9 +350,7 @@ export async function loginWithGoogle(credential: string) {
         if(json.data.avatar_url) localStorage.setItem('user_avatar', json.data.avatar_url);
         
         // Rol belirleme
-        const primaryRole = json.data.roles && json.data.roles.length > 0 
-            ? json.data.roles[0] 
-            : 'rejimde_user';
+        const primaryRole = getPrimaryRole(json.data.roles);
         localStorage.setItem('user_role', primaryRole);
         
         // Cookie'leri ayarla (7 gün)
@@ -414,9 +426,8 @@ export async function registerUser(data: any) {
             localStorage.setItem('jwt_token', json.data.token);
             localStorage.setItem('user_email', json.data.user_email);
             localStorage.setItem('user_name', json.data.user_display_name);
-            if(json.data.roles && json.data.roles.length > 0) {
-                localStorage.setItem('user_role', json.data.roles[0]);
-            }
+            const primaryRole = getPrimaryRole(json.data.roles);
+            localStorage.setItem('user_role', primaryRole);
          }
       }
       return { success: true, data: json.data };
