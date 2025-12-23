@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import * as React from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { earnPoints, getComments, createComment, getProgress, claimReward } from "@/lib/api";
@@ -89,7 +88,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
 
   // Check if user has already claimed reward via API
   // Using useCallback to memoize the function and avoid re-creating it on every render
-  const checkRewardStatus = React.useCallback(async () => {
+  const checkRewardStatus = useCallback(async () => {
       try {
           const progressData = await getProgress('blog', post.id);
           if (progressData && progressData.reward_claimed) {

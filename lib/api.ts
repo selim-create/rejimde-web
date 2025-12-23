@@ -1297,6 +1297,14 @@ export async function sendHighFive(userId: number) {
  */
 
 /**
+ * Type definition for Progress data
+ */
+interface ProgressData {
+    completed_items?: string[];
+    progress_percentage?: number;
+}
+
+/**
  * Kullanıcının belirli bir içerik için ilerlemesini getir
  * @param contentType - 'diet', 'exercise', veya 'blog'
  * @param contentId - İçeriğin ID'si
@@ -1326,9 +1334,9 @@ export async function getProgress(contentType: string, contentId: number | strin
  * Kullanıcının ilerleme durumunu güncelle
  * @param contentType - 'diet', 'exercise', veya 'blog'
  * @param contentId - İçeriğin ID'si
- * @param data - Güncellenecek progress verisi (completed_items, progress_percentage, vb.)
+ * @param data - Güncellenecek progress verisi (completed_items, progress_percentage)
  */
-export async function updateProgress(contentType: string, contentId: number | string, data: { completed_items?: string[], progress_percentage?: number, [key: string]: any }) {
+export async function updateProgress(contentType: string, contentId: number | string, data: ProgressData) {
     try {
         const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}`, {
             method: 'POST',
