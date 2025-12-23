@@ -66,11 +66,6 @@ export async function getMe() {
       headers: getAuthHeaders(),
     });
 
-    if (res.status === 401 || res.status === 403) {
-        // Hata fırlatma, sadece null dön (Misafir kullanıcı)
-        return null;
-    }
-
     if (!res.ok) throw new Error('Kullanıcı bilgisi alınamadı');
 
     const json = await res.json();
@@ -99,8 +94,11 @@ export async function getMe() {
       notifications: safeParse(json.notifications),
       
       // Gaming & Social
-      clan: json.clan || null, // Klan bilgisi (Backend'den geliyor)
+      clan: json.clan || null, 
       league: json.league || null,
+      followers_count: json.followers_count || 0,
+      following_count: json.following_count || 0,
+      high_fives: json.high_fives || 0,
       
       // Uzman Verileri
       profession: json.profession || '',
@@ -1118,6 +1116,95 @@ export async function getLeaderboard(type: 'users' | 'clans' = 'users', limit: n
 
 /**
  * ==========================================
+ * SÖZLÜK (DICTIONARY) API FONKSİYONLARI
+ * ==========================================
+ */
+
+export async function getDictionaryItems(search?: string, category?: string) {
+    try {
+        let endpoint = '/rejimde/v1/dictionary';
+        const params = new URLSearchParams();
+        if (search) params.append('search', search);
+        if (category && category !== 'Tümü') params.append('category', category); 
+        
+        if (params.toString()) endpoint += `?${params.toString()}`;
+        
+        const data = await fetchAPI(endpoint);
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error("Sözlük verisi çekilemedi", error);
+        return [];
+    }
+}
+
+export async function getDictionaryItem(slug: string) {
+    try {
+        const data = await fetchAPI(`/rejimde/v1/dictionary/slug/${slug}`);
+        return data;
+    } catch (error) {
+        console.error("Terim detayı çekilemedi", error);
+        return null;
+    }
+}
+
+// YENİ: Sözlük Terimi Oluştur
+export async function createDictionaryItem(data: any) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/dictionary`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        
+        if (res.ok && json.success) {
+            return { success: true, data: json };
+        }
+        return { success: false, message: json.message || 'Oluşturulamadı' };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Sunucu hatası' };
+    }
+}
+
+// YENİ: Sözlük Terimi Güncelle
+export async function updateDictionaryItem(id: number, data: any) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/dictionary/${id}`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        
+        if (res.ok && json.success) {
+            return { success: true, data: json };
+        }
+        return { success: false, message: json.message || 'Güncellenemedi' };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Sunucu hatası' };
+    }
+}
+
+// YENİ: Sözlük Terimi Sil
+export async function deleteDictionaryItem(id: number) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/dictionary/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        const json = await res.json();
+        
+        if (res.ok && json.success) {
+            return { success: true };
+        }
+        return { success: false, message: json.message || 'Silinemedi' };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Sunucu hatası' };
+    }
+}
+
+/**
+ * ==========================================
  * SOSYAL & TAKİP FONKSİYONLARI
  * ==========================================
  */
@@ -1158,6 +1245,9 @@ export const auth = {
     loginUser,
     loginWithGoogle,
     registerUser,
+    uploadMedia,          // Medya Yükleme Eklendi
+    uploadAvatar,         // Alias
+    uploadCertificate,    // Alias
     getGamificationStats, // Gamification
     getAllBadges,         // Badges
     getClans,             // Clans
@@ -1168,5 +1258,16 @@ export const auth = {
     leaveClan,
     getLeaderboard,       // Leagues
     toggleFollow,         // Social
-    sendHighFive          // Social
+    sendHighFive,         // Social
+    getDictionaryItems,   // Dictionary
+    getDictionaryItem,
+    createDictionaryItem,
+    updateDictionaryItem,
+    deleteDictionaryItem,
+    getPostById,
+    getPostBySlug,
+    getBlogPosts,
+    createPost,
+    updatePost,
+    deletePost
 };
