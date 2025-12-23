@@ -73,13 +73,17 @@ const mapSafeComment = (c: any): CommentData => {
         isExpertUser = c.is_expert || c.user_role === 'rejimde_pro' || false;
         authorLevel = c.user_level || 1;
     }
-    // WordPress standart comment_author alanı (often anonymous/guest comments)
+    // WordPress standart comment_author alanı
+    // Note: WordPress comments can be from both guest and registered users
+    // If we have additional user metadata, it's likely a registered user
     else if (c.comment_author) {
         authorName = c.comment_author;
-        authorSlug = '';
-        authorRole = 'guest';  // WordPress comments are typically guest users
+        authorSlug = c.author_slug || c.user_slug || '';  // Check for slug even in WP comments
+        // If we have user_id or author_slug, it's a registered user
+        const hasUserData = c.user_id || c.author_slug || c.user_slug;
+        authorRole = hasUserData ? 'rejimde_user' : 'guest';
         isExpertUser = false;
-        authorLevel = 1;
+        authorLevel = c.author_level || c.user_level || 1;
     }
     
     // 2. Avatar Çözümleme
@@ -97,8 +101,9 @@ const mapSafeComment = (c: any): CommentData => {
         avatarUrl = c.avatar_url;
     }
     
-    // Gravatar veya bozuk URL düzeltmesi
-    if (avatarUrl.includes('gravatar') && !avatarUrl.includes('d=')) {
+    // Replace all Gravatar URLs with dicebear fallback for consistency
+    // Gravatar URLs often fail or look inconsistent, so we use dicebear instead
+    if (avatarUrl.includes('gravatar.com') || avatarUrl.includes('0.gravatar.com') || avatarUrl.includes('1.gravatar.com') || avatarUrl.includes('2.gravatar.com')) {
        avatarUrl = `https://api.dicebear.com/9.x/personas/svg?seed=${authorName}`;
     }
 
