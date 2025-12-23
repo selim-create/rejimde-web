@@ -295,6 +295,10 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
     }
   }, [planData.length, activeDay]);
 
+  const getTotalExercises = () => {
+      return planData.reduce((acc, day) => acc + (Array.isArray(day.exercises) ? day.exercises.length : 0), 0);
+  };
+
   const toggleExerciseCompletion = async (exerciseId: string) => {
       const newCompleted = completedExercises.includes(exerciseId)
           ? completedExercises.filter(id => id !== exerciseId)
@@ -313,10 +317,6 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           // Always update localStorage as fallback
           localStorage.setItem(`exercise_progress_${plan.id}`, JSON.stringify(newCompleted));
       }
-  };
-
-  const getTotalExercises = () => {
-      return planData.reduce((acc, day) => acc + (Array.isArray(day.exercises) ? day.exercises.length : 0), 0);
   };
 
   const handleStartPlan = async () => {

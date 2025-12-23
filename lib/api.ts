@@ -1309,7 +1309,7 @@ export async function getProgress(contentType: string, contentId: number | strin
         });
         
         if (!res.ok) {
-            // Progress yoksa boş obje dön
+            // Progress yoksa null döndür
             if (res.status === 404) return null;
             return null;
         }

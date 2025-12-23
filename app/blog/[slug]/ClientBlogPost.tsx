@@ -159,6 +159,8 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               verifyAuthor();
           }
       }
+  // checkRewardStatus is intentionally not in the dependency array
+  // because it's called conditionally and we don't want to re-run the effect when it changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post.id, post.author_name]);
 

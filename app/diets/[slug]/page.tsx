@@ -176,6 +176,10 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
 
   // ACTIONS
 
+  const getTotalMeals = () => {
+      return planData.reduce((acc, day) => acc + (Array.isArray(day.meals) ? day.meals.length : 0), 0);
+  };
+
   const toggleMealCompletion = async (mealId: string) => {
       const newCompleted = completedMeals.includes(mealId)
           ? completedMeals.filter(id => id !== mealId)
@@ -195,10 +199,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
           // Always update localStorage as fallback
           localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
       }
-  };
-
-  const getTotalMeals = () => {
-      return planData.reduce((acc, day) => acc + (Array.isArray(day.meals) ? day.meals.length : 0), 0);
   };
 
   const handleStartDiet = async () => {
