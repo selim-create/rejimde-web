@@ -22,13 +22,19 @@ export default function Home() {
   useEffect(() => {
     async function initData() {
       try {
-        // 1. Kullanıcı Kontrolü
-        const user = await getMe();
-        if (user) {
+        // 1. Kullanıcı Kontrolü - Önce token var mı bak
+        const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+        
+        if (token) {
+          const user = await getMe();
+          if (user) {
             setIsLoggedIn(true);
             setCurrentUser(user);
-        } else {
+          } else {
             setIsLoggedIn(false);
+          }
+        } else {
+          setIsLoggedIn(false);
         }
 
         // 2. İçerikleri Çek (Paralel)
