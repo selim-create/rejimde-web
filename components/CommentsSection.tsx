@@ -96,11 +96,18 @@ export default function CommentsSection({
   };
 
   const getProfileLink = (author: CommentData['author']) => {
-    if (!author) return '#';
-    const slug = author.slug || author.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    // Return null if no author or no slug - component will handle this appropriately
+    if (!author || !author.slug) return null;
+    
+    // If the author has a slug, use it
+    const slug = author.slug;
+    
+    // Determine if this is an expert based on role
     if (author.role === 'rejimde_pro' || author.is_expert) {
         return `/experts/${slug}`;
     }
+    
+    // For regular users
     return `/profile/${slug}`;
   };
 
@@ -108,7 +115,15 @@ export default function CommentsSection({
   // COMMENT ITEM COMPONENT (Mockup Uyumlu)
   // ---------------------------------------------
   const CommentItem = ({ comment, isReply = false }: { comment: CommentData, isReply?: boolean }) => {
-    const author = comment.author || { name: 'Anonim', avatar: '', role: 'guest', is_expert: false };
+    // Ensure author exists with default values
+    const author = comment.author || { 
+        name: 'Anonim Kullanıcı', 
+        avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Anonymous',  // Consistent with comment-service.ts
+        slug: '',
+        role: 'guest', 
+        is_expert: false,
+        level: 1
+    };
     const isExpert = author.role === 'rejimde_pro' || author.is_expert;
     
     // --- STİL SINIFLARI (HTML MOCKUP'TAN ALINDI) ---
@@ -138,27 +153,57 @@ export default function CommentsSection({
 
     // Girinti
     const containerClass = isReply ? "flex gap-4 ml-16 group mt-4" : "flex gap-4 group mb-6";
+    
+    // Get profile link - may be null for guest users
+    const profileLink = getProfileLink(author);
+    
+    // Wrapper component for author name - renders as link if profileLink exists, otherwise plain text
+    const AuthorNameLink = ({ children, className }: { children: React.ReactNode, className: string }) => {
+        if (profileLink) {
+            return <Link href={profileLink} className={className}>{children}</Link>;
+        }
+        return <span className={className}>{children}</span>;
+    };
 
     return (
       <div className={containerClass}>
           {/* Avatar Kolonu */}
           <div className="flex flex-col items-center gap-1 shrink-0">
-            <Link href={getProfileLink(author)} className={avatarContainerClass}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src={author.avatar || `https://api.dicebear.com/9.x/notionists/svg?seed=${author.name}`} 
-                alt={author.name} 
-                className="w-full h-full object-cover rounded-lg"
-              />
-              {/* Online / Expert Badge in Avatar */}
-              {isExpert ? (
-                  <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px] border-2 border-white">
-                      <i className="fa-solid fa-check"></i>
-                  </div>
-              ) : (
-                  !isReply && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
-              )}
-            </Link>
+            {profileLink ? (
+                <Link href={profileLink} className={avatarContainerClass}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={author.avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${author.name}`} 
+                    alt={author.name} 
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                  {/* Online / Expert Badge in Avatar */}
+                  {isExpert ? (
+                      <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px] border-2 border-white">
+                          <i className="fa-solid fa-check"></i>
+                      </div>
+                  ) : (
+                      !isReply && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
+                  )}
+                </Link>
+            ) : (
+                <div className={avatarContainerClass}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={author.avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${author.name}`} 
+                    alt={author.name} 
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                  {/* Online / Expert Badge in Avatar */}
+                  {isExpert ? (
+                      <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px] border-2 border-white">
+                          <i className="fa-solid fa-check"></i>
+                      </div>
+                  ) : (
+                      !isReply && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
+                  )}
+                </div>
+            )}
             
             {/* Kullanıcı Skoru / Uzman Puanı */}
             {!isReply && (
@@ -181,17 +226,17 @@ export default function CommentsSection({
                 <div>
                     {isExpert ? (
                         <div className="flex items-center gap-2">
-                            <Link href={getProfileLink(author)} className="font-extrabold text-blue-900 text-sm hover:underline">
+                            <AuthorNameLink className="font-extrabold text-blue-900 text-sm hover:underline">
                                 {author.name}
-                            </Link>
+                            </AuthorNameLink>
                             <span className="bg-blue-100 text-blue-600 text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider border border-blue-200">
                                 UZMAN
                             </span>
                         </div>
                     ) : (
-                        <Link href={getProfileLink(author)} className="font-extrabold text-gray-800 text-sm hover:text-purple-600 transition">
+                        <AuthorNameLink className="font-extrabold text-gray-800 text-sm hover:text-purple-600 transition">
                             {author.name}
-                        </Link>
+                        </AuthorNameLink>
                     )}
                     <span className="text-[10px] font-bold text-gray-400 ml-2 md:ml-0 block md:inline md:ml-2 mt-0.5 md:mt-0">{comment.timeAgo}</span>
                 </div>
