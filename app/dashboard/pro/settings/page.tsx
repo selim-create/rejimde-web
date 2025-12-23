@@ -43,28 +43,55 @@ export default function ProSettingsPage() {
 
   useEffect(() => {
     async function loadData() {
-      const user = await getMe();
-      if (user) {
-        setFormData({
-            name: user.name || "",
-            email: user.email || "",
-            title: (user as any).title || "",
-            brand_name: (user as any).brand_name || "",
-            bio: (user as any).bio || "", 
-            branches: (user as any).branches || "",
-            services: (user as any).services || "",
-            client_types: (user as any).client_types || "",
-            consultation_types: (user as any).consultation_types || "online",
-            city: (user as any).city || "",
-            district: (user as any).district || "",
-            address: (user as any).address || "",
-            phone: (user as any).phone || "",
-            avatar_url: user.avatar_url || user.avatar_urls?.['96'] || "https://i.pravatar.cc/150?img=44",
-            certificate_url: (user as any).certificate_url || "",
-            certificate_status: (user as any).certificate_status || "none"
-        });
+      try {
+        const user = await getMe();
+        
+        if (user) {
+          setFormData({
+              name: user.name || "",
+              email: user.email || "",
+              title: (user as any).title || "",
+              brand_name: (user as any).brand_name || "",
+              bio: (user as any).bio || "", 
+              branches: (user as any).branches || "",
+              services: (user as any).services || "",
+              client_types: (user as any).client_types || "",
+              consultation_types: (user as any).consultation_types || "online",
+              city: (user as any).city || "",
+              district: (user as any).district || "",
+              address: (user as any).address || "",
+              phone: (user as any).phone || "",
+              avatar_url: user.avatar_url || user.avatar_urls?.['96'] || "https://api.dicebear.com/9.x/personas/svg?seed=pro",
+              certificate_url: (user as any).certificate_url || "",
+              certificate_status: (user as any).certificate_status || "none"
+          });
+        } else {
+          // API başarısız - localStorage'dan temel bilgileri al
+          const name = localStorage.getItem('user_name') || '';
+          const email = localStorage.getItem('user_email') || '';
+          const avatar = localStorage.getItem('user_avatar') || 'https://api.dicebear.com/9.x/personas/svg?seed=pro';
+          setFormData(prev => ({
+              ...prev,
+              name,
+              email,
+              avatar_url: avatar
+          }));
+        }
+      } catch (error) {
+        console.error("Settings veri hatası", error);
+        // Hata durumunda localStorage'dan bilgi al
+        const name = localStorage.getItem('user_name') || '';
+        const email = localStorage.getItem('user_email') || '';
+        const avatar = localStorage.getItem('user_avatar') || 'https://api.dicebear.com/9.x/personas/svg?seed=pro';
+        setFormData(prev => ({
+            ...prev,
+            name,
+            email,
+            avatar_url: avatar
+        }));
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     loadData();
   }, []);

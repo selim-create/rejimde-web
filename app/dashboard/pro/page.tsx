@@ -21,15 +21,23 @@ export default function ProDashboardPage() {
   useEffect(() => {
     async function loadData() {
         try {
+            // Layout zaten rol kontrolü yapıyor, burada sadece veriyi çek
             const user = await getMe();
-            if (user && user.roles.includes('rejimde_pro')) {
+            
+            if (user) {
                 setPro(user);
             } else {
-                // Uzman değilse normal panele at (Middleware de yapabilir ama client side koruma)
-                window.location.href = '/dashboard';
+                // API başarısız - localStorage'dan temel bilgileri al
+                const name = localStorage.getItem('user_name') || 'Uzman';
+                const avatar = localStorage.getItem('user_avatar') || 'https://api.dicebear.com/9.x/personas/svg?seed=pro';
+                setPro({ name, avatar_url: avatar, title: '' });
             }
         } catch (error) {
             console.error("Pro veri hatası", error);
+            // Hata durumunda da localStorage'dan bilgi al
+            const name = localStorage.getItem('user_name') || 'Uzman';
+            const avatar = localStorage.getItem('user_avatar') || 'https://api.dicebear.com/9.x/personas/svg?seed=pro';
+            setPro({ name, avatar_url: avatar, title: '' });
         } finally {
             setLoading(false);
         }
@@ -45,7 +53,22 @@ export default function ProDashboardPage() {
       );
   }
 
-  if (!pro) return null;
+  // pro null olsa bile sayfayı göster (layout zaten koruma sağlıyor)
+  if (!pro) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-slate-400 font-bold">Profil yüklenemedi.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold"
+          >
+            Tekrar Dene
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 pb-20 font-sans text-slate-200">
