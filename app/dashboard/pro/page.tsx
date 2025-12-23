@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import LayoutWrapper from '@/components/LayoutWrapper';
 import { getMe } from "@/lib/api";
+// ExpertReviews importu kaldırıldı çünkü burada sadece yönlendirme yapacağız.
 
 export default function ProDashboardPage() {
   const [pro, setPro] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Mock İstatistikler (Backend'de endpoint eklendiğinde oradan çekilecek)
+  // Mock İstatistikler
   const stats = {
       activeClients: 42,
       pendingAppointments: 8,
@@ -20,26 +20,24 @@ export default function ProDashboardPage() {
 
   useEffect(() => {
     async function loadData() {
-        // Fallback helper to get user data from localStorage
         const getLocalStorageFallback = () => {
             const name = localStorage.getItem('user_name') || 'Uzman';
             const avatar = localStorage.getItem('user_avatar') || 'https://api.dicebear.com/9.x/personas/svg?seed=pro';
-            return { name, avatar_url: avatar, title: '' };
+            const id = localStorage.getItem('user_id') ? parseInt(localStorage.getItem('user_id')!) : 0;
+            const slug = localStorage.getItem('user_slug') || '';
+            return { name, avatar_url: avatar, title: '', id, slug };
         };
 
         try {
-            // Layout zaten rol kontrolü yapıyor, burada sadece veriyi çek
             const user = await getMe();
             
             if (user) {
                 setPro(user);
             } else {
-                // API başarısız - localStorage'dan temel bilgileri al
                 setPro(getLocalStorageFallback());
             }
         } catch (error) {
             console.error("Pro veri hatası", error);
-            // Hata durumunda da localStorage'dan bilgi al
             setPro(getLocalStorageFallback());
         } finally {
             setLoading(false);
@@ -56,7 +54,6 @@ export default function ProDashboardPage() {
       );
   }
 
-  // pro null olsa bile sayfayı göster (layout zaten koruma sağlıyor)
   if (!pro) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -130,6 +127,10 @@ export default function ProDashboardPage() {
             <Link href="/dashboard/pro/blog/create" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-pen-nib w-6 text-center group-hover:text-pink-400"></i> Blog Yazısı
             </Link>
+            {/* SÖZLÜK OLUŞTURMA LİNKİ EKLENDİ */}
+            <Link href="/dashboard/pro/dictionary/create" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+                <i className="fa-solid fa-book-open w-6 text-center group-hover:text-teal-400"></i> Sözlük Ekle
+            </Link>
             
             <div className="h-px bg-slate-800 my-2"></div>
             
@@ -177,7 +178,7 @@ export default function ProDashboardPage() {
                 </div>
             </div>
 
-            {/* Quick Actions (Mobile Only - or prominent desktop) */}
+            {/* Quick Actions (Mobile Only) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:hidden">
                 <Link href="/dashboard/pro/diets/create" className="bg-slate-800 p-4 rounded-2xl text-center border border-slate-700 active:bg-slate-700">
                     <i className="fa-solid fa-utensils text-2xl text-orange-400 mb-2"></i>
@@ -209,7 +210,7 @@ export default function ProDashboardPage() {
                     </div>
 
                     <div className="space-y-3">
-                        {/* Client Row (Risk) */}
+                        {/* Mock Client Rows */}
                         <div className="flex items-center gap-4 p-3 rounded-2xl bg-red-500/5 border border-red-500/20 group cursor-pointer hover:bg-red-500/10 transition">
                             <img src="https://api.dicebear.com/9.x/personas/svg?seed=Burak" className="w-10 h-10 rounded-xl bg-slate-700" alt="Client" />
                             <div className="flex-1">
@@ -226,8 +227,6 @@ export default function ProDashboardPage() {
                                 <i className="fa-brands fa-whatsapp"></i>
                             </button>
                         </div>
-
-                        {/* Client Row (Need Action) */}
                         <div className="flex items-center gap-4 p-3 rounded-2xl bg-yellow-500/5 border border-yellow-500/20 group cursor-pointer hover:bg-yellow-500/10 transition">
                             <img src="https://api.dicebear.com/9.x/personas/svg?seed=Ayse" className="w-10 h-10 rounded-xl bg-slate-700" alt="Client" />
                             <div className="flex-1">
@@ -242,24 +241,6 @@ export default function ProDashboardPage() {
                             </div>
                             <button className="px-4 py-2 bg-yellow-500 text-slate-900 text-xs font-black rounded-lg shadow-sm btn-game hover:bg-yellow-400 transition">
                                 Planla
-                            </button>
-                        </div>
-
-                        {/* Client Row (Good) */}
-                        <div className="flex items-center gap-4 p-3 rounded-2xl border border-slate-700 group cursor-pointer hover:border-green-500/50 transition bg-slate-800/50">
-                            <img src="https://api.dicebear.com/9.x/personas/svg?seed=Mehmet" className="w-10 h-10 rounded-xl bg-slate-700" alt="Client" />
-                            <div className="flex-1">
-                                <h4 className="font-extrabold text-white text-sm">Mehmet T.</h4>
-                                <p className="text-xs font-bold text-green-400 flex items-center gap-1">
-                                    <i className="fa-solid fa-check-circle"></i> Hedefe ulaştı
-                                </p>
-                            </div>
-                            <div className="text-right hidden sm:block">
-                                <span className="text-[10px] font-black text-slate-500 block uppercase">Skor</span>
-                                <span className="text-lg font-black text-green-400">910</span>
-                            </div>
-                            <button className="w-9 h-9 bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 hover:text-white transition group-hover:bg-slate-600">
-                                <i className="fa-solid fa-chevron-right"></i>
                             </button>
                         </div>
                     </div>
@@ -304,21 +285,31 @@ export default function ProDashboardPage() {
                                     </a>
                                 </div>
                             </div>
-                            <div className="flex gap-4 items-start relative pl-4 border-l-2 border-green-500/30">
-                                <div className="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-green-500"></div>
-                                <div className="text-xs font-black text-green-400 pt-0.5">16:30</div>
-                                <div>
-                                    <p className="text-sm font-bold text-white leading-tight">Zeynep K.</p>
-                                    <p className="text-[10px] text-slate-500 font-bold mb-1">Haftalık Kontrol</p>
-                                    <a href="#" className="inline-flex items-center gap-1 text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded hover:bg-green-500/20 transition">
-                                        <i className="fa-solid fa-video"></i> Meet Linki
-                                    </a>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
-
+            </div>
+            
+            {/* REVIEWS MANAGEMENT SECTION (Sadece Yönlendirme) */}
+            <div className="mt-8 bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card">
+                 <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+                        <i className="fa-solid fa-star text-yellow-400"></i> Değerlendirmeler
+                    </h2>
+                </div>
+                
+                <div className="bg-slate-900 rounded-2xl p-8 border border-slate-700 text-center">
+                    <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-700">
+                        <i className="fa-solid fa-comments text-3xl text-blue-400"></i>
+                    </div>
+                    <h3 className="text-white font-bold text-lg mb-2">Danışan Yorumlarını Yönet</h3>
+                    <p className="text-slate-400 text-sm mb-6 max-w-md mx-auto">
+                        Profilinize gelen yorumları görüntüleyin, yanıtlayın ve onay bekleyen değerlendirmeleri yönetin.
+                    </p>
+                    <Link href="/dashboard/pro/reviews" className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-blue-500 transition shadow-lg shadow-blue-900/20">
+                        Değerlendirmelere Git <i className="fa-solid fa-arrow-right"></i>
+                    </Link>
+                </div>
             </div>
 
         </div>

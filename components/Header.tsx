@@ -7,7 +7,7 @@ import { getMe, getGamificationStats, logoutUser } from "@/lib/api";
 import { getSafeAvatarUrl } from "@/lib/helpers"; 
 
 export default function Header() {
-  const [userRole, setUserRole] = useState('rejimde_user'); // Varsayılan user
+  const [userRole, setUserRole] = useState('rejimde_user'); 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Auth State
@@ -15,13 +15,14 @@ export default function Header() {
   const [user, setUser] = useState<{name: string, avatar: string, username: string} | null>(null);
   const [score, setScore] = useState(0);
   
+  // YENİ: Auth Kontrol State'i (Flickering Çözümü)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  
   const pathname = usePathname(); 
   const router = useRouter();
 
-  // Aktif link kontrolü
   const isActive = (path: string) => pathname.startsWith(path);
 
-  // Kullanıcı verisini LocalStorage'dan yükle
   const loadUserFromStorage = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
     
@@ -29,10 +30,8 @@ export default function Header() {
       setIsLoggedIn(true);
       const name = localStorage.getItem('user_name') || 'Kullanıcı';
       const storedAvatar = localStorage.getItem('user_avatar') || '';
-      // Username genellikle email veya nicename olabilir, yoksa name kullanılır
       const username = localStorage.getItem('user_email')?.split('@')[0] || 'user'; 
       
-      // Helper fonksiyon kullanarak güvenli avatar al
       const avatar = getSafeAvatarUrl(storedAvatar, username);
       const role = localStorage.getItem('user_role') || 'rejimde_user';
       
@@ -42,58 +41,49 @@ export default function Header() {
       setIsLoggedIn(false);
       setUser(null);
     }
+    // Kontrol tamamlandı
+    setIsCheckingAuth(false);
   };
 
-  // Sayfa yüklendiğinde ve storage değiştiğinde çalışır
   useEffect(() => {
     // 1. İlk yükleme (Cache'den)
     loadUserFromStorage();
 
-    // 2. Taze veriyi API'den çek (Arka planda güncelle)
+    // 2. Taze veriyi API'den çek
     const syncWithServer = async () => {
       const token = localStorage.getItem('jwt_token');
       if (token) {
         try {
           const userData = await getMe();
           if (userData) {
-            // LocalStorage'ı güncelle
             localStorage.setItem('user_name', userData.name);
-            // Avatar mantığı: Helper fonksiyonla güvenli avatar al
             const remoteAvatar = getSafeAvatarUrl(userData.avatar_url, userData.username || userData.name);
             localStorage.setItem('user_avatar', remoteAvatar);
             
-            // Rol güncelleme
             if (userData.roles && userData.roles.length > 0) {
-                 // Öncelik rejimde_pro varsa onu al, yoksa ilk rolü al
                  const primaryRole = userData.roles.includes('rejimde_pro') ? 'rejimde_pro' : userData.roles[0];
                  localStorage.setItem('user_role', primaryRole);
             }
             
-            // Puanı çek (Sadece standart kullanıcılar için)
             if (!userData.roles.includes('rejimde_pro')) {
                 const stats = await getGamificationStats();
                 if (stats) {
                     setScore(stats.total_score || 0);
                 }
             }
-
-            // State'i güncelle
             loadUserFromStorage();
-          } else {
-            // Token geçersizse (userData null döndü)
-            // console.warn("Oturum süresi dolmuş olabilir.");
-            // Otomatik logout yapmıyoruz, belki geçici bir hatadır.
           }
         } catch (error) {
           console.error("Header sync error:", error);
         }
+      } else {
+          // Token yoksa da kontrol bitti demektir
+          setIsCheckingAuth(false);
       }
     };
     
-    // Sadece client tarafında çalıştır
     if (typeof window !== 'undefined') {
         syncWithServer();
-        // 3. Storage olayını dinle (Ayarlar sayfasından gelen güncellemeler için)
         window.addEventListener('storage', loadUserFromStorage);
     }
     
@@ -109,15 +99,15 @@ export default function Header() {
     setIsLoggedIn(false);
     setUser(null);
     router.push('/login');
-    router.refresh(); // Sayfayı yenile ki state temizlensin
+    router.refresh(); 
   };
 
   const isPro = userRole === 'rejimde_pro';
-  const dashboardLink = isPro ? '/dashboard/pro' : '/dashboard';
+  // İçerik oluşturma yetkisi (Pro, Admin veya Editör)
+  const canCreateContent = ['rejimde_pro', 'administrator', 'editor'].includes(userRole);
+
+  const dashboardLink = (isPro || canCreateContent) ? '/dashboard/pro' : '/dashboard';
   const settingsLink = isPro ? '/dashboard/pro/settings' : '/settings';
-  // Profil linki: Uzmanlar için kendi public sayfalarına, kullanıcılar için /profile/[username]
-  // Şimdilik username'i localStorage'dan veya state'den alıyoruz. 
-  // username yoksa 'me' kullanabiliriz (Profile page bunu handle ediyor)
   const profileLink = isPro 
       ? `/experts/${user?.username || 'me'}` 
       : `/profile/${user?.username || 'me'}`;
@@ -141,7 +131,7 @@ export default function Header() {
             {/* YAŞAM (DROPDOWN MENU) */}
             <div className="relative group h-full flex items-center">
                 <button className={`flex items-center gap-2 px-4 py-2 rounded-xl font-extrabold text-sm uppercase tracking-wide transition-all duration-200 
-                    ${isActive('/calculators') || isActive('/diets') || isActive('/exercises') ? 'bg-blue-50 text-rejimde-blue' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}>
+                    ${isActive('/calculators') || isActive('/diets') || isActive('/exercises') || isActive('/sozluk') ? 'bg-blue-50 text-rejimde-blue' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}>
                     <i className="fa-solid fa-layer-group text-lg"></i>
                     Yaşam
                     <i className="fa-solid fa-chevron-down text-xs ml-1 opacity-50"></i>
@@ -160,6 +150,11 @@ export default function Header() {
                         <Link href="/exercises" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-red-50 group/item transition">
                             <div className="w-8 h-8 rounded-lg bg-red-100 text-rejimde-red flex items-center justify-center group-hover/item:scale-110 transition"><i className="fa-solid fa-dumbbell"></i></div>
                             <span className="font-bold text-gray-600 group-hover/item:text-rejimde-red">Egzersizler</span>
+                        </Link>
+                        {/* SÖZLÜK EKLENDİ */}
+                        <Link href="/sozluk" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-teal-50 group/item transition">
+                            <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-600 flex items-center justify-center group-hover/item:scale-110 transition"><i className="fa-solid fa-book-open"></i></div>
+                            <span className="font-bold text-gray-600 group-hover/item:text-teal-600">Sözlük</span>
                         </Link>
                         <div className="h-px bg-gray-100 my-1"></div>
                         <Link href="/blog" className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-purple-50 group/item transition">
@@ -184,13 +179,15 @@ export default function Header() {
           </nav>
 
           {/* 3. ACTIONS */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 min-w-[140px] justify-end">
             
-            {isLoggedIn ? (
+            {/* YÜKLENİYORSA BOŞ GÖSTER (FLICKERING ÖNLEME) */}
+            {isCheckingAuth ? (
+                 <div className="h-10 w-32 bg-gray-100 rounded-xl animate-pulse hidden md:block"></div>
+            ) : isLoggedIn ? (
               /* LOGGED IN STATE */
-              <div className="hidden md:flex items-center gap-2 md:gap-4">
+              <div className="hidden md:flex items-center gap-2 md:gap-4 animate-in fade-in zoom-in duration-300">
                 
-                {/* Sadece standart kullanıcılar için puan gösterimi */}
                 {!isPro && (
                     <div className="hidden md:flex items-center gap-2 hover:bg-gray-100 px-3 py-1.5 rounded-xl cursor-pointer transition" title="Toplam Puan">
                       <i className="fa-solid fa-star text-rejimde-yellow text-xl"></i>
@@ -214,13 +211,35 @@ export default function Header() {
                       <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
                           <p className="text-sm font-bold text-gray-700 truncate">{user?.name || 'Kullanıcı'}</p>
                           <p className="text-[10px] font-black text-rejimde-blue uppercase mt-1">
-                              {isPro ? 'PROFESYONEL HESAP' : 'STANDART ÜYE'}
+                              {isPro ? 'PROFESYONEL HESAP' : (canCreateContent ? 'YÖNETİCİ HESABI' : 'STANDART ÜYE')}
                           </p>
                       </div>
                       
                       <Link href={dashboardLink} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-600 hover:bg-green-50 hover:text-rejimde-green transition">
                           <i className="fa-solid fa-gauge-high w-5 text-center"></i> Panelim
                       </Link>
+
+                      {/* İÇERİK OLUŞTURMA LİNKLERİ (YETKİLİ KULLANICILAR İÇİN) */}
+                      {canCreateContent && (
+                        <>
+                            <div className="h-px bg-gray-100 my-1"></div>
+                            <p className="px-4 py-1 text-[10px] font-black text-gray-400 uppercase tracking-wider">İçerik Oluştur</p>
+                            
+                            <Link href="/dashboard/pro/diets/create" className="flex items-center gap-3 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-orange-500 transition">
+                                <i className="fa-solid fa-utensils w-5 text-center"></i> Diyet Yaz
+                            </Link>
+                            <Link href="/dashboard/pro/exercises/create" className="flex items-center gap-3 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-red-50 hover:text-red-500 transition">
+                                <i className="fa-solid fa-dumbbell w-5 text-center"></i> Egzersiz Yaz
+                            </Link>
+                            <Link href="/dashboard/pro/blog/create" className="flex items-center gap-3 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-purple-50 hover:text-purple-500 transition">
+                                <i className="fa-solid fa-pen-nib w-5 text-center"></i> Blog Yaz
+                            </Link>
+                            <Link href="/dashboard/pro/dictionary/create" className="flex items-center gap-3 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-teal-50 hover:text-teal-500 transition">
+                                <i className="fa-solid fa-book-open w-5 text-center"></i> Sözlük Ekle
+                            </Link>
+                            <div className="h-px bg-gray-100 my-1"></div>
+                        </>
+                      )}
                       
                       <Link href={profileLink} className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-600 hover:bg-blue-50 hover:text-rejimde-blue transition">
                           <i className="fa-solid fa-user w-5 text-center"></i> Profilim
@@ -240,11 +259,11 @@ export default function Header() {
               </div>
             ) : (
               /* GUEST STATE */
-              <div className="flex items-center gap-3">
-                <Link href="/login" className="hidden md:block font-extrabold text-gray-400 hover:text-rejimde-blue hover:bg-blue-50 px-4 py-2 rounded-xl transition uppercase tracking-wide text-sm">
+              <div className="flex items-center gap-3 animate-in fade-in zoom-in duration-300">
+                <Link href="/login" className="hidden md:block font-extrabold text-gray-400 hover:text-rejimde-blue hover:bg-blue-50 px-4 py-2 rounded-xl transition uppercase tracking-wide text-sm whitespace-nowrap">
                   Giriş Yap
                 </Link>
-                <Link href="/register/user" className="bg-rejimde-green text-white px-5 py-2.5 rounded-xl font-extrabold text-sm shadow-btn shadow-rejimde-greenDark btn-game uppercase tracking-wide hover:bg-green-500 transition">
+                <Link href="/register/user" className="bg-rejimde-green text-white px-5 py-2.5 rounded-xl font-extrabold text-sm shadow-btn shadow-rejimde-greenDark btn-game uppercase tracking-wide hover:bg-green-50 transition whitespace-nowrap">
                   Hesap Oluştur
                 </Link>
               </div>
@@ -289,6 +308,9 @@ export default function Header() {
               <Link href="/blog" className="flex flex-col items-center justify-center p-3 rounded-xl bg-purple-50 text-rejimde-purple font-bold text-xs gap-2" onClick={() => setIsMobileMenuOpen(false)}>
                 <i className="fa-solid fa-newspaper text-xl"></i> Blog
               </Link>
+              <Link href="/sozluk" className="flex flex-col items-center justify-center p-3 rounded-xl bg-teal-50 text-teal-600 font-bold text-xs gap-2 col-span-2" onClick={() => setIsMobileMenuOpen(false)}>
+                <i className="fa-solid fa-book-open text-xl"></i> Sözlük
+              </Link>
           </div>
 
           <div className="space-y-1">
@@ -310,6 +332,20 @@ export default function Header() {
                  <Link href={dashboardLink} className="block w-full text-center font-extrabold text-white bg-rejimde-green py-3 rounded-xl shadow-btn btn-game transition" onClick={() => setIsMobileMenuOpen(false)}>
                     Panelim
                  </Link>
+
+                 {/* MOBİL MENÜ İÇİN İÇERİK OLUŞTURMA LİNKLERİ */}
+                 {canCreateContent && (
+                    <div className="py-2 space-y-2 border-t border-gray-100">
+                        <p className="text-center text-[10px] font-black text-gray-400 uppercase">İçerik Oluştur</p>
+                        <div className="grid grid-cols-2 gap-2">
+                             <Link href="/dashboard/pro/diets/create" className="block text-center font-bold text-gray-600 bg-orange-50 py-2 rounded-xl text-xs" onClick={() => setIsMobileMenuOpen(false)}>Diyet Yaz</Link>
+                             <Link href="/dashboard/pro/exercises/create" className="block text-center font-bold text-gray-600 bg-red-50 py-2 rounded-xl text-xs" onClick={() => setIsMobileMenuOpen(false)}>Egzersiz Yaz</Link>
+                             <Link href="/dashboard/pro/blog/create" className="block text-center font-bold text-gray-600 bg-purple-50 py-2 rounded-xl text-xs" onClick={() => setIsMobileMenuOpen(false)}>Blog Yaz</Link>
+                             <Link href="/dashboard/pro/dictionary/create" className="block text-center font-bold text-gray-600 bg-teal-50 py-2 rounded-xl text-xs" onClick={() => setIsMobileMenuOpen(false)}>Sözlük Ekle</Link>
+                        </div>
+                    </div>
+                 )}
+
                  <Link href={profileLink} className="block w-full text-center font-extrabold text-gray-600 bg-gray-100 py-3 rounded-xl transition" onClick={() => setIsMobileMenuOpen(false)}>
                     Profilim
                  </Link>

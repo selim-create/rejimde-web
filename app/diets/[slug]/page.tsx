@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPlanBySlug, getMe, earnPoints, createComment, getComments, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
+import { getPlanBySlug, getMe, earnPoints, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
+import CommentsSection from "@/components/CommentsSection";
 
 // --- API Helperları (Bu sayfaya özel) ---
 const approvePlan = async (id: number) => {
@@ -68,11 +69,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   const [notFound, setNotFound] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Yorum State'leri
-  const [comments, setComments] = useState<any[]>([]);
-  const [newComment, setNewComment] = useState("");
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-
   // Gamification State
   const [completedMeals, setCompletedMeals] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
@@ -104,10 +100,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
         if (planData) {
           setPlan(planData);
           setCurrentUser(userData);
-          
-          // Yorumları Yükle
-          const planComments = await getComments(planData.id);
-          setComments(planComments);
           
           // Progress: API'den çek (logged in user) veya localStorage'dan (guest)
           if (userData) {
@@ -316,29 +308,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
               }
           }
       );
-  };
-
-  // Yorum Gönderme Fonksiyonu
-  const handleSubmitComment = async () => {
-    if (!newComment.trim()) return;
-    if (!currentUser) return showModal("Hata", "Yorum yapmak için giriş yapmalısınız.", "error");
-
-    setIsSubmittingComment(true);
-    try {
-        const result = await createComment(plan.id, newComment);
-        if (result.success && result.data) {
-            // Yeni yorumu listeye ekle
-            setComments(prev => [result.data, ...prev]);
-            setNewComment(""); // Inputu temizle
-            showModal("Başarılı", "Yorumunuz gönderildi.", "success");
-        } else {
-            showModal("Hata", result.message || "Yorum gönderilemedi.", "error");
-        }
-    } catch (error) {
-        showModal("Hata", "Bir sorun oluştu.", "error");
-    } finally {
-        setIsSubmittingComment(false);
-    }
   };
 
   const shareOnWhatsApp = () => {
@@ -632,47 +601,15 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                   Bu Günün Tüm Öğünlerini Tamamla
               </button>
 
-              {/* Yorumlar (Sadece Tamamlayanlar) */}
-              {isCompleted && (
-                  <div className="mt-8 p-6 bg-white border-2 border-green-100 rounded-3xl">
-                      <h3 className="text-lg font-black text-green-800 mb-4">Deneyimini Paylaş</h3>
-                      <textarea 
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Bu diyet nasıldı? Zorlandın mı?" 
-                        className="w-full bg-green-50/50 border border-green-200 rounded-xl p-4 text-sm font-bold outline-none h-24 resize-none mb-2"
-                      ></textarea>
-                      <button 
-                        onClick={handleSubmitComment}
-                        disabled={isSubmittingComment}
-                        className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg hover:bg-green-700 transition disabled:opacity-50"
-                      >
-                        {isSubmittingComment ? 'Gönderiliyor...' : 'Yorum Yap'}
-                      </button>
-                  </div>
-              )}
-
-              {/* Yorumlar Listesi */}
-              {comments.length > 0 && (
-                  <div className="mt-8 space-y-4">
-                      <h3 className="text-xl font-black text-gray-800 mb-4">Yorumlar ({comments.length})</h3>
-                      {comments.map((comment: any) => (
-                          <div key={comment.id} className="bg-white border-2 border-gray-100 rounded-2xl p-4 flex gap-4">
-                              <div className="w-10 h-10 rounded-full border-2 border-gray-200 overflow-hidden flex-shrink-0">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={getSafeAvatarUrl(comment.avatar, comment.user)} alt={comment.user} className="w-full h-full object-cover" />
-                              </div>
-                              <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                      <h4 className="font-bold text-gray-800 text-sm">{comment.user}</h4>
-                                      <span className="text-xs text-gray-400">{comment.date}</span>
-                                  </div>
-                                  <p className="text-gray-600 text-sm">{comment.text}</p>
-                              </div>
-                          </div>
-                      ))}
-                  </div>
-              )}
+              {/* YENİ YORUM BÖLÜMÜ (MODÜLER) */}
+              <div className="mt-8">
+                  <CommentsSection 
+                      postId={plan.id}
+                      context="diet"
+                      title="Değerlendirmeler"
+                      allowRating={true}
+                  />
+              </div>
 
           </div>
 

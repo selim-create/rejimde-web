@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { getExpertBySlug } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
+import ExpertReviews from "@/components/CommentsExperts"; // Import new component
 
 // API'den gelecek detaylı uzman tipi
 interface ExpertDetail {
@@ -324,7 +325,12 @@ export default function ExpertProfilePage() {
                                     <i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i>
                                 </div>
                                 <span className="font-extrabold text-gray-600">{expert.rating}</span>
-                                <span className="text-gray-400 text-xs font-bold underline cursor-pointer hover:text-rejimde-blue">(Yorumlar Yakında)</span>
+                                <span 
+                                    className="text-gray-400 text-xs font-bold underline cursor-pointer hover:text-rejimde-blue"
+                                    onClick={() => document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' })}
+                                >
+                                    (Değerlendirmeleri Gör)
+                                </span>
                             </div>
                             
                             {/* Uzmanlık Alanları (Tag) */}
@@ -485,30 +491,9 @@ export default function ExpertProfilePage() {
                         </div>
                     </div>
 
-                    {/* 4. REVIEWS (Gamified) - DEMO */}
-                    <div className="opacity-70">
-                        <div className="flex justify-between items-center mb-6 px-2">
-                            <h2 className="text-xl font-extrabold text-gray-800 uppercase tracking-wide">BAŞARI HİKAYELERİ (YAKINDA)</h2>
-                            <span className="text-gray-400 font-bold text-sm uppercase">Tümünü Gör</span>
-                        </div>
-                        
-                        <div className="space-y-4">
-                            {/* Review 1 */}
-                            <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-sm">
-                                <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
-                                    <div>
-                                        <h4 className="font-extrabold text-gray-800 text-sm">Örnek Danışan</h4>
-                                        <div className="flex text-rejimde-yellow text-xs mb-2">
-                                            <i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i>
-                                        </div>
-                                        <p className="text-gray-500 font-bold text-sm leading-relaxed">
-                                            &quot;Bu alan henüz aktif değil, yakında gerçek yorumlar burada yer alacak.&quot;
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    {/* 4. REVIEWS (YENİ: ÖZEL TASARIM UZMAN DEĞERLENDİRME MODÜLÜ) */}
+                    <div id="comments-section" className="scroll-mt-32">
+                        <ExpertReviews expertId={expert.id} expertSlug={expert.slug} />
                     </div>
 
                 </div>
