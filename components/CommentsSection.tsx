@@ -96,11 +96,17 @@ export default function CommentsSection({
   };
 
   const getProfileLink = (author: CommentData['author']) => {
-    if (!author) return '#';
-    const slug = author.slug || author.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    if (!author || !author.slug) return '#';
+    
+    // If the author has a slug, use it
+    const slug = author.slug;
+    
+    // Determine if this is an expert based on role
     if (author.role === 'rejimde_pro' || author.is_expert) {
         return `/experts/${slug}`;
     }
+    
+    // For regular users
     return `/profile/${slug}`;
   };
 
@@ -108,7 +114,15 @@ export default function CommentsSection({
   // COMMENT ITEM COMPONENT (Mockup Uyumlu)
   // ---------------------------------------------
   const CommentItem = ({ comment, isReply = false }: { comment: CommentData, isReply?: boolean }) => {
-    const author = comment.author || { name: 'Anonim', avatar: '', role: 'guest', is_expert: false };
+    // Ensure author exists with default values
+    const author = comment.author || { 
+        name: 'Anonim Kullanıcı', 
+        avatar: 'https://api.dicebear.com/9.x/notionists/svg?seed=Anonymous', 
+        slug: '',
+        role: 'guest', 
+        is_expert: false,
+        level: 1
+    };
     const isExpert = author.role === 'rejimde_pro' || author.is_expert;
     
     // --- STİL SINIFLARI (HTML MOCKUP'TAN ALINDI) ---

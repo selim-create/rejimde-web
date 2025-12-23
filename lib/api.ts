@@ -1275,6 +1275,105 @@ export async function deleteDictionaryItem(id: number) {
 
 /**
  * ==========================================
+ * PROFİL FONKSİYONLARI
+ * ==========================================
+ */
+
+/**
+ * Kullanıcı adına göre profil getir
+ * @param username - Kullanıcı adı (slug)
+ */
+export async function getProfileByUsername(username: string) {
+    try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+
+        // Önce slug ile dene
+        let res = await fetch(`${API_URL}/wp/v2/users?slug=${username}&context=view`, { 
+            headers,
+            cache: 'no-store'
+        });
+        
+        let users = [];
+        if (res.ok) {
+            users = await res.json();
+        }
+        
+        // Slug ile bulunamadıysa search ile dene
+        if (users.length === 0) {
+            res = await fetch(`${API_URL}/wp/v2/users?search=${username}&context=view`, { 
+                headers,
+                cache: 'no-store'
+            });
+            
+            if (res.ok) {
+                users = await res.json();
+            }
+        }
+        
+        if (users.length === 0) {
+            return null;
+        }
+        
+        const userData = users[0];
+        
+        // Avatar URL'yi belirle
+        const gender = userData.gender || 'neutral';
+        const avatar = userData.avatar_url || userData.avatar_urls?.['96'] || getDefaultAvatar(gender);
+        
+        // Rolü belirle
+        const primaryRole = getPrimaryRole(userData.roles);
+        
+        return {
+            id: userData.id,
+            name: userData.name,
+            username: userData.username,
+            slug: userData.slug,
+            email: userData.email,
+            description: userData.description || '',
+            avatar_url: avatar,
+            avatar_urls: userData.avatar_urls,
+            roles: userData.roles || [],
+            role: primaryRole,
+            
+            // Meta veriler
+            registered_date: userData.registered_date,
+            location: userData.location,
+            gender: gender,
+            
+            // Gamification
+            rejimde_level: userData.rejimde_level || 1,
+            rejimde_total_score: userData.rejimde_total_score || 0,
+            rejimde_earned_badges: userData.rejimde_earned_badges || [],
+            
+            // Social
+            followers_count: userData.followers_count || 0,
+            following_count: userData.following_count || 0,
+            high_fives: userData.high_fives || 0,
+            is_following: userData.is_following || false,
+            
+            // Clan & League
+            clan: userData.clan || null,
+            league: userData.league || null,
+            
+            // Expert fields (if applicable)
+            profession: userData.profession,
+            title: userData.title,
+            bio: userData.bio,
+            branches: userData.branches,
+            services: userData.services,
+        };
+    } catch (error) {
+        console.error('getProfileByUsername error:', error);
+        return null;
+    }
+}
+
+/**
+ * ==========================================
  * SOSYAL & TAKİP FONKSİYONLARI
  * ==========================================
  */
@@ -1463,5 +1562,6 @@ export const auth = {
     getBlogPosts,
     createPost,
     updatePost,
-    deletePost
+    deletePost,
+    getProfileByUsername  // Profile fetch by username
 };

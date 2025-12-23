@@ -42,45 +42,89 @@ const getAuthHeaders = () => {
  */
 const mapSafeComment = (c: any): CommentData => {
     // 1. Yazar Adı Çözümleme
-    // Backend 'user', 'author_name' veya 'comment_author' dönebilir.
-    const authorName = c.author?.name || c.author_name || c.user || c.comment_author || 'Anonim Kullanıcı';
+    // Backend'den gelen veri yapıları: c.author (object), c.author_name (string), c.user (string) 
+    let authorName = 'Anonim Kullanıcı';
+    let authorSlug = '';
+    let authorRole = 'guest';
+    let isExpertUser = false;
+    let authorLevel = 1;
+    
+    // Eğer author bir object ise
+    if (c.author && typeof c.author === 'object') {
+        authorName = c.author.name || c.author.username || 'Anonim Kullanıcı';
+        authorSlug = c.author.slug || c.author.username || '';
+        authorRole = c.author.role || 'rejimde_user';
+        isExpertUser = c.author.is_expert || c.author.role === 'rejimde_pro' || false;
+        authorLevel = c.author.level || 1;
+    } 
+    // Eğer author_name string olarak geliyorsa
+    else if (c.author_name) {
+        authorName = c.author_name;
+        authorSlug = c.author_slug || '';
+        authorRole = c.author_role || 'rejimde_user';
+        isExpertUser = c.is_expert || c.author_role === 'rejimde_pro' || false;
+        authorLevel = c.author_level || 1;
+    }
+    // Eğer user string olarak geliyorsa
+    else if (c.user) {
+        authorName = c.user;
+        authorSlug = c.user_slug || '';
+        authorRole = c.user_role || 'rejimde_user';
+        isExpertUser = c.is_expert || c.user_role === 'rejimde_pro' || false;
+        authorLevel = c.user_level || 1;
+    }
+    // WordPress standart comment_author alanı
+    else if (c.comment_author) {
+        authorName = c.comment_author;
+        authorSlug = '';
+        authorRole = 'guest';
+        isExpertUser = false;
+        authorLevel = 1;
+    }
     
     // 2. Avatar Çözümleme
-    let avatarUrl = c.author?.avatar || c.author_avatar_urls?.['96'] || c.author_avatar || c.avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${authorName}`;
+    let avatarUrl = `https://api.dicebear.com/9.x/personas/svg?seed=${authorName}`;
+    
+    if (c.author && typeof c.author === 'object' && c.author.avatar) {
+        avatarUrl = c.author.avatar;
+    } else if (c.author_avatar) {
+        avatarUrl = c.author_avatar;
+    } else if (c.author_avatar_urls && c.author_avatar_urls['96']) {
+        avatarUrl = c.author_avatar_urls['96'];
+    } else if (c.avatar) {
+        avatarUrl = c.avatar;
+    } else if (c.avatar_url) {
+        avatarUrl = c.avatar_url;
+    }
     
     // Gravatar veya bozuk URL düzeltmesi
-    if (avatarUrl.includes('gravatar') && !avatarUrl.includes('d=') && !avatarUrl.includes('dicebear')) {
+    if (avatarUrl.includes('gravatar') && !avatarUrl.includes('d=')) {
        avatarUrl = `https://api.dicebear.com/9.x/personas/svg?seed=${authorName}`;
     }
 
-    // 3. Uzmanlık ve Rol Çözümleme
-    // Backend 'isExpert' (boolean) veya role string dönebilir.
-    const isExpertUser = c.author?.is_expert || c.isExpert || c.is_expert || false;
-    const userRole = c.author?.role || c.role || (isExpertUser ? 'rejimde_pro' : 'rejimde_user');
-
-    // 4. İçerik Çözümleme
+    // 3. İçerik Çözümleme
     // WordPress REST API 'content.rendered' dönerken, custom endpoint 'text' veya 'content' dönebilir.
-    const contentText = c.content?.rendered || c.content || c.text || '';
+    const contentText = c.content?.rendered || c.content || c.text || c.comment_content || '';
 
-    // 5. Beğeni Sayısı Çözümleme
+    // 4. Beğeni Sayısı Çözümleme
     const likes = typeof c.likes === 'number' ? c.likes : (parseInt(c.likes_count || '0'));
 
     return {
-        id: c.id,
+        id: c.id || c.comment_ID,
         content: contentText,
-        date: c.date,
-        timeAgo: c.human_date || c.timeAgo || 'Az önce', // Backend human_date dönmüyorsa frontend halledebilir
+        date: c.date || c.comment_date,
+        timeAgo: c.human_date || c.timeAgo || 'Az önce',
         rating: c.rating,
-        parent: c.parent || 0,
+        parent: c.parent || c.comment_parent || 0,
         likes_count: likes, 
-        is_liked: !!c.is_liked, // Boolean'a çevir
+        is_liked: !!c.is_liked,
         author: {
             name: authorName,
-            slug: c.author?.slug || c.author_slug || '#',
+            slug: authorSlug,
             avatar: avatarUrl,
-            role: userRole,
+            role: authorRole,
             is_expert: isExpertUser,
-            level: c.author?.level || c.level || 1 // Varsayılan level
+            level: authorLevel
         },
         replies: Array.isArray(c.replies) ? c.replies.map(mapSafeComment) : []
     };

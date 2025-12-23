@@ -113,24 +113,12 @@ export default function PublicProfilePage() {
                     userData = { ...me, registered_date: new Date().toISOString(), slug: me.username };
                 }
             } else {
-                const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
-                const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
-                const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
-
-                let res = await fetch(`${apiUrl}/wp/v2/users?slug=${usernameParam}`, { headers });
-                let users = [];
-
-                if (res.ok) users = await res.json();
-                if (users.length === 0) {
-                    res = await fetch(`${apiUrl}/wp/v2/users?search=${usernameParam}`, { headers });
-                    if (res.ok) users = await res.json();
-                }
-
-                if (users.length > 0) userData = users[0];
+                // Use the new getProfileByUsername API function
+                userData = await auth.getProfileByUsername(usernameParam);
             }
 
             if (userData) {
-                // Uzman Kontrolü
+                // Uzman Kontrolü - check if user has rejimde_pro role
                 const isPro = userData.roles && userData.roles.includes('rejimde_pro');
                 if (isPro) {
                     router.replace(`/experts/${userData.slug}`);
