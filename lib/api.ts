@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://aoi.rejimde.com/wp-json';
+export const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://api.rejimde.com/wp-json';
 
 // --- AVATAR PAKETİ ---
 export const AVATAR_PACK = [
@@ -119,7 +119,7 @@ export async function getMe() {
       activity_level: json.activity_level || 'sedentary',
       goals: safeParse(json.goals),
       notifications: safeParse(json.notifications),
-      location: json.location || '', // YENİ
+      location: json.location || '',
       
       // Gaming & Social
       clan: json.clan || null, 
@@ -168,7 +168,7 @@ export async function updateUser(data: any) {
         activity_level: data.activity_level,
         goals: data.goals,
         notifications: data.notifications,
-        location: data.location, // YENİ
+        location: data.location,
         
         // Uzman Alanları
         profession: data.profession,
@@ -760,32 +760,64 @@ export async function getUserHistory() {
 }
 
 /**
- * YORUMLARI GETİR
+ * YORUMLARI GETİR (Backend'den Yeni Format)
+ * @param postId - İçeriğin ID'si
+ * @param context - 'blog', 'diet', 'expert' vb.
  */
-export async function getComments(postId: number, context: string = 'general') {
+export interface CommentData {
+  id: number;
+  author: {
+    name: string;
+    avatar: string;
+    level?: number;
+    role?: string;
+    is_expert?: boolean;
+  };
+  content: string;
+  date: string;
+  rating?: number | null;
+  parent: number;
+  replies?: CommentData[];
+}
+
+export async function getComments(postId: number, context: string = 'general'): Promise<CommentData[]> {
   try {
-    const res = await fetchAPI(`/rejimde/v1/comments?post=${postId}&context=${context}`);
-    // Backend: { comments: [], stats: {} }
-    if (res && res.comments) {
-        return res; 
-    }
-    // Eski yapıya fallback veya boş dönüş
-    if (Array.isArray(res)) return { comments: res, stats: null };
-    return { comments: [], stats: null };
+    const res = await fetchAPI(`/rejimde/v1/comments?post_id=${postId}&context=${context}`);
+    
+    // Backend'den dizi dönüyorsa direkt döndür
+    if (Array.isArray(res)) return res;
+    
+    // Eğer { comments: [], stats: {} } dönüyorsa sadece yorumları al
+    if (res && res.comments) return res.comments;
+
+    return [];
   } catch (error) {
     console.error("Yorumlar çekilemedi", error);
-    return { comments: [], stats: null };
+    return [];
   }
 }
 
 /**
- * YORUM YAP
+ * YORUM GÖNDER
+ * @param postId - İçeriğin ID'si
+ * @param content - Yorum metni
+ * @param context - Yorum yapılan alan (blog, expert, diet)
+ * @param rating - Yıldız puanı (varsa)
+ * @param parentId - Üst yorum ID (varsa)
  */
-export async function createComment(postId: number, content: string, context: string = 'general', rating: number = 0, parentId: number = 0) {
+export async function createComment(postId: number, content: string, context: string = 'general', rating?: number, parentId: number = 0) {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
     
     if (!token) return { success: false, message: 'Yorum yapmak için giriş yapmalısınız.' };
+
+    const payload = {
+        post_id: postId,
+        content: content,
+        context: context,
+        rating: rating,
+        parent: parentId
+    };
 
     const res = await fetch(`${API_URL}/rejimde/v1/comments`, {
       method: 'POST',
@@ -793,13 +825,7 @@ export async function createComment(postId: number, content: string, context: st
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({
-        post: postId,
-        content: content,
-        context: context,
-        rating: rating,
-        parent: parentId
-      })
+      body: JSON.stringify(payload)
     });
 
     const json = await res.json();

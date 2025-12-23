@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { earnPoints, getComments, createComment, getProgress, claimReward } from "@/lib/api";
+import { earnPoints, getProgress, claimReward } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
 import { getUserProfileUrl } from "@/lib/helpers";
@@ -13,32 +13,6 @@ interface ClientBlogPostProps {
   relatedPosts: any[];
   formattedTitle: React.ReactNode;
 }
-
-// HTML Entity Decode Yardımcısı (SSR Uyumlu)
-const decodeHtml = (html: string) => {
-  if (typeof window === "undefined" || !html) return html; 
-  const txt = document.createElement("textarea");
-  txt.innerHTML = html;
-  return txt.value;
-};
-
-// "Zaman Önce" Hesaplayıcısı
-const timeAgo = (dateString: string) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-
-    const now = new Date();
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
-    if (seconds < 60) return "Şimdi";
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} dk önce`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} saat önce`;
-    const days = Math.floor(hours / 24);
-    return `${days} gün önce`;
-};
 
 // URL Slug Yardımcısı (Fallback)
 const slugify = (text: string) => {
@@ -65,14 +39,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
   const [infoModal, setInfoModal] = useState<{show: boolean, title: string, message: string, type: 'error' | 'success' | 'info'}>({
     show: false, title: "", message: "", type: "info"
   });
-  
-  // Yorum State'leri
-  const [comment, setComment] = useState("");
-  const [comments, setComments] = useState<any[]>([]);
-  const [loadingComments, setLoadingComments] = useState(true);
-  const [postingComment, setPostingComment] = useState(false);
-  const [likedComments, setLikedComments] = useState<number[]>([]);
-  const [replyTo, setReplyTo] = useState<{id: number, user: string} | null>(null);
 
   // Kullanıcı State'i
   const [currentUser, setCurrentUser] = useState<{ role: string, name: string, id: number, avatar: string } | null>(null);
@@ -87,7 +53,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
   const [canEdit, setCanEdit] = useState(false);
 
   // Check if user has already claimed reward via API
-  // Using useCallback to memoize the function and avoid re-creating it on every render
   const checkRewardStatus = useCallback(async () => {
       try {
           const progressData = await getProgress('blog', post.id);
@@ -113,8 +78,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
           
           if (role) {
               setCurrentUser({ role, name, id, avatar });
-              
-              // 2. Ödül Kontrolü - API'den çek
               checkRewardStatus();
           } else {
               // Guest user - localStorage fallback
@@ -162,37 +125,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       }
   }, [post.id, post.author_name, checkRewardStatus]);
 
-  // Yorumları Çek
-  useEffect(() => {
-      async function fetchComments() {
-          const data = await getComments(post.id);
-          const formattedComments = data.map((c: any) => {
-              // Avatar Düzeltmesi: Gravatar ise DiceBear kullan
-              let finalAvatar = c.avatar;
-              if (!finalAvatar || finalAvatar.includes('gravatar.com') || finalAvatar.includes('placehold')) {
-                  finalAvatar = `https://api.dicebear.com/9.x/personas/svg?seed=${c.user}`;
-              }
-
-              // Uzman Kontrolü (Basit Mantık): Eğer yorum yapan kişi makale yazarıysa ve yazarın unvanı varsa
-              // Not: İdealde API 'user_role' dönmeli. Şimdilik isim eşleşmesiyle yazarın uzman olduğunu varsayıyoruz.
-              const isAuthor = c.user === post.author_name;
-              // Yazarın rolünü post verisinden çıkaramıyoruz ama genelde yazarlar uzmandır.
-              const isExpertFallback = isAuthor; 
-
-              return {
-                  ...c,
-                  avatar: finalAvatar,
-                  timeAgo: timeAgo(c.date),
-                  likes: Math.floor(Math.random() * 10),
-                  isExpert: c.isExpert || isExpertFallback // API'den gelmezse fallback kullan
-              };
-          });
-          setComments(formattedComments);
-          setLoadingComments(false);
-      }
-      fetchComments();
-  }, [post.id, post.author_name]);
-
   // Okuma İlerlemesi
   useEffect(() => {
     const updateScroll = () => {
@@ -203,10 +135,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
     window.addEventListener("scroll", updateScroll);
     return () => window.removeEventListener("scroll", updateScroll);
   }, []);
-
-  const showAlert = (title: string, message: string, type: 'error' | 'success' | 'info' = 'info') => {
-      setInfoModal({ show: true, title, message, type });
-  };
 
   const handleClaimReward = async () => {
       if (hasClaimed) return;
@@ -262,60 +190,10 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               });
               setShowRewardModal(true);
           } else {
-              showAlert("Hata", res.message || "Bir hata oluştu.", "error");
+              setInfoModal({ show: true, title: "Hata", message: res.message || "Bir hata oluştu.", type: "error" });
           }
       }
       setClaiming(false);
-  };
-
-  const handlePostComment = async () => {
-      if(!comment.trim()) return;
-      
-      const token = localStorage.getItem('jwt_token');
-      if (!token) {
-          showAlert("Giriş Yapmalısın", "Yorum yapmak için lütfen giriş yap.", "info");
-          return;
-      }
-
-      setPostingComment(true);
-      const contentToSend = replyTo ? `<b>@${replyTo.user}</b> ${comment}` : comment;
-
-      const res = await createComment(post.id, contentToSend);
-      
-      if (res.success) {
-          const isPro = currentUser?.role === 'rejimde_pro';
-          const newComment = {
-              ...res.data,
-              timeAgo: "Şimdi",
-              avatar: currentUser?.avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${currentUser?.name}`,
-              isExpert: isPro,
-              likes: 0
-          };
-          setComments([newComment, ...comments]); 
-          setComment("");
-          setReplyTo(null);
-          showAlert("Başarılı", "Yorumun paylaşıldı! +2 Puan kazandın.", "success");
-      } else {
-          showAlert("Hata", res.message, "error");
-      }
-      setPostingComment(false);
-  };
-
-  const handleLikeComment = (commentId: number) => {
-      if (likedComments.includes(commentId)) return;
-      setComments(comments.map(c => 
-          c.id === commentId ? { ...c, likes: (c.likes || 0) + 1 } : c
-      ));
-      setLikedComments([...likedComments, commentId]);
-  };
-
-  const handleReply = (commentId: number, userName: string) => {
-      setReplyTo({ id: commentId, user: userName });
-      const textArea = document.querySelector('textarea');
-      if(textArea) {
-          textArea.focus();
-          textArea.scrollIntoView({ behavior: 'smooth' });
-      }
   };
 
   const categoryName = post.category ? 
@@ -423,106 +301,15 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                   )}
               </div>
 
-              {/* COMMENTS SECTION */}
-              <div className="mt-16">
-                  <h3 className="text-2xl font-extrabold text-gray-800 mb-6 flex items-center gap-2">
-                      Yorumlar <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded-lg text-sm">{comments.length}</span>
-                  </h3>
-
-                  {/* Comment Input */}
-                  <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 mb-8 flex gap-4">
-                      <div className="w-10 h-10 bg-gray-200 rounded-xl shrink-0 overflow-hidden relative">
-                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                           <img 
-                             src={currentUser?.avatar || "https://api.dicebear.com/9.x/personas/svg?seed=Guest"} 
-                             alt="Me" 
-                             className="w-full h-full object-cover"
-                           />
-                      </div>
-                      <div className="flex-1">
-                          {replyTo && (
-                              <div className="flex items-center justify-between bg-blue-50 px-3 py-2 rounded-lg mb-2 text-xs font-bold text-rejimde-blue">
-                                  <span>@{replyTo.user} yanıtlanıyor...</span>
-                                  <button onClick={() => setReplyTo(null)} className="hover:text-red-500"><i className="fa-solid fa-xmark"></i></button>
-                              </div>
-                          )}
-                          <textarea 
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            placeholder="Bir şeyler yaz..." 
-                            className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-rejimde-green resize-none h-20 outline-none"
-                          ></textarea>
-                          <div className="flex justify-between items-center mt-2">
-                              <span className="text-xs font-bold text-gray-400">Yorum yazarak +2 puan kazan</span>
-                              <button 
-                                onClick={handlePostComment} 
-                                disabled={postingComment}
-                                className="bg-rejimde-green text-white px-6 py-2 rounded-xl font-extrabold text-xs shadow-btn shadow-rejimde-greenDark btn-game uppercase disabled:opacity-50"
-                              >
-                                  {postingComment ? '...' : 'Gönder'}
-                              </button>
-                          </div>
-                      </div>
-                  </div>
-
-                  {/* Comments List */}
-                  <div className="space-y-6">
-                      {loadingComments ? (
-                          <div className="flex justify-center p-8"><i className="fa-solid fa-circle-notch animate-spin text-2xl text-gray-300"></i></div>
-                      ) : comments.length === 0 ? (
-                          <p className="text-center text-gray-400 font-bold">Henüz yorum yok. İlk yorumu sen yap!</p>
-                      ) : (
-                          comments.map((c, i) => (
-                              <div key={i} className={`flex gap-4 ${c.isExpert ? 'ml-8 md:ml-12' : ''} animate-fadeIn`}>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img 
-                                    src={c.avatar} 
-                                    className={`w-12 h-12 rounded-2xl border-2 object-cover ${c.isExpert ? 'border-rejimde-blue' : 'border-gray-100'}`} 
-                                    alt={c.user} 
-                                    onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/9.x/personas/svg?seed=${c.user}` }}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                      <div className={`${c.isExpert ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-200'} border-2 p-4 rounded-3xl rounded-tl-none relative`}>
-                                          <div className="flex justify-between items-center mb-1">
-                                              <div className="flex items-center gap-2">
-                                                  {/* PROFİL LİNKİ: Helper fonksiyonla */}
-                                                  <Link 
-                                                    href={getUserProfileUrl(slugify(c.user), c.isExpert)} 
-                                                    className={`font-extrabold text-sm hover:underline ${c.isExpert ? 'text-rejimde-blueDark' : 'text-gray-700'}`}
-                                                  >
-                                                      {c.user}
-                                                  </Link>
-                                                  {c.isExpert && <i className="fa-solid fa-circle-check text-rejimde-blue text-xs" title="Uzman"></i>}
-                                              </div>
-                                              <span className={`text-[10px] font-bold ${c.isExpert ? 'text-blue-300' : 'text-gray-400'}`}>
-                                                  {c.timeAgo || c.date}
-                                              </span>
-                                          </div>
-                                          <p className="text-gray-600 font-bold text-sm" dangerouslySetInnerHTML={{ __html: c.text }}></p>
-                                          
-                                          {/* Action Buttons */}
-                                          <div className="flex gap-4 mt-3">
-                                              <button 
-                                                onClick={() => handleLikeComment(c.id)}
-                                                className={`text-[10px] font-bold flex items-center gap-1 transition ${likedComments.includes(c.id) ? 'text-rejimde-green' : 'text-gray-400 hover:text-rejimde-green'}`}
-                                              >
-                                                  <i className={`fa-${likedComments.includes(c.id) ? 'solid' : 'regular'} fa-thumbs-up`}></i> 
-                                                  {likedComments.includes(c.id) ? 'Faydalı (1)' : 'Faydalı'}
-                                              </button>
-                                              <button 
-                                                onClick={() => handleReply(c.id, c.user)}
-                                                className="text-[10px] font-bold text-gray-400 hover:text-rejimde-blue flex items-center gap-1 transition"
-                                              >
-                                                  <i className="fa-solid fa-reply"></i> Yanıtla
-                                              </button>
-                                          </div>
-                                      </div>
-                                  </div>
-                              </div>
-                          ))
-                      )}
-                  </div>
-              </div>
+              {/* COMMENTS SECTION - NEW */}
+              <section className="mt-16">
+                 <CommentsSection 
+                    postId={post.id} 
+                    context="blog" 
+                    title="Yorumlar"
+                    allowRating={false} 
+                  />
+              </section>
 
           </article>
 

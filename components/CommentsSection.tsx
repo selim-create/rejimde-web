@@ -1,283 +1,387 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { auth, createComment, getComments } from '@/lib/api';
 import Link from 'next/link';
+import { fetchComments, postComment, toggleLikeComment, CommentData } from '@/lib/comment-service';
 
 interface CommentsSectionProps {
   postId: number;
-  context: 'expert' | 'blog' | 'diet' | 'exercise' | 'general';
+  context: 'blog' | 'expert' | 'diet' | 'exercise' | 'dictionary';
   title?: string;
-  expertId?: number; // Uzman ID'si (Cevaplarda vurgulamak için)
+  allowRating?: boolean;
+  expertId?: number;
 }
 
-export default function CommentsSection({ postId, context, title = "Yorumlar", expertId }: CommentsSectionProps) {
-  const [comments, setComments] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  
-  // Form State
+export default function CommentsSection({
+  postId,
+  context,
+  title = "Yorumlar",
+  allowRating = false,
+  expertId
+}: CommentsSectionProps) {
+  const [comments, setComments] = useState<CommentData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [replyTo, setReplyTo] = useState<{id: number, name: string} | null>(null);
+  const [replyTo, setReplyTo] = useState<{id: number, authorName: string} | null>(null);
+  const [user, setUser] = useState<{ isLoggedIn: boolean, name: string, avatar: string, role: string, level?: number } | null>(null);
 
-  const [currentUser, setCurrentUser] = useState<any>(null);
-
-  // Verileri Çek
   useEffect(() => {
-    async function init() {
-      const user = await auth.me();
-      setCurrentUser(user);
-
-      const res = await getComments(postId, context);
-      if (res) {
-          setComments(res.comments || []);
-          setStats(res.stats || null);
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('jwt_token');
+      if (token) {
+        // LocalStorage'dan level gibi verileri de alabiliriz veya API'den
+        const storedLevel = localStorage.getItem('user_level');
+        setUser({
+          isLoggedIn: true,
+          name: localStorage.getItem('user_name') || 'Kullanıcı',
+          avatar: localStorage.getItem('user_avatar') || `https://api.dicebear.com/9.x/avataaars/svg?seed=User`,
+          role: localStorage.getItem('user_role') || 'rejimde_user',
+          level: storedLevel ? parseInt(storedLevel) : 1
+        });
       }
-      setLoading(false);
     }
-    init();
-  }, [postId, context]);
+    loadComments();
+  }, [postId]);
 
-  // Yorum Gönder
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    
-    // Uzman değerlendirmesi için puan zorunlu
-    if (context === 'expert' && rating === 0 && !replyTo) {
-        alert("Lütfen bir puan verin.");
-        return;
-    }
-
-    setSubmitting(true);
-    const res = await createComment(postId, newComment, context, rating, replyTo?.id || 0);
-
-    if (res.success) {
-        // Listeyi güncelle (Basitçe en başa ekleyelim veya reload edelim)
-        // Eğer cevap ise ilgili yorumun altına eklemek gerekir ama şimdilik reload mantığı
-        const updatedRes = await getComments(postId, context);
-        setComments(updatedRes.comments || []);
-        setStats(updatedRes.stats || null);
-        
-        setNewComment('');
-        setRating(0);
-        setReplyTo(null);
-        if (res.earned_points > 0) alert(`Tebrikler! ${res.earned_points} puan kazandın! 🎉`);
-    } else {
-        alert(res.message);
-    }
-    setSubmitting(false);
+  const loadComments = async () => {
+    setIsLoading(true);
+    const data = await fetchComments(postId, context);
+    setComments(data); 
+    setIsLoading(false);
   };
 
-  if (loading) return <div className="text-center py-8"><i className="fa-solid fa-circle-notch fa-spin text-gray-400"></i></div>;
+  const handleSubmit = async () => {
+    if (!newComment.trim()) return;
 
-  return (
-    <div className="space-y-8">
-        
-        {/* 1. REVIEW SUMMARY (Sadece Expert Context İçin) */}
-        {context === 'expert' && stats && (
-            <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-200">
-                <h2 className="text-2xl font-black text-gray-800 mb-6 flex items-center gap-3">
-                    <span className="bg-yellow-100 text-yellow-600 w-10 h-10 rounded-xl flex items-center justify-center text-lg shadow-sm border border-yellow-200">
-                        <i className="fa-solid fa-star"></i>
-                    </span>
-                    Danışan Değerlendirmeleri
-                </h2>
+    try {
+      await postComment({
+        post: postId,
+        content: newComment,
+        context: context,
+        parent: replyTo ? replyTo.id : 0,
+        rating: (allowRating && !replyTo) ? rating : undefined,
+      });
+      
+      setNewComment('');
+      setRating(0);
+      setReplyTo(null);
+      loadComments();
+    } catch (error: any) {
+      alert(error.message || 'Yorum gönderilirken bir hata oluştu.');
+    }
+  };
 
-                <div className="flex flex-col md:flex-row gap-10 items-center">
-                    <div className="text-center bg-gray-50 p-6 rounded-[2rem] border border-gray-100 min-w-[180px]">
-                        <div className="text-6xl font-black text-gray-800 leading-none tracking-tighter">{stats.average}</div>
-                        <div className="flex text-yellow-400 text-lg my-2 justify-center gap-1">
-                             {[1,2,3,4,5].map(i => (
-                                 <i key={i} className={`fa-solid fa-star ${i <= Math.round(stats.average) ? '' : 'text-gray-200'}`}></i>
-                             ))}
+  const handleLike = async (commentId: number) => {
+    if (!user?.isLoggedIn) return alert("Beğenmek için giriş yapmalısın.");
+    setComments(prevComments => updateCommentLikeInTree(prevComments, commentId));
+    await toggleLikeComment(commentId);
+  };
+
+  const updateCommentLikeInTree = (list: CommentData[], targetId: number): CommentData[] => {
+    return list.map(c => {
+      if (c.id === targetId) {
+        const isLiked = !c.is_liked;
+        return { 
+          ...c, 
+          is_liked: isLiked, 
+          likes_count: (c.likes_count || 0) + (isLiked ? 1 : -1) 
+        };
+      }
+      if (c.replies) {
+        return { ...c, replies: updateCommentLikeInTree(c.replies, targetId) };
+      }
+      return c;
+    });
+  };
+
+  const getProfileLink = (author: CommentData['author']) => {
+    if (!author) return '#';
+    const slug = author.slug || author.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    if (author.role === 'rejimde_pro' || author.is_expert) {
+        return `/experts/${slug}`;
+    }
+    return `/profile/${slug}`;
+  };
+
+  // ---------------------------------------------
+  // COMMENT ITEM COMPONENT (Mockup Uyumlu)
+  // ---------------------------------------------
+  const CommentItem = ({ comment, isReply = false }: { comment: CommentData, isReply?: boolean }) => {
+    const author = comment.author || { name: 'Anonim', avatar: '', role: 'guest', is_expert: false };
+    const isExpert = author.role === 'rejimde_pro' || author.is_expert;
+    
+    // --- STİL SINIFLARI (HTML MOCKUP'TAN ALINDI) ---
+    
+    // 1. UZMAN YORUMU (mockup: 2. UZMAN YORUMU)
+    // bg-blue-50/50 p-5 rounded-[1.5rem] rounded-tl-none border-2 border-blue-100 shadow-sm relative group-hover:border-blue-200 transition
+    const expertBubbleClass = "bg-blue-50/50 p-5 rounded-[1.5rem] rounded-tl-none border-2 border-blue-100 shadow-sm relative group-hover:border-blue-200 transition";
+    
+    // 2. STANDART YORUM (mockup: 1. STANDART KULLANICI YORUMU)
+    // bg-white p-5 rounded-[1.5rem] rounded-tl-none border-2 border-gray-100 shadow-sm relative group-hover:border-purple-100 transition
+    const userBubbleClass = "bg-white p-5 rounded-[1.5rem] rounded-tl-none border-2 border-gray-100 shadow-sm relative group-hover:border-purple-100 transition";
+    
+    // 3. NESTED REPLY (mockup: 3. NESTED REPLY)
+    // bg-gray-50 p-4 rounded-[1.5rem] rounded-tl-none border border-gray-100 relative hover:bg-white hover:shadow-sm transition
+    const replyBubbleClass = "bg-gray-50 p-4 rounded-[1.5rem] rounded-tl-none border border-gray-100 relative hover:bg-white hover:shadow-sm transition";
+
+    let cardClass = userBubbleClass;
+    if (isExpert) cardClass = expertBubbleClass;
+    else if (isReply) cardClass = replyBubbleClass;
+
+    // Avatar Container
+    const avatarContainerClass = isExpert 
+        ? "w-14 h-14 rounded-2xl bg-blue-50 border-2 border-blue-200 p-0.5 overflow-hidden ring-4 ring-blue-50 relative hover:scale-105 transition"
+        : isReply 
+            ? "w-10 h-10 rounded-xl bg-white border-2 border-gray-100 p-0.5 overflow-hidden hover:border-purple-300 transition"
+            : "w-14 h-14 rounded-2xl bg-white border-2 border-gray-200 p-0.5 overflow-hidden hover:border-purple-400 transition relative";
+
+    // Girinti
+    const containerClass = isReply ? "flex gap-4 ml-16 group mt-4" : "flex gap-4 group mb-6";
+
+    return (
+      <div className={containerClass}>
+          {/* Avatar Kolonu */}
+          <div className="flex flex-col items-center gap-1 shrink-0">
+            <Link href={getProfileLink(author)} className={avatarContainerClass}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={author.avatar || `https://api.dicebear.com/9.x/notionists/svg?seed=${author.name}`} 
+                alt={author.name} 
+                className="w-full h-full object-cover rounded-lg"
+              />
+              {/* Online / Expert Badge in Avatar */}
+              {isExpert ? (
+                  <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px] border-2 border-white">
+                      <i className="fa-solid fa-check"></i>
+                  </div>
+              ) : (
+                  !isReply && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
+              )}
+            </Link>
+            
+            {/* Kullanıcı Skoru / Uzman Puanı */}
+            {!isReply && (
+                isExpert ? (
+                    <div className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-lg mt-1 border border-blue-700 shadow-sm flex items-center gap-1 w-full justify-center">
+                        <i className="fa-solid fa-star text-yellow-300"></i> 5.0
+                    </div>
+                ) : (
+                    <div className="bg-yellow-100 text-yellow-700 text-[10px] font-black px-2 py-0.5 rounded-lg mt-1 border border-yellow-200 shadow-sm flex items-center gap-1" title="Seviye">
+                        <i className="fa-solid fa-bolt text-yellow-500"></i> Lvl {author.level || 1}
+                    </div>
+                )
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            {/* İçerik Balonu */}
+            <div className={cardClass}>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                    {isExpert ? (
+                        <div className="flex items-center gap-2">
+                            <Link href={getProfileLink(author)} className="font-extrabold text-blue-900 text-sm hover:underline">
+                                {author.name}
+                            </Link>
+                            <span className="bg-blue-100 text-blue-600 text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider border border-blue-200">
+                                UZMAN
+                            </span>
                         </div>
-                        <p className="text-gray-400 font-bold text-xs uppercase tracking-wide bg-white px-3 py-1 rounded-lg border border-gray-100 shadow-sm">{stats.total} Yorum</p>
-                    </div>
+                    ) : (
+                        <Link href={getProfileLink(author)} className="font-extrabold text-gray-800 text-sm hover:text-purple-600 transition">
+                            {author.name}
+                        </Link>
+                    )}
+                    <span className="text-[10px] font-bold text-gray-400 ml-2 md:ml-0 block md:inline md:ml-2 mt-0.5 md:mt-0">{comment.timeAgo}</span>
+                </div>
+                
+                {/* Rapor Et Butonu (Sadece hover'da görünür vs. eklenebilir) */}
+                <button className="text-gray-300 hover:text-red-400 transition bg-transparent hover:bg-red-50 w-6 h-6 rounded-lg flex items-center justify-center">
+                    <i className="fa-solid fa-flag text-[10px]"></i>
+                </button>
+              </div>
 
-                    <div className="flex-1 w-full space-y-2">
-                        {[5, 4, 3, 2, 1].map(r => {
-                            const dist = stats.distribution[r] || { count: 0, percent: 0 };
-                            return (
-                                <div key={r} className="flex items-center gap-3 text-xs font-bold text-gray-500">
-                                    <span className="w-4 font-black">{r}</span> <i className="fa-solid fa-star text-yellow-400 text-[10px]"></i>
-                                    <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden border border-gray-100">
-                                        <div className="h-full bg-yellow-400 rounded-full" style={{width: `${dist.percent}%`}}></div>
-                                    </div>
-                                    <span className="w-8 text-right font-black text-gray-700">{dist.percent}%</span>
-                                </div>
-                            );
-                        })}
-                    </div>
+              {/* Yorum Metni */}
+              <div 
+                className={`text-sm font-bold leading-relaxed ${isExpert ? 'text-gray-700' : 'text-gray-600'}`}
+                dangerouslySetInnerHTML={{ __html: comment.content }}
+              />
+            </div>
+
+            {/* Aksiyonlar (Beğen / Yanıtla) */}
+            <div className="flex items-center gap-4 mt-2 ml-4">
+                <button 
+                  onClick={() => handleLike(comment.id)}
+                  className={`flex items-center gap-1.5 text-xs font-black uppercase transition px-3 py-1.5 rounded-xl border-2 border-transparent ${
+                      isExpert 
+                      ? 'text-blue-600 bg-blue-50 hover:bg-blue-100 border-blue-100' 
+                      : (comment.is_liked ? 'text-green-500 bg-green-50' : 'text-gray-400 bg-white hover:text-green-500 hover:bg-green-50 hover:border-green-100')
+                  }`}
+                >
+                    <i className={`${comment.is_liked ? 'fa-solid' : 'fa-regular'} fa-thumbs-up text-lg`}></i> 
+                    {comment.likes_count > 0 ? comment.likes_count : ''} Beğeni
+                </button>
+                
+                <button 
+                  onClick={() => setReplyTo({id: comment.id, authorName: author.name})}
+                  className={`text-xs font-black uppercase transition px-3 py-1.5 rounded-xl ${
+                      isExpert
+                      ? 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                      : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'
+                  }`}
+                >
+                    Yanıtla
+                </button>
+            </div>
+
+            {/* Yanıt Formu (Inline) */}
+            {replyTo?.id === comment.id && (
+               <div className="mt-4 ml-2 animate-fade-in">
+                 <div className="flex items-center justify-between mb-2 px-2 bg-purple-50 py-1 rounded-lg border border-purple-100">
+                    <span className="text-xs font-bold text-purple-700 flex items-center gap-1">
+                        <i className="fa-solid fa-share text-[10px]"></i> 
+                        @{replyTo.authorName} yanıtlanıyor...
+                    </span>
+                    <button onClick={() => setReplyTo(null)} className="text-xs font-bold text-gray-400 hover:text-red-500 transition">
+                        <i className="fa-solid fa-times"></i>
+                    </button>
+                 </div>
+                 <CommentForm isReply={true} />
+               </div>
+            )}
+
+            {/* Alt Yorumlar (Recursive) */}
+            {comment.replies && comment.replies.length > 0 && (
+              <div className="mt-4">
+                {comment.replies.map(reply => (
+                  <CommentItem key={reply.id} comment={reply} isReply={true} />
+                ))}
+              </div>
+            )}
+          </div>
+      </div>
+    );
+  };
+
+  // ---------------------------------------------
+  // COMMENT FORM COMPONENT (Mockup "YORUM YAZMA ALANI" ile Birebir)
+  // ---------------------------------------------
+  const CommentForm = ({ isReply = false }) => {
+    // Reply modunda biraz daha sade olabilir ama mockup yapısını koruyalım
+    const containerClass = isReply 
+        ? "bg-white rounded-[1.5rem] p-2 border-2 border-purple-100 relative group focus-within:border-purple-300 focus-within:ring-2 focus-within:ring-purple-50 transition-all duration-300"
+        : "bg-white rounded-[2rem] p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-2 border-gray-100 relative group focus-within:border-purple-400 focus-within:ring-4 focus-within:ring-purple-50 transition-all duration-300";
+
+    return (
+        <div className={containerClass}>
+            <div className="flex gap-3 p-4">
+                <div className="shrink-0 hidden md:block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                        src={user?.isLoggedIn ? user.avatar : "https://api.dicebear.com/9.x/personas/svg?seed=Guest"} 
+                        className="w-12 h-12 rounded-2xl bg-gray-100 border-2 border-gray-100 object-cover" 
+                        alt="Me" 
+                    />
+                    {user?.isLoggedIn && !isReply && (
+                        <div className="text-[10px] font-black text-center text-purple-600 mt-1 bg-purple-50 rounded-md py-0.5">
+                            LVL {user.level || 1}
+                        </div>
+                    )}
+                </div>
+                
+                <div className="flex-1 relative">
+                    <textarea 
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        className="w-full bg-transparent border-none p-2 text-sm font-bold text-gray-700 placeholder:text-gray-400 outline-none resize-none h-16" 
+                        placeholder={user?.isLoggedIn ? "Düşüncelerini paylaş..." : "Yorum yapmak için giriş yapmalısın..."}
+                        disabled={!user?.isLoggedIn}
+                    ></textarea>
+                    
+                    {/* Emoji Button (Visual Only for now) */}
+                    <button className="absolute bottom-0 left-0 text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 p-1.5 rounded-lg transition">
+                        <i className="fa-regular fa-face-smile text-xl"></i>
+                    </button>
                 </div>
             </div>
-        )}
 
-        {/* 2. COMMENT FORM */}
-        {!currentUser ? (
-             <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-8 text-center">
-                 <p className="text-gray-500 font-bold mb-4">Yorum yapmak ve puan kazanmak için giriş yapmalısın.</p>
-                 <Link href="/login" className="bg-blue-600 text-white px-8 py-3 rounded-xl font-extrabold uppercase shadow-lg hover:bg-blue-700 transition inline-block">Giriş Yap</Link>
-             </div>
-        ) : (
-            <div className={`rounded-[2rem] p-1 shadow-sm relative overflow-hidden transition-all ${context === 'expert' ? 'bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-100' : 'bg-white border-2 border-gray-100'}`}>
-                <div className="bg-white rounded-[1.8rem] p-6">
-                    {/* Header: Reply Info or Gamification Hint */}
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="flex gap-4 items-center">
-                            <img src={currentUser.avatar_url || `https://api.dicebear.com/9.x/personas/svg?seed=${currentUser.name}`} className="w-12 h-12 rounded-xl bg-gray-100 border-2 border-gray-100" alt="Me" />
-                            <div>
-                                <h3 className="font-black text-gray-800 text-lg leading-tight">
-                                    {replyTo ? `Yanıtla: ${replyTo.name}` : (context === 'expert' ? 'Deneyimini Paylaş' : 'Düşüncelerini Paylaş')}
-                                </h3>
-                                {replyTo && <button onClick={() => setReplyTo(null)} className="text-xs text-red-500 font-bold hover:underline">İptal</button>}
-                            </div>
-                        </div>
-                        <div className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-xl text-[10px] font-black uppercase border border-yellow-200 flex items-center gap-1 shadow-sm">
-                            <i className="fa-solid fa-bolt"></i> +{context === 'expert' && !replyTo ? '20' : '5'} Puan
-                        </div>
-                    </div>
-
-                    {/* Star Rating (Only for Expert & No Reply) */}
-                    {context === 'expert' && !replyTo && (
-                        <div className="flex gap-2 mb-4 justify-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+            {/* Footer Actions */}
+            <div className={`flex justify-between items-center bg-gray-50/80 p-2 rounded-[1.5rem] mt-2 ${isReply ? 'bg-purple-50/50' : ''}`}>
+                <div className="flex items-center gap-2 px-3">
+                    {allowRating && !isReply && (
+                        <div className="flex gap-1 mr-4 border-r border-gray-200 pr-4">
                             {[1, 2, 3, 4, 5].map((star) => (
-                                <i 
-                                    key={star}
-                                    className={`fa-solid fa-star text-3xl cursor-pointer transition transform hover:scale-110 ${star <= (hoverRating || rating) ? 'text-yellow-400' : 'text-gray-200'}`}
-                                    onClick={() => setRating(star)}
-                                    onMouseEnter={() => setHoverRating(star)}
-                                    onMouseLeave={() => setHoverRating(0)}
-                                ></i>
+                                <button key={star} onClick={() => setRating(star)} className={`text-lg hover:scale-110 transition ${rating >= star ? 'text-yellow-400' : 'text-gray-300'}`}>
+                                    <i className="fa-solid fa-star"></i>
+                                </button>
                             ))}
                         </div>
                     )}
-
-                    <div className="relative">
-                        <textarea 
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-4 text-sm font-bold text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-indigo-400 focus:bg-white transition resize-none h-28" 
-                            placeholder={context === 'expert' ? "Tecrübelerini diğer danışanlarla paylaş..." : "Yorumunu buraya yaz..."}
-                        ></textarea>
-                    </div>
                     
-                    <div className="flex justify-end mt-4">
-                        <button 
-                            onClick={handleSubmit}
-                            disabled={submitting}
-                            className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-extrabold text-sm uppercase shadow-[0_4px_0_rgb(67,56,202)] hover:bg-indigo-500 hover:shadow-[0_2px_0_rgb(67,56,202)] hover:translate-y-[2px] active:translate-y-[4px] active:shadow-none transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {submitting ? 'Gönderiliyor...' : (replyTo ? 'Yanıtla' : (context === 'expert' ? 'Değerlendir' : 'Yorum Yap'))} <i className="fa-solid fa-paper-plane"></i>
-                        </button>
-                    </div>
+                    {!isReply && (
+                        <>
+                            <i className="fa-solid fa-coins text-yellow-500 animate-bounce"></i>
+                            <span className="text-[10px] md:text-xs font-black text-yellow-600 uppercase tracking-wide hidden md:inline">
+                                Yorum yap, <span className="text-yellow-500">+2 Puan</span> kazan!
+                            </span>
+                        </>
+                    )}
                 </div>
+                
+                <button 
+                    onClick={handleSubmit}
+                    disabled={!user?.isLoggedIn || !newComment.trim()}
+                    className="bg-purple-600 text-white px-6 md:px-8 py-3 rounded-2xl font-extrabold text-xs uppercase shadow-[0_4px_0_rgb(107,33,168)] hover:bg-purple-500 hover:shadow-[0_2px_0_rgb(107,33,168)] hover:translate-y-[2px] active:translate-y-[4px] active:shadow-none transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:transform-none"
+                >
+                    Gönder <i className="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    );
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-8 font-nunito">
+        
+        {/* YORUM BAŞLIĞI */}
+        <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-black text-gray-800 flex items-center gap-2">
+                <i className="fa-regular fa-comments text-gray-400"></i>
+                {title} <span className="bg-gray-200 text-gray-600 text-sm px-2 py-1 rounded-lg ml-1">{comments.length}</span>
+            </h3>
+            
+            {/* Sıralama (Visual) */}
+            <div className="flex items-center gap-2 text-xs font-bold bg-white px-4 py-2 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-purple-300 transition text-gray-500">
+                <span>En Popüler</span>
+                <i className="fa-solid fa-chevron-down"></i>
+            </div>
+        </div>
+
+        {/* GİRİŞ UYARISI */}
+        {!user?.isLoggedIn && (
+            <div className="bg-orange-50 border-2 border-orange-100 p-4 rounded-2xl flex items-center gap-3 text-orange-700 font-bold text-sm">
+                <i className="fa-solid fa-lock text-xl"></i>
+                <div>Yorum yazmak için <Link href="/login" className="underline font-black">giriş yapmalısın</Link>.</div>
             </div>
         )}
 
-        {/* 3. COMMENT LIST */}
+        {/* YORUM YAZMA ALANI */}
+        <CommentForm />
+
+        {/* YORUM LİSTESİ */}
         <div className="space-y-6">
-            {comments.map((comment) => (
-                <div key={comment.id} className="group">
-                    {/* Main Comment */}
-                    <div className="flex gap-4">
-                        {/* Avatar Column */}
-                        <div className="flex flex-col items-center gap-1 shrink-0">
-                            <div className={`w-14 h-14 rounded-2xl p-0.5 overflow-hidden ring-2 ring-offset-2 transition relative ${comment.author.details.is_expert ? 'bg-blue-50 border-2 border-blue-200 ring-blue-50' : 'bg-white border-2 border-gray-200 ring-transparent'}`}>
-                                <img src={comment.author.details.avatar} className="w-full h-full object-cover rounded-xl" alt="User" />
-                                {comment.author.details.is_expert && (
-                                    <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px] border-2 border-white">
-                                        <i className="fa-solid fa-check"></i>
-                                    </div>
-                                )}
-                            </div>
-                            
-                            {/* Score/Rating Badge */}
-                            {comment.author.details.is_expert ? (
-                                <div className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-lg mt-1 border border-blue-700 shadow-sm flex items-center gap-1">
-                                    <i className="fa-solid fa-star text-yellow-300"></i> {comment.author.details.score || '5.0'}
-                                </div>
-                            ) : (
-                                <div className="bg-yellow-100 text-yellow-700 text-[10px] font-black px-2 py-0.5 rounded-lg mt-1 border border-yellow-200 shadow-sm flex items-center gap-1">
-                                    <i className="fa-solid fa-bolt text-yellow-500"></i> {comment.author.details.score}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1">
-                            <div className={`p-5 rounded-[1.5rem] rounded-tl-none border-2 shadow-sm relative transition ${comment.author.details.is_expert ? 'bg-blue-50/50 border-blue-100' : 'bg-white border-gray-100 hover:border-purple-100'}`}>
-                                <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`font-extrabold text-sm ${comment.author.details.is_expert ? 'text-blue-900' : 'text-gray-800'}`}>{comment.author.name}</span>
-                                            {comment.author.details.is_expert && (
-                                                <span className="bg-blue-100 text-blue-600 text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider border border-blue-200">UZMAN</span>
-                                            )}
-                                        </div>
-                                        <span className={`text-[10px] font-bold ${comment.author.details.is_expert ? 'text-blue-400' : 'text-gray-400'} mt-0.5 block`}>{comment.date}</span>
-                                    </div>
-                                    {comment.rating > 0 && (
-                                        <div className="flex text-yellow-400 text-xs">
-                                            {[1,2,3,4,5].map(i => <i key={i} className={`fa-solid fa-star ${i <= comment.rating ? '' : 'text-gray-200'}`}></i>)}
-                                        </div>
-                                    )}
-                                </div>
-                                <p className="text-sm font-bold text-gray-700 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
-                            </div>
-                            
-                            {/* Actions */}
-                            <div className="flex items-center gap-4 mt-2 ml-4">
-                                <button className="flex items-center gap-1.5 text-gray-400 hover:text-green-500 text-xs font-black uppercase transition hover:bg-green-50 px-3 py-1.5 rounded-xl">
-                                    <i className="fa-regular fa-thumbs-up text-lg"></i> Beğen
-                                </button>
-                                <button 
-                                    onClick={() => setReplyTo({id: comment.id, name: comment.author.name})}
-                                    className="text-gray-400 hover:text-purple-600 text-xs font-black uppercase transition hover:bg-purple-50 px-3 py-1.5 rounded-xl"
-                                >
-                                    Yanıtla
-                                </button>
-                            </div>
-
-                            {/* REPLIES (Nested) */}
-                            {comment.replies && comment.replies.length > 0 && (
-                                <div className="mt-4 space-y-4">
-                                    {comment.replies.map((reply: any) => (
-                                        <div key={reply.id} className="flex gap-4">
-                                            <div className="flex flex-col items-center gap-1 shrink-0">
-                                                <div className={`w-10 h-10 rounded-xl p-0.5 overflow-hidden ${reply.author.details.is_expert ? 'bg-blue-50 border border-blue-200' : 'bg-white border border-gray-100'}`}>
-                                                    <img src={reply.author.details.avatar} className="w-full h-full object-cover rounded-lg" alt="User" />
-                                                </div>
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className={`p-4 rounded-[1.5rem] rounded-tl-none border relative ${reply.author.details.is_expert ? 'bg-blue-50/80 border-blue-200' : 'bg-gray-50 border-gray-100'}`}>
-                                                    <div className="flex justify-between items-start mb-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`font-extrabold text-xs ${reply.author.details.is_expert ? 'text-blue-900' : 'text-gray-700'}`}>{reply.author.name}</span>
-                                                            {reply.author.details.is_expert && <i className="fa-solid fa-certificate text-blue-500 text-[10px]" title="Uzman"></i>}
-                                                        </div>
-                                                        <span className="text-[9px] font-bold text-gray-400">{reply.date}</span>
-                                                    </div>
-                                                    <p className="text-xs font-bold text-gray-600 leading-relaxed">{reply.content}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                        </div>
-                    </div>
+            {isLoading ? (
+                <div className="flex justify-center py-10">
+                    <i className="fa-solid fa-circle-notch animate-spin text-3xl text-purple-300"></i>
                 </div>
-            ))}
-
-            {comments.length === 0 && (
-                <div className="text-center py-10 text-gray-400 font-bold bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
-                    <i className="fa-regular fa-comments text-3xl mb-2 opacity-50"></i>
-                    <p>Henüz yorum yapılmamış. İlk yorumu sen yap!</p>
+            ) : comments.length > 0 ? (
+                comments.map(comment => (
+                    <CommentItem key={comment.id} comment={comment} />
+                ))
+            ) : (
+                <div className="text-center py-12 text-gray-400 font-bold">
+                    Henüz yorum yok. İlk yorumu sen yap!
                 </div>
             )}
         </div>
