@@ -25,6 +25,7 @@ export default function SettingsPage() {
     current_weight: "",
     target_weight: "",
     activity_level: "sedentary",
+    location: "", // YENİ
     goals: {
         weight_loss: false,
         muscle_gain: false,
@@ -59,6 +60,7 @@ export default function SettingsPage() {
             current_weight: user.current_weight || "",
             target_weight: user.target_weight || "",
             activity_level: user.activity_level || "sedentary",
+            location: user.location || "", // YENİ
             goals: { ...prev.goals, ...(user.goals || {}) },
             notifications: { ...prev.notifications, ...(user.notifications || {}) }
         }));
@@ -295,6 +297,16 @@ export default function SettingsPage() {
                         <option value="moderate">Orta Hareketli</option>
                         <option value="active">Çok Hareketli</option>
                     </select>
+                </div>
+                <div className="col-span-2 md:col-span-4">
+                    <label className="block text-xs font-black text-gray-400 uppercase mb-1">Lokasyon</label>
+                    <input 
+                        type="text" 
+                        value={formData.location || ""} 
+                        onChange={(e) => setFormData({...formData, location: e.target.value})}
+                        placeholder="Örn: İstanbul, Türkiye"
+                        className="w-full bg-gray-50 border-2 border-gray-200 focus:border-rejimde-green rounded-xl py-2 px-4 font-bold text-gray-700 outline-none transition" 
+                    />
                 </div>
             </div>
 

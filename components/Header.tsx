@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation"; 
-import { getMe, getGamificationStats } from "@/lib/api";
+import { getMe, getGamificationStats, logoutUser } from "@/lib/api";
 import { getSafeAvatarUrl } from "@/lib/helpers"; 
 
 export default function Header() {
@@ -105,12 +105,7 @@ export default function Header() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('jwt_token');
-    localStorage.removeItem('user_email');
-    localStorage.removeItem('user_name');
-    localStorage.removeItem('user_avatar');
-    localStorage.removeItem('user_role');
-    localStorage.removeItem('rejimde_user');
+    logoutUser();
     setIsLoggedIn(false);
     setUser(null);
     router.push('/login');
