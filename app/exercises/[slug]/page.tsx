@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, createComment, getComments } from "@/lib/api";
+import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, createComment, getComments, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 
 // --- TİPLER ---
@@ -235,11 +235,28 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           const planComments = await getComments(planData.id);
           setComments(planComments);
 
-          const storedProgress = localStorage.getItem(`exercise_progress_${planData.id}`);
-          if (storedProgress) setCompletedExercises(JSON.parse(storedProgress));
-          
-          const storedStarted = localStorage.getItem(`exercise_started_${planData.id}`);
-          if (storedStarted) setIsStarted(true);
+          // Progress Loading
+          if (userData && planData.id) {
+            // Logged-in user: Load from API
+            const progress = await getProgress('exercise', planData.id);
+            if (progress) {
+              if (progress.progress_data) {
+                const progressData = typeof progress.progress_data === 'string' 
+                  ? JSON.parse(progress.progress_data) 
+                  : progress.progress_data;
+                setCompletedExercises(Array.isArray(progressData) ? progressData : []);
+              }
+              setIsStarted(progress.is_started === 1 || progress.is_started === true);
+              setIsCompleted(progress.is_completed === 1 || progress.is_completed === true);
+            }
+          } else {
+            // Guest user: Use localStorage with _guest_ suffix
+            const storedProgress = localStorage.getItem(`exercise_progress_guest_${planData.id}`);
+            if (storedProgress) setCompletedExercises(JSON.parse(storedProgress));
+            
+            const storedStarted = localStorage.getItem(`exercise_started_guest_${planData.id}`);
+            if (storedStarted) setIsStarted(true);
+          }
 
         } else {
           setNotFound(true);
@@ -283,12 +300,19 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
     }
   }, [planData.length, activeDay]);
 
-  const toggleExerciseCompletion = (exerciseId: string) => {
+  const toggleExerciseCompletion = async (exerciseId: string) => {
       const newCompleted = completedExercises.includes(exerciseId)
           ? completedExercises.filter(id => id !== exerciseId)
           : [...completedExercises, exerciseId];
       setCompletedExercises(newCompleted);
-      if(plan) localStorage.setItem(`exercise_progress_${plan.id}`, JSON.stringify(newCompleted));
+      
+      if (currentUser && plan?.id) {
+        // Logged-in user: Save to API
+        await updateProgress('exercise', plan.id, { progress_data: newCompleted });
+      } else if (plan?.id) {
+        // Guest user: Save to localStorage with _guest_ suffix
+        localStorage.setItem(`exercise_progress_guest_${plan.id}`, JSON.stringify(newCompleted));
+      }
   };
 
   const handleStartPlan = async () => {
@@ -307,10 +331,10 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
       }
   };
 
-  const startPlanLogic = () => {
+  const startPlanLogic = async () => {
       if (!currentUser) return showAlert("Giriş Yapmalısın", "Antrenman takibi yapmak için lütfen giriş yap.", "error");
+      await startProgress('exercise', plan.id);
       setIsStarted(true);
-      localStorage.setItem(`exercise_started_${plan?.id}`, 'true');
       showAlert("Başarılar!", "Antrenman programına başladın. Hedefine ulaşman dileğiyle!", "success");
   };
 
@@ -320,6 +344,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           try {
             const reward = parseInt(plan?.meta?.score_reward || "0");
             await earnPoints('complete_exercise_plan', plan?.id); 
+            await completeProgress('exercise', plan.id); // Use new Progress API
             showAlert(
                 "Tebrikler Şampiyon! 🏆", 
                 `Bu antrenman programını başarıyla tamamladın ve ${reward} puan kazandın! Gücüne güç kattın.`, 

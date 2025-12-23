@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { earnPoints, getComments, createComment } from "@/lib/api";
+import { earnPoints, getComments, createComment, getProgress, claimProgressReward } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
 import { getUserProfileUrl } from "@/lib/helpers";
@@ -97,10 +97,22 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
           if (role) setCurrentUser({ role, name, id, avatar });
 
           // 2. Ödül Kontrolü
-          const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-          if (claimedPosts.includes(post.id)) {
-              setHasClaimed(true);
-          }
+          const checkRewardClaimed = async () => {
+            if (role) {
+              // Logged-in user: Check from API
+              const progress = await getProgress('blog', post.id);
+              if (progress?.reward_claimed) {
+                setHasClaimed(true);
+              }
+            } else {
+              // Guest user: Check localStorage with _guest_ suffix
+              const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts_guest') || '[]');
+              if (claimedPosts.includes(post.id)) {
+                setHasClaimed(true);
+              }
+            }
+          };
+          checkRewardClaimed();
 
           // 3. Yazar Bilgisini Doğrula (API'den Rol ve Slug Çek)
           const verifyAuthor = async () => {
@@ -194,9 +206,16 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       
       if (res.success) {
           setHasClaimed(true);
-          const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-          claimedPosts.push(post.id);
-          localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
+          
+          if (currentUser) {
+            // Logged-in user: Use Progress API
+            await claimProgressReward('blog', post.id);
+          } else {
+            // Guest user: Use localStorage with _guest_ suffix
+            const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts_guest') || '[]');
+            claimedPosts.push(post.id);
+            localStorage.setItem('claimed_posts_guest', JSON.stringify(claimedPosts));
+          }
 
           setRewardMessage({
               title: "Harikasın! 🎉",

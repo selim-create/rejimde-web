@@ -1291,6 +1291,119 @@ export async function sendHighFive(userId: number) {
 
 
 /**
+ * ==========================================
+ * PROGRESS API FONKSİYONLARI
+ * ==========================================
+ */
+
+/**
+ * Get user's progress for specific content
+ */
+export async function getProgress(contentType: string, contentId: number) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data || json;
+  } catch (error) {
+    console.error('getProgress error:', error);
+    return null;
+  }
+}
+
+/**
+ * Update user's progress for specific content
+ */
+export async function updateProgress(contentType: string, contentId: number, data: {
+  progress_data?: string[];
+  is_started?: boolean;
+  is_completed?: boolean;
+  reward_claimed?: boolean;
+}) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    return json;
+  } catch (error) {
+    console.error('updateProgress error:', error);
+    return { success: false };
+  }
+}
+
+/**
+ * Start tracking content
+ */
+export async function startProgress(contentType: string, contentId: number) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}/start`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  } catch (error) {
+    return { success: false };
+  }
+}
+
+/**
+ * Mark content as completed
+ */
+export async function completeProgress(contentType: string, contentId: number) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}/complete`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  } catch (error) {
+    return { success: false };
+  }
+}
+
+/**
+ * Claim reward for content
+ */
+export async function claimProgressReward(contentType: string, contentId: number) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}/claim-reward`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return await res.json();
+  } catch (error) {
+    return { success: false };
+  }
+}
+
+/**
+ * Get all progress for current user
+ */
+export async function getMyProgress(contentType?: string, isCompleted?: boolean) {
+  try {
+    const params = new URLSearchParams();
+    if (contentType) params.append('content_type', contentType);
+    if (isCompleted !== undefined) params.append('is_completed', isCompleted ? '1' : '0');
+    
+    const res = await fetch(`${API_URL}/rejimde/v1/progress/my?${params.toString()}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
  * AUTH OBJESİ (Toplu Kullanım İçin)
  * Diğer sayfalardaki import { auth } from '@/lib/api' kullanımını destekler.
  */

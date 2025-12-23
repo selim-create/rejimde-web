@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPlanBySlug, getMe, earnPoints, createComment, getComments } from "@/lib/api";
+import { getPlanBySlug, getMe, earnPoints, createComment, getComments, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 
 // --- API Helperları (Bu sayfaya özel) ---
@@ -109,15 +109,29 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
           const planComments = await getComments(planData.id);
           setComments(planComments);
           
-          // Local Progress
-          const storedProgress = localStorage.getItem(`diet_progress_${planData.id}`);
-          if (storedProgress) {
+          // Progress Loading
+          if (userData && planData.id) {
+            // Logged-in user: Load from API
+            const progress = await getProgress('diet', planData.id);
+            if (progress) {
+              if (progress.progress_data) {
+                const progressData = typeof progress.progress_data === 'string' 
+                  ? JSON.parse(progress.progress_data) 
+                  : progress.progress_data;
+                setCompletedMeals(Array.isArray(progressData) ? progressData : []);
+              }
+              setIsStarted(progress.is_started === 1 || progress.is_started === true);
+              setIsCompleted(progress.is_completed === 1 || progress.is_completed === true);
+            }
+          } else {
+            // Guest user: Use localStorage with _guest_ suffix
+            const storedProgress = localStorage.getItem(`diet_progress_guest_${planData.id}`);
+            if (storedProgress) {
               setCompletedMeals(JSON.parse(storedProgress));
+            }
+            const storedStarted = localStorage.getItem(`diet_started_guest_${planData.id}`);
+            if (storedStarted) setIsStarted(true);
           }
-          
-          // Started Status (Basit kontrol, localstorage)
-          const storedStarted = localStorage.getItem(`diet_started_${planData.id}`);
-          if (storedStarted) setIsStarted(true);
 
         } else {
           setNotFound(true);
@@ -166,29 +180,35 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
 
   // ACTIONS
 
-  const toggleMealCompletion = (mealId: string) => {
+  const toggleMealCompletion = async (mealId: string) => {
       const newCompleted = completedMeals.includes(mealId)
           ? completedMeals.filter(id => id !== mealId)
           : [...completedMeals, mealId];
       
       setCompletedMeals(newCompleted);
-      if(plan) localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
+      
+      if (currentUser && plan?.id) {
+        // Logged-in user: Save to API
+        await updateProgress('diet', plan.id, { progress_data: newCompleted });
+      } else if (plan?.id) {
+        // Guest user: Save to localStorage with _guest_ suffix
+        localStorage.setItem(`diet_progress_guest_${plan.id}`, JSON.stringify(newCompleted));
+      }
   };
 
   const handleStartDiet = async () => {
       if (!currentUser) return showModal("Giriş Yapmalısın", "Diyet takibi yapmak için lütfen giriş yap.", "error");
       
       try {
-          await startPlan(plan.id);
+          await startProgress('diet', plan.id);
           setIsStarted(true);
-          localStorage.setItem(`diet_started_${plan.id}`, 'true');
           showModal("Başarılar!", "Bu diyete başladın. İlerlemeni kaydetmek için öğünleri işaretlemeyi unutma.", "success");
       } catch (e) {
           showModal("Hata", "Bir sorun oluştu.", "error");
       }
   };
 
-  const handleCompleteAllMeals = () => {
+  const handleCompleteAllMeals = async () => {
       // Aktif gündeki tüm öğünleri bul
       const currentDay = planData.find((d: any) => d.dayNumber == activeDay);
       if (!currentDay || !currentDay.meals) return;
@@ -202,7 +222,14 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       });
 
       setCompletedMeals(newCompleted);
-      if(plan) localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
+      
+      if (currentUser && plan?.id) {
+        // Logged-in user: Save to API
+        await updateProgress('diet', plan.id, { progress_data: newCompleted });
+      } else if (plan?.id) {
+        // Guest user: Save to localStorage with _guest_ suffix
+        localStorage.setItem(`diet_progress_guest_${plan.id}`, JSON.stringify(newCompleted));
+      }
   };
 
   const handleCompleteDiet = async () => {
@@ -211,7 +238,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
           try {
             const reward = parseInt(plan?.meta?.score_reward || "0");
             await earnPoints('complete_plan', plan?.id);
-            await completePlanAPI(plan.id); // Backend kaydı
+            await completeProgress('diet', plan.id); // Use new Progress API
             showModal(
                 "Tebrikler Şampiyon! 🏆", 
                 `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, 
