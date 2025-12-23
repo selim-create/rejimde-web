@@ -61,12 +61,23 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
  */
 export async function getMe() {
   try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    
+    // Token yoksa null dön, hata fırlatma
+    if (!token) {
+      return null;
+    }
+
     const res = await fetch(`${API_URL}/wp/v2/users/me?context=edit`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
 
-    if (!res.ok) throw new Error('Kullanıcı bilgisi alınamadı');
+    // Response başarısız ise null dön, hata fırlatma
+    if (!res.ok) {
+      console.warn('Kullanıcı bilgisi alınamadı - oturum geçersiz olabilir');
+      return null;
+    }
 
     const json = await res.json();
     
@@ -118,8 +129,8 @@ export async function getMe() {
       certificate_url: json.certificate_url || ''
     };
   } catch (error) {
-    console.error(error);
-    return null;
+    console.error('getMe error:', error);
+    return null; // Hata durumunda null dön
   }
 }
 
