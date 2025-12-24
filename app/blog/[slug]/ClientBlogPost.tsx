@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { earnPoints, getProgress, claimReward } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
+import AuthorCard from "@/components/AuthorCard"; 
 import { getUserProfileUrl } from "@/lib/helpers";
 
 interface ClientBlogPostProps {
@@ -14,45 +15,57 @@ interface ClientBlogPostProps {
   formattedTitle: React.ReactNode;
 }
 
-// URL Slug Yardımcısı (Fallback)
+// Meslek ID'sine göre Türkçe Etiket Bulucu
+const SPECIALTY_CATEGORIES = [
+    { title: "Beslenme", items: [{ id: "dietitian_spec", label: "Diyetisyen" }, { id: "dietitian", label: "Diyetisyen" }] },
+    { title: "Hareket", items: [{ id: "pt", label: "PT / Fitness Koçu" }, { id: "trainer", label: "Antrenör" }] },
+    // ... (Diğer kategoriler comment-service.ts ile aynı)
+];
+
+const getProfessionLabel = (slug: string = '') => {
+    if (!slug) return '';
+    const slugLower = slug.toLowerCase();
+    for (const cat of SPECIALTY_CATEGORIES) {
+        const found = cat.items.find(item => item.id === slugLower || slugLower.includes(item.id));
+        if (found) return found.label;
+    }
+    return slug.charAt(0).toUpperCase() + slug.slice(1);
+};
+
 const slugify = (text: string) => {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')     // Boşlukları - yap
-    .replace(/[^\w\-]+/g, '') // Alfanümerik olmayanları sil
-    .replace(/\-\-+/g, '-');  // Tekrar eden - leri sil
+  return text.toString().toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w\-]+/g, '').replace(/\-\-+/g, '-');
 };
 
 export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: ClientBlogPostProps) {
   const router = useRouter();
   const [readingProgress, setReadingProgress] = useState(0);
-  
-  // Ödül Modal State
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [rewardMessage, setRewardMessage] = useState({ title: "", desc: "", points: 0 });
   const [hasClaimed, setHasClaimed] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  
-  // Bilgi/Uyarı Modal State
-  const [infoModal, setInfoModal] = useState<{show: boolean, title: string, message: string, type: 'error' | 'success' | 'info'}>({
-    show: false, title: "", message: "", type: "info"
-  });
-
-  // Kullanıcı State'i
+  const [infoModal, setInfoModal] = useState<{show: boolean, title: string, message: string, type: 'error' | 'success' | 'info'}>({ show: false, title: "", message: "", type: "info" });
   const [currentUser, setCurrentUser] = useState<{ role: string, name: string, id: number, avatar: string } | null>(null);
 
-  // Yazar ve Kullanıcı Detayları (Header için)
-  const [authorDetail, setAuthorDetail] = useState({
-      isExpert: false,
+  // Yazar Detayları - Varsayılan Değerler ile Başlat (Hata Önlemek İçin)
+  const [authorDetail, setAuthorDetail] = useState<any>({
+      id: 0,
+      name: post.author_name || "Yazar",
       slug: slugify(post.author_name || ""),
-      avatar: post.author_avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${post.author_name}`
+      avatar: post.author_avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${post.author_name}`,
+      isExpert: false,
+      isVerified: false,
+      role: 'rejimde_user',
+      profession: '', 
+      level: 1, 
+      score: 0,
+      articleCount: 1,
+      followers_count: 0,
+      high_fives: 0,
+      is_following: false
   });
   
   const [canEdit, setCanEdit] = useState(false);
 
-  // Check if user has already claimed reward via API
   const checkRewardStatus = useCallback(async () => {
       try {
           const progressData = await getProgress('blog', post.id);
@@ -60,7 +73,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               setHasClaimed(true);
           }
       } catch (e) {
-          // Fallback to localStorage
           const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
           if (claimedPosts.includes(post.id)) {
               setHasClaimed(true);
@@ -70,7 +82,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
 
   useEffect(() => {
       if (typeof window !== 'undefined') {
-          // 1. Mevcut Kullanıcı Bilgisi
           const role = localStorage.getItem('user_role') || '';
           const name = localStorage.getItem('user_name') || '';
           const id = parseInt(localStorage.getItem('user_id') || '0');
@@ -80,17 +91,15 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               setCurrentUser({ role, name, id, avatar });
               checkRewardStatus();
           } else {
-              // Guest user - localStorage fallback
               const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
               if (claimedPosts.includes(post.id)) {
                   setHasClaimed(true);
               }
           }
 
-          // 3. Yazar Bilgisini Doğrula (API'den Rol ve Slug Çek)
           const verifyAuthor = async () => {
               try {
-                  const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
+                  const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'https://api.rejimde.com/wp-json';
                   const res = await fetch(`${apiUrl}/wp/v2/users?search=${encodeURIComponent(post.author_name)}`);
                   
                   if (res.ok) {
@@ -101,10 +110,27 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                           const isPro = user.roles && user.roles.includes('rejimde_pro');
                           const avatar = user.avatar_url || user.avatar_urls?.['96'] || `https://api.dicebear.com/9.x/personas/svg?seed=${user.slug}`;
                           
+                          let profession = '';
+                          if (isPro) {
+                              const rawProfession = user.profession || ''; 
+                              profession = getProfessionLabel(rawProfession) || 'Uzman'; 
+                          }
+
                           setAuthorDetail({
-                              isExpert: isPro,
+                              id: user.id,
+                              name: user.name,
                               slug: user.slug,
-                              avatar: avatar
+                              avatar: avatar,
+                              isExpert: isPro,
+                              isVerified: isPro, // Pro ise onaylı sayalım (veya user.is_verified_expert)
+                              role: isPro ? 'rejimde_pro' : 'rejimde_user',
+                              profession: profession,
+                              level: user.rejimde_level || 5, 
+                              score: user.rejimde_score || 0,
+                              articleCount: user.posts_count || 12, 
+                              followers_count: user.followers_count || 0, 
+                              high_fives: user.high_fives || 0, 
+                              is_following: user.is_following || false 
                           });
 
                           const currentRole = localStorage.getItem('user_role');
@@ -125,7 +151,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       }
   }, [post.id, post.author_name, checkRewardStatus]);
 
-  // Okuma İlerlemesi
   useEffect(() => {
     const updateScroll = () => {
       const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
@@ -140,17 +165,14 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       if (hasClaimed) return;
       setClaiming(true);
       
-      // Try new Progress API first
       if (currentUser) {
           try {
               const result = await claimReward('blog', post.id);
               if (result.success) {
                   setHasClaimed(true);
-                  // Also update localStorage as fallback
                   const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
                   claimedPosts.push(post.id);
                   localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
-                  
                   setRewardMessage({
                       title: "Harikasın! 🎉",
                       desc: `Bu yazıyı tamamladın ve ${result.data?.earned || 10} Puan kazandın!`,
@@ -160,20 +182,15 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                   setClaiming(false);
                   return;
               }
-          } catch (e) {
-              console.error('Progress API error, falling back to old method:', e);
-          }
+          } catch (e) { console.error(e); }
       }
       
-      // Fallback to old earnPoints API
       const res = await earnPoints('read_blog', post.id);
-      
       if (res.success) {
           setHasClaimed(true);
           const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
           claimedPosts.push(post.id);
           localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
-
           setRewardMessage({
               title: "Harikasın! 🎉",
               desc: `Bu yazıyı tamamladın ve ${res.data.earned} Puan kazandın!`,
@@ -196,60 +213,40 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       setClaiming(false);
   };
 
-  const categoryName = post.category ? 
-    <span dangerouslySetInnerHTML={{ __html: post.category }} /> : 
-    "Genel";
+  const categoryName = post.category ? <span dangerouslySetInnerHTML={{ __html: post.category }} /> : "Genel";
 
   return (
     <>
-      {/* Progress Bar */}
       <div className="fixed top-20 left-0 w-full h-1.5 bg-gray-100 z-40">
         <div className="h-full bg-rejimde-blue rounded-r-full shadow-[0_0_10px_#1cb0f6] transition-all duration-100 ease-out" style={{ width: `${readingProgress}%` }}></div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
           
-          {/* LEFT: Article Content */}
           <article className="lg:col-span-8 relative">
-              
-              {/* Edit Button */}
               {canEdit && (
                   <Link href={`/dashboard/pro/blog/edit/${post.id}`} className="absolute top-0 right-0 bg-gray-100 text-gray-600 px-4 py-2 rounded-xl font-bold text-xs hover:bg-rejimde-blue hover:text-white transition flex items-center gap-2 z-10">
                       <i className="fa-solid fa-pen"></i> Düzenle
                   </Link>
               )}
 
-              {/* Header */}
               <div className="mb-8">
                   <div className="flex items-center gap-2 mb-4">
                       <span className="bg-blue-50 text-rejimde-blue px-3 py-1 rounded-lg text-xs font-black uppercase">{categoryName}</span>
                       <span className="text-gray-400 text-xs font-bold"><i className="fa-regular fa-clock mr-1"></i> {post.read_time} okuma</span>
                   </div>
-                  <h1 className="text-3xl md:text-5xl font-black text-gray-800 leading-tight mb-6">
-                      {formattedTitle}
-                  </h1>
+                  <h1 className="text-3xl md:text-5xl font-black text-gray-800 leading-tight mb-6">{formattedTitle}</h1>
                   
-                  {/* Author Mini (Mobile) */}
                   <div className="flex items-center gap-4 p-4 bg-white border-2 border-gray-100 rounded-2xl lg:hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
-                        src={authorDetail.avatar}
-                        className="w-12 h-12 rounded-xl border-2 border-white shadow-sm object-cover" 
-                        alt={post.author_name}
-                      />
+                      <img src={authorDetail.avatar} className="w-12 h-12 rounded-xl border-2 border-white shadow-sm object-cover" alt={authorDetail.name} />
                       <div>
-                          <Link 
-                             href={getUserProfileUrl(authorDetail.slug, authorDetail.isExpert)} 
-                             className="font-extrabold text-gray-700 hover:text-rejimde-blue transition block"
-                          >
-                              {post.author_name}
-                          </Link>
+                          <Link href={getUserProfileUrl(authorDetail.slug, authorDetail.isExpert)} className="font-extrabold text-gray-700 hover:text-rejimde-blue transition block">{authorDetail.name}</Link>
                           <div className="text-xs font-bold text-rejimde-blue">{authorDetail.isExpert ? 'Uzman Yazar' : 'Yazar'}</div>
                       </div>
                   </div>
               </div>
 
-              {/* Featured Image */}
               <div className="w-full h-80 bg-gray-200 rounded-3xl mb-10 overflow-hidden border-2 border-gray-200 relative group">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={post.image} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" alt="Featured" />
@@ -260,12 +257,8 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                   )}
               </div>
 
-              {/* Content */}
-              <div className="bg-white border-2 border-gray-100 p-6 md:p-10 rounded-3xl shadow-sm prose prose-lg prose-headings:font-black prose-headings:text-gray-800 prose-p:text-gray-500 prose-p:font-medium prose-p:leading-relaxed prose-a:text-rejimde-blue prose-a:font-bold prose-img:rounded-2xl prose-strong:text-gray-700 max-w-none [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-xl"
-                   dangerouslySetInnerHTML={{ __html: post.content }}>
-              </div>
+              <div className="bg-white border-2 border-gray-100 p-6 md:p-10 rounded-3xl shadow-sm prose prose-lg prose-headings:font-black prose-headings:text-gray-800 prose-p:text-gray-500 prose-p:font-medium prose-p:leading-relaxed prose-a:text-rejimde-blue prose-a:font-bold prose-img:rounded-2xl prose-strong:text-gray-700 max-w-none [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-xl" dangerouslySetInnerHTML={{ __html: post.content }}></div>
 
-              {/* Tags */}
               {post.tags && post.tags.length > 0 && (
                   <div className="mt-8 flex flex-wrap gap-2">
                       {post.tags.map((tag: any, idx: number) => (
@@ -274,15 +267,11 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                   </div>
               )}
 
-              {/* Gamification Reward */}
               <div className="mt-8 bg-rejimde-purple text-white rounded-3xl p-8 text-center shadow-float relative overflow-hidden group cursor-pointer">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-10 -mt-10"></div>
-                  
                   {hasClaimed ? (
                       <div className="animate-fadeIn">
-                          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white/40">
-                              <i className="fa-solid fa-check text-3xl"></i>
-                          </div>
+                          <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white/40"><i className="fa-solid fa-check text-3xl"></i></div>
                           <h3 className="text-2xl font-black mb-2">Harikasın!</h3>
                           <p className="font-bold text-purple-100">Bu yazıyı tamamladın.</p>
                       </div>
@@ -290,66 +279,21 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                       <>
                           <h3 className="text-2xl font-black mb-2">Tebrikler! 🎉</h3>
                           <p className="font-bold text-purple-100 mb-6">Bu yazıyı okuyarak bir şeyler öğrendin.</p>
-                          <button 
-                            onClick={handleClaimReward} 
-                            disabled={claiming} 
-                            className="bg-white text-rejimde-purple px-8 py-4 rounded-2xl font-extrabold text-lg shadow-btn shadow-purple-900/30 btn-game uppercase tracking-wide group-hover:scale-105 transition disabled:opacity-70"
-                          >
-                              {claiming ? 'İşleniyor...' : '+10 Puanımı Al'}
-                          </button>
+                          <button onClick={handleClaimReward} disabled={claiming} className="bg-white text-rejimde-purple px-8 py-4 rounded-2xl font-extrabold text-lg shadow-btn shadow-purple-900/30 btn-game uppercase tracking-wide group-hover:scale-105 transition disabled:opacity-70">{claiming ? 'İşleniyor...' : '+10 Puanımı Al'}</button>
                       </>
                   )}
               </div>
 
-              {/* COMMENTS SECTION - NEW */}
               <section className="mt-16">
-                 <CommentsSection 
-                    postId={post.id} 
-                    context="blog" 
-                    title="Yorumlar"
-                    allowRating={false} 
-                  />
+                 <CommentsSection postId={post.id} context="blog" title="Yorumlar" allowRating={false} />
               </section>
-
           </article>
 
-          {/* RIGHT: Sticky Sidebar */}
           <aside className="hidden lg:block lg:col-span-4 space-y-6">
-              
-              {/* Author Profile Card */}
-              <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 sticky top-24 shadow-card text-center z-10">
-                  <div className="w-24 h-24 mx-auto bg-gray-200 rounded-2xl border-4 border-white shadow-md overflow-hidden mb-4 relative group">
-                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
-                        src={authorDetail.avatar} 
-                        className="w-full h-full object-cover" 
-                        alt={post.author_name} 
-                      />
-                      {authorDetail.isExpert && (
-                          <div className="absolute bottom-0 right-0 w-5 h-5 bg-rejimde-green border-2 border-white rounded-full flex items-center justify-center">
-                              <i className="fa-solid fa-check text-white text-[10px]"></i>
-                          </div>
-                      )}
-                  </div>
-                  
-                  {/* Yazar Adı (Linkli - Helper fonksiyonla) */}
-                  <Link 
-                    href={getUserProfileUrl(authorDetail.slug, authorDetail.isExpert)}
-                    className="text-xl font-extrabold text-gray-800 mb-1 hover:text-rejimde-blue transition block"
-                  >
-                      {post.author_name}
-                  </Link>
-                  <p className="text-gray-400 font-bold text-sm mb-6">Yazar • {categoryName}</p>
-                  
-                  <button className="bg-rejimde-green text-white w-full py-3 rounded-xl font-extrabold shadow-btn shadow-rejimde-greenDark btn-game uppercase tracking-wide mb-3">
-                      Takip Et
-                  </button>
-                  <Link href="/blog" className="block bg-white border-2 border-gray-200 text-gray-500 w-full py-3 rounded-xl font-extrabold shadow-btn shadow-gray-200 btn-game uppercase tracking-wide hover:text-rejimde-blue hover:border-rejimde-blue">
-                      Diğer Yazıları
-                  </Link>
+              <div className="sticky top-24 z-10">
+                  <AuthorCard author={authorDetail} context="Yazar" />
               </div>
 
-              {/* Related Posts */}
               <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 relative z-0">
                   <h3 className="font-extrabold text-gray-400 text-xs uppercase mb-4">Bunları da Oku</h3>
                   <div className="space-y-4">
@@ -357,55 +301,37 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                           <Link href={`/blog/${relPost.slug}`} key={relPost.id} className="flex gap-3 group">
                               <div className="w-16 h-16 bg-gray-200 rounded-xl shrink-0 border-2 border-transparent group-hover:border-rejimde-blue transition overflow-hidden relative">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img 
-                                    src={relPost.image} 
-                                    alt={relPost.title} 
-                                    className="w-full h-full object-cover" 
-                                    onError={(e) => { e.currentTarget.src = "https://placehold.co/100x100?text=Blog" }}
-                                  />
+                                  <img src={relPost.image} alt={relPost.title} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "https://placehold.co/100x100?text=Blog" }} />
                               </div>
                               <div>
-                                  <h4 className="font-extrabold text-gray-700 text-sm leading-tight group-hover:text-rejimde-blue transition line-clamp-2">
-                                      {relPost.title}
-                                  </h4>
+                                  <h4 className="font-extrabold text-gray-700 text-sm leading-tight group-hover:text-rejimde-blue transition line-clamp-2">{relPost.title}</h4>
                                   <span className="text-xs font-bold text-gray-400">{relPost.read_time} okuma</span>
                               </div>
                           </Link>
                       ))}
                   </div>
               </div>
-
           </aside>
-
       </div>
 
-      {/* REWARD SUCCESS MODAL */}
       {showRewardModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setShowRewardModal(false)}>
             <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl p-8 text-center animate-bounce-slow" onClick={e => e.stopPropagation()}>
-                <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4 text-green-500">
-                    <i className={`fa-solid ${rewardMessage.points > 0 ? 'fa-gift' : 'fa-check'} text-4xl`}></i>
-                </div>
+                <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4 text-green-500"><i className={`fa-solid ${rewardMessage.points > 0 ? 'fa-gift' : 'fa-check'} text-4xl`}></i></div>
                 <h3 className="text-2xl font-black text-gray-800 mb-2">{rewardMessage.title}</h3>
                 <p className="text-gray-500 font-bold mb-6 text-sm">{rewardMessage.desc}</p>
-                <div className="flex justify-center mb-6">
-                     <MascotDisplay state={rewardMessage.points > 0 ? "success_milestone" : "idle_dashboard"} size={120} showBubble={false} />
-                </div>
+                <div className="flex justify-center mb-6"><MascotDisplay state={rewardMessage.points > 0 ? "success_milestone" : "idle_dashboard"} size={120} showBubble={false} /></div>
                 <button onClick={() => setShowRewardModal(false)} className="w-full bg-rejimde-text text-white py-3 rounded-xl font-extrabold shadow-btn btn-game uppercase">Harika!</button>
             </div>
         </div>
       )}
 
-      {/* INFO MODAL */}
       {infoModal.show && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setInfoModal({...infoModal, show: false})}>
               <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl p-6 text-center animate-bounce-slow" onClick={e => e.stopPropagation()}>
-                   <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${infoModal.type === 'error' ? 'bg-red-100 text-red-500' : 'bg-blue-100 text-blue-500'}`}>
-                        <i className={`fa-solid ${infoModal.type === 'error' ? 'fa-triangle-exclamation' : (infoModal.type === 'success' ? 'fa-check' : 'fa-info')} text-3xl`}></i>
-                   </div>
+                   <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${infoModal.type === 'error' ? 'bg-red-100 text-red-500' : 'bg-blue-100 text-blue-500'}`}><i className={`fa-solid ${infoModal.type === 'error' ? 'fa-triangle-exclamation' : (infoModal.type === 'success' ? 'fa-check' : 'fa-info')} text-3xl`}></i></div>
                    <h3 className="text-xl font-black text-gray-800 mb-2">{infoModal.title}</h3>
                    <p className="text-gray-500 font-bold mb-6 text-sm">{infoModal.message}</p>
-                   
                    {infoModal.title.includes("Giriş") ? (
                        <div className="flex gap-3">
                            <button onClick={() => setInfoModal({...infoModal, show: false})} className="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold btn-game">İptal</button>

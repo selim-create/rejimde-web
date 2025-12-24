@@ -6,6 +6,26 @@ import { useRouter } from "next/navigation";
 import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
+import AuthorCard from "@/components/AuthorCard"; // Import AuthorCard
+
+// --- UZMANLIK KATEGORİLERİ (AuthorCard Renkleri İçin) ---
+const SPECIALTY_CATEGORIES = [
+    { title: "Beslenme", items: [{ id: "dietitian_spec", label: "Diyetisyen" }, { id: "dietitian", label: "Diyetisyen" }] },
+    { title: "Hareket", items: [{ id: "pt", label: "PT / Fitness Koçu" }, { id: "trainer", label: "Antrenör" }] },
+    { title: "Zihin & Alışkanlık", items: [{ id: "psychologist", label: "Psikolog" }, { id: "life_coach", label: "Yaşam Koçu" }] },
+    { title: "Sağlık Destek", items: [{ id: "doctor", label: "Doktor" }, { id: "physio", label: "Fizyoterapist" }] },
+    { title: "Kardiyo & Güç", items: [{ id: "box", label: "Boks / Kickboks" }, { id: "defense", label: "Savunma & Kondisyon" }] }
+];
+
+const getProfessionLabel = (slug: string = '') => {
+    if (!slug) return '';
+    const slugLower = slug.toLowerCase();
+    for (const cat of SPECIALTY_CATEGORIES) {
+        const found = cat.items.find(item => item.id === slugLower || slugLower.includes(item.id));
+        if (found) return found.label;
+    }
+    return slug.charAt(0).toUpperCase() + slug.slice(1);
+};
 
 // --- TİPLER ---
 interface Exercise {
@@ -195,6 +215,9 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  
+  // Author Card için detaylar
+  const [authorDetail, setAuthorDetail] = useState<any>(null);
 
   // States
   const [completedExercises, setCompletedExercises] = useState<string[]>([]);
@@ -227,6 +250,61 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           setPlan(planData);
           setCurrentUser(userData);
           
+          // Yazar Detaylarını Oluştur
+          const authorSlug = planData.author?.slug || '#';
+          let authorInfo = {
+              id: 0,
+              name: planData.author?.name || 'Rejimde Coach',
+              slug: authorSlug,
+              avatar: getSafeAvatarUrl(planData.author?.avatar, authorSlug),
+              isExpert: planData.author?.is_expert || false,
+              isVerified: planData.author?.is_expert || false,
+              role: planData.author?.is_expert ? 'rejimde_pro' : 'rejimde_user',
+              profession: planData.author?.is_expert ? 'Antrenör' : '',
+              level: 1,
+              score: 0,
+              articleCount: 1,
+              followers_count: 0,
+              high_fives: 0
+          };
+
+          // API'den detaylı yazar verisi çek (ID, Takipçi sayısı vb. için)
+          try {
+              const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
+              const res = await fetch(`${apiUrl}/wp/v2/users?search=${encodeURIComponent(authorInfo.name)}`);
+              if (res.ok) {
+                  const users = await res.json();
+                  const user = users.find((u: any) => u.slug === authorSlug) || users[0];
+                  if (user) {
+                      const isPro = user.roles && user.roles.includes('rejimde_pro');
+                      let profession = authorInfo.profession;
+                      if (isPro) {
+                          const rawProfession = user.profession || 'trainer'; // Default to trainer for exercise plan authors
+                          profession = getProfessionLabel(rawProfession) || 'Antrenör'; 
+                      }
+
+                      authorInfo = {
+                          ...authorInfo,
+                          id: user.id,
+                          name: user.name,
+                          avatar: user.avatar_url || authorInfo.avatar,
+                          isExpert: isPro,
+                          isVerified: isPro, 
+                          role: isPro ? 'rejimde_pro' : 'rejimde_user',
+                          profession: profession,
+                          level: user.rejimde_level || 5,
+                          score: user.rejimde_score || 0,
+                          articleCount: user.posts_count || 12,
+                          followers_count: user.followers_count || 0,
+                          high_fives: user.high_fives || 0
+                      };
+                  }
+              }
+          } catch (e) {
+              console.warn("Yazar detayları çekilemedi, varsayılanlar kullanılıyor.", e);
+          }
+          setAuthorDetail(authorInfo);
+
           // Progress: API'den çek (logged in user) veya localStorage'dan (guest)
           if (userData) {
               // Logged in user - API'den çek
@@ -427,13 +505,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   const scoreReward = plan.meta?.score_reward || '0';
   const category = plan.meta?.exercise_category || 'Genel';
   
-  const authorName = plan.author?.name || 'Rejimde Coach';
-  const authorSlug = plan.author?.slug || '#';
-  const authorAvatar = getSafeAvatarUrl(plan.author?.avatar, authorSlug);
-  const authorIsExpert = plan.author?.is_expert || false;
-  const isAuthor = currentUser && (plan.author?.name === currentUser.name || currentUser.username === authorSlug); 
-  
-  // Uzman Kontrolü
+  const isAuthor = currentUser && (plan.author?.name === currentUser.name || currentUser.username === plan.author?.slug); 
   const isExpertUser = currentUser && Array.isArray(currentUser.roles) && (currentUser.roles.includes('rejimde_pro') || currentUser.roles.includes('administrator'));
   
   const currentDayData = planData.find((d: any) => d.dayNumber == activeDay) || planData[0] || { exercises: [] };
@@ -691,16 +763,12 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
                   </div>
               )}
 
-              {/* Author */}
-              <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 text-center shadow-card">
-                  <p className="text-xs font-bold text-gray-400 uppercase mb-4">Hazırlayan {authorIsExpert ? 'Antrenör' : 'Kişi'}</p>
-                  <div className="w-20 h-20 mx-auto bg-gray-200 rounded-2xl border-4 border-white shadow-md overflow-hidden mb-3 relative group cursor-pointer">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={authorAvatar} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" alt={authorName} />
+              {/* YENİ: ORTAK AUTHOR CARD */}
+              {authorDetail && (
+                  <div className="sticky top-24 z-10">
+                      <AuthorCard author={authorDetail} context={authorDetail.isExpert ? 'Hazırlayan' : 'Paylaşan'} />
                   </div>
-                  <Link href={getUserProfileUrl(authorSlug, authorIsExpert)} className="text-lg font-extrabold text-gray-800 hover:text-blue-600 block mb-2">{authorName}</Link>
-                  <Link href={getUserProfileUrl(authorSlug, authorIsExpert)} className="bg-white border-2 border-gray-200 text-gray-500 w-full py-2 rounded-xl font-bold text-xs shadow-btn shadow-gray-200 btn-game hover:text-blue-500 hover:border-blue-500 uppercase inline-block">Profili Gör</Link>
-              </div>
+              )}
 
                {/* Completed Users */}
                {plan.completed_users && plan.completed_users.length > 0 && (

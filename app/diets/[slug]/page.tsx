@@ -6,6 +6,25 @@ import { useRouter } from "next/navigation";
 import { getPlanBySlug, getMe, earnPoints, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
+import AuthorCard from "@/components/AuthorCard"; // Import AuthorCard
+
+// --- UZMANLIK KATEGORİLERİ (AuthorCard Renkleri İçin) ---
+const SPECIALTY_CATEGORIES = [
+    { title: "Beslenme", items: [{ id: "dietitian_spec", label: "Diyetisyen" }, { id: "dietitian", label: "Diyetisyen" }] },
+    { title: "Hareket", items: [{ id: "pt", label: "PT / Fitness Koçu" }, { id: "trainer", label: "Antrenör" }] },
+    { title: "Zihin & Alışkanlık", items: [{ id: "psychologist", label: "Psikolog" }, { id: "life_coach", label: "Yaşam Koçu" }] },
+    { title: "Sağlık Destek", items: [{ id: "doctor", label: "Doktor" }, { id: "physio", label: "Fizyoterapist" }] }
+];
+
+const getProfessionLabel = (slug: string = '') => {
+    if (!slug) return '';
+    const slugLower = slug.toLowerCase();
+    for (const cat of SPECIALTY_CATEGORIES) {
+        const found = cat.items.find(item => item.id === slugLower || slugLower.includes(item.id));
+        if (found) return found.label;
+    }
+    return slug.charAt(0).toUpperCase() + slug.slice(1);
+};
 
 // --- API Helperları (Bu sayfaya özel) ---
 const approvePlan = async (id: number) => {
@@ -68,6 +87,9 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  
+  // Author Card için detaylar
+  const [authorDetail, setAuthorDetail] = useState<any>(null);
 
   // Gamification State
   const [completedMeals, setCompletedMeals] = useState<string[]>([]);
@@ -91,7 +113,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   useEffect(() => {
     async function loadData() {
       try {
-        // Promise.all kullanarak paralel yükleme
         const [planData, userData] = await Promise.all([
             getPlanBySlug(slug),
             getMe()
@@ -101,9 +122,64 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
           setPlan(planData);
           setCurrentUser(userData);
           
-          // Progress: API'den çek (logged in user) veya localStorage'dan (guest)
+          // Yazar Detaylarını Oluştur ve Zenginleştir
+          const authorSlug = planData.author?.slug || '#';
+          let authorInfo = {
+              id: 0,
+              name: planData.author?.name || 'Rejimde Uzman',
+              slug: authorSlug,
+              avatar: getSafeAvatarUrl(planData.author?.avatar, authorSlug),
+              isExpert: planData.author?.is_expert || false,
+              isVerified: planData.author?.is_expert || false,
+              role: planData.author?.is_expert ? 'rejimde_pro' : 'rejimde_user',
+              profession: planData.author?.is_expert ? 'Diyetisyen' : '',
+              level: 1,
+              score: 0,
+              articleCount: 1,
+              followers_count: 0,
+              high_fives: 0
+          };
+
+          // API'den detaylı yazar verisi çek (ID, Takipçi sayısı vb. için)
+          try {
+              const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
+              const res = await fetch(`${apiUrl}/wp/v2/users?search=${encodeURIComponent(authorInfo.name)}`);
+              if (res.ok) {
+                  const users = await res.json();
+                  const user = users.find((u: any) => u.slug === authorSlug) || users[0];
+                  if (user) {
+                      const isPro = user.roles && user.roles.includes('rejimde_pro');
+                      // Meslek etiketini düzelt
+                      let profession = authorInfo.profession;
+                      if (isPro) {
+                          profession = getProfessionLabel(user.profession || 'dietitian');
+                      }
+
+                      authorInfo = {
+                          ...authorInfo,
+                          id: user.id,
+                          name: user.name,
+                          avatar: user.avatar_url || authorInfo.avatar,
+                          isExpert: isPro,
+                          isVerified: isPro, 
+                          role: isPro ? 'rejimde_pro' : 'rejimde_user',
+                          profession: profession,
+                          level: user.rejimde_level || 5,
+                          score: user.rejimde_score || 0,
+                          articleCount: user.posts_count || 12,
+                          followers_count: user.followers_count || 0,
+                          high_fives: user.high_fives || 0
+                      };
+                  }
+              }
+          } catch (e) {
+              console.warn("Yazar detayları çekilemedi, varsayılanlar kullanılıyor.", e);
+          }
+
+          setAuthorDetail(authorInfo);
+          
+          // Progress
           if (userData) {
-              // Logged in user - API'den çek
               const progressData = await getProgress('diet', planData.id);
               if (progressData) {
                   setCompletedMeals(progressData.completed_items || []);
@@ -111,12 +187,10 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                   setIsCompleted(progressData.completed || false);
               }
           } else {
-              // Guest user - localStorage fallback
               const storedProgress = localStorage.getItem(`diet_progress_${planData.id}`);
               if (storedProgress) {
                   setCompletedMeals(JSON.parse(storedProgress));
               }
-              
               const storedStarted = localStorage.getItem(`diet_started_${planData.id}`);
               if (storedStarted) setIsStarted(true);
           }
@@ -144,7 +218,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       }
   }
   
-  // Progress Hesaplama
   useEffect(() => {
     if (planData.length === 0) return;
     const totalMeals = getTotalMeals();
@@ -153,7 +226,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
     const currentProgress = Math.round((completedMeals.length / totalMeals) * 100);
     setProgress(currentProgress);
 
-    // Otomatik tamamlama tetikleyicisi
     if (currentProgress === 100 && !isCompleted && completedMeals.length > 0) {
         handleCompleteDiet();
     }
@@ -166,8 +238,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
     }
   }, [planData.length, activeDay]);
 
-  // ACTIONS
-
   const getTotalMeals = () => {
       return planData.reduce((acc, day) => acc + (Array.isArray(day.meals) ? day.meals.length : 0), 0);
   };
@@ -176,28 +246,21 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       const newCompleted = completedMeals.includes(mealId)
           ? completedMeals.filter(id => id !== mealId)
           : [...completedMeals, mealId];
-      
       setCompletedMeals(newCompleted);
-      
-      // Update progress in both API and localStorage
       if (plan) {
           if (currentUser) {
-              // Logged in - update via API
               await updateProgress('diet', plan.id, {
                   completed_items: newCompleted,
                   progress_percentage: Math.round((newCompleted.length / getTotalMeals()) * 100)
               });
           }
-          // Always update localStorage as fallback
           localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
       }
   };
 
   const handleStartDiet = async () => {
       if (!currentUser) return showModal("Giriş Yapmalısın", "Diyet takibi yapmak için lütfen giriş yap.", "error");
-      
       try {
-          // Use new Progress API
           const result = await startProgress('diet', plan.id);
           if (result.success) {
               setIsStarted(true);
@@ -207,7 +270,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
               showModal("Hata", result.message || "Bir sorun oluştu.", "error");
           }
       } catch (e) {
-          // Fallback to old API
           try {
               await startPlan(plan.id);
               setIsStarted(true);
@@ -220,21 +282,14 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   };
 
   const handleCompleteAllMeals = async () => {
-      // Aktif gündeki tüm öğünleri bul
       const currentDay = planData.find((d: any) => d.dayNumber == activeDay);
       if (!currentDay || !currentDay.meals) return;
-
       const mealIds = currentDay.meals.map((m: any) => m.id);
-      
-      // Henüz tamamlanmamış olanları ekle
       const newCompleted = [...completedMeals];
       mealIds.forEach((id: string) => {
           if (!newCompleted.includes(id)) newCompleted.push(id);
       });
-
       setCompletedMeals(newCompleted);
-      
-      // Update both API and localStorage
       if (plan) {
           if (currentUser) {
               await updateProgress('diet', plan.id, {
@@ -251,61 +306,34 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       if (currentUser) {
           try {
             const reward = parseInt(plan?.meta?.score_reward || "0");
-            
-            // Use new Progress API
             const result = await completeProgress('diet', plan.id);
             if (result.success) {
                 await earnPoints('complete_plan', plan?.id);
-                showModal(
-                    "Tebrikler Şampiyon! 🏆", 
-                    `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, 
-                    "success"
-                );
+                showModal("Tebrikler Şampiyon! 🏆", `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, "success");
             } else {
-                // Fallback to old API
                 await earnPoints('complete_plan', plan?.id);
                 await completePlanAPI(plan.id);
-                showModal(
-                    "Tebrikler Şampiyon! 🏆", 
-                    `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, 
-                    "success"
-                );
+                showModal("Tebrikler Şampiyon! 🏆", `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, "success");
             }
           } catch(e) { 
               console.error(e);
-              // Still show success message for user experience
               const reward = parseInt(plan?.meta?.score_reward || "0");
-              showModal(
-                  "Tebrikler Şampiyon! 🏆", 
-                  `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, 
-                  "success"
-              );
+              showModal("Tebrikler Şampiyon! 🏆", `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, "success");
           }
       }
   };
 
   const handleApprove = () => {
-      showModal(
-          "Onaylıyor musun?",
-          "Bu diyet planını 'Uzman Onaylı' olarak işaretlemek üzeresin.",
-          "confirm",
-          async () => {
+      showModal("Onaylıyor musun?", "Bu diyet planını 'Uzman Onaylı' olarak işaretlemek üzeresin.", "confirm", async () => {
               try {
                   await approvePlan(plan.id);
-                  // UI'ı güncelle
                   setPlan((prev: any) => ({
                       ...prev,
                       meta: { ...prev.meta, is_verified: true },
-                      approved_by: {
-                          name: currentUser.name,
-                          avatar: currentUser.avatar_url,
-                          slug: currentUser.username
-                      }
+                      approved_by: { name: currentUser.name, avatar: currentUser.avatar_url, slug: currentUser.username }
                   }));
                   showModal("Onaylandı", "Diyet planı onaylandı ve yayınlandı.", "success");
-              } catch (e) {
-                  showModal("Hata", "Onaylama işlemi başarısız.", "error");
-              }
+              } catch (e) { showModal("Hata", "Onaylama işlemi başarısız.", "error"); }
           }
       );
   };
@@ -320,29 +348,19 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   if (loading) return <div className="min-h-screen flex items-center justify-center"><i className="fa-solid fa-circle-notch animate-spin text-4xl text-rejimde-green"></i></div>;
   if (notFound || !plan) return <div className="min-h-screen flex flex-col items-center justify-center p-4"><h1 className="text-2xl font-black">Bulunamadı</h1><Link href="/diets" className="text-rejimde-blue">Listeye Dön</Link></div>;
 
-  // Veriler
   const difficulty = plan.meta?.difficulty || 'Orta';
   const duration = plan.meta?.duration || planData.length.toString() || '3'; 
   const calories = plan.meta?.calories || '--';
   const scoreReward = plan.meta?.score_reward || '0';
   const category = plan.meta?.diet_category || 'Genel';
   
-  const authorName = plan.author?.name || 'Rejimde Uzman';
-  const authorSlug = plan.author?.slug || '#';
-  // Avatar Düzeltmesi: author objesinden gelen avatar zaten API'de dicebear fallback içeriyor olabilir ama garanti olsun
-  const authorAvatar = getSafeAvatarUrl(plan.author?.avatar, authorSlug);
-  const authorIsExpert = plan.author?.is_expert || false;
-
-  const isAuthor = currentUser && (plan.author?.name === currentUser.name || currentUser.username === authorSlug); 
-  
-  // Uzman Yetki Kontrolü (Güvenli)
+  const isAuthor = currentUser && (plan.author?.name === currentUser.name || currentUser.username === plan.author?.slug); 
   const isExpertUser = currentUser && Array.isArray(currentUser.roles) && (currentUser.roles.includes('rejimde_pro') || currentUser.roles.includes('administrator'));
 
   const currentDayData = planData.find((d: any) => d.dayNumber == activeDay) || planData[0] || { meals: [] };
   const meals = Array.isArray(currentDayData.meals) ? currentDayData.meals : (currentDayData.meals ? Object.values(currentDayData.meals) : []);
   const shoppingList = Array.isArray(plan.shopping_list) ? plan.shopping_list : (Array.isArray(plan.meta?.shopping_list) ? plan.meta.shopping_list : []);
 
-  // Icon Helper (Create sayfasıyla uyumlu)
   const getMealIcon = (type: string) => {
       switch (type) {
           case 'breakfast': return 'fa-mug-hot';
@@ -662,30 +680,12 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                   </div>
               )}
 
-              {/* Author Expert */}
-              <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 text-center shadow-card">
-                  <p className="text-xs font-bold text-gray-400 uppercase mb-4">Hazırlayan {authorIsExpert ? 'Uzman' : 'Kişi'}</p>
-                  <div className="w-20 h-20 mx-auto bg-gray-200 rounded-2xl border-4 border-white shadow-md overflow-hidden mb-3 relative group cursor-pointer">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
-                        src={authorAvatar} 
-                        className="w-full h-full object-cover group-hover:scale-110 transition duration-500" 
-                        alt={authorName}
-                        onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/9.x/personas/svg?seed=${authorSlug}` }} 
-                      />
+              {/* YENİ: ORTAK AUTHOR CARD */}
+              {authorDetail && (
+                  <div className="sticky top-24 z-10">
+                      <AuthorCard author={authorDetail} context={authorDetail.isExpert ? 'Hazırlayan' : 'Paylaşan'} />
                   </div>
-                  <Link href={getUserProfileUrl(authorSlug, authorIsExpert)} className="text-lg font-extrabold text-gray-800 hover:text-rejimde-blue block mb-2">
-                      {authorName}
-                  </Link>
-                  {authorIsExpert && (
-                      <div className="flex justify-center text-rejimde-yellow text-xs mb-4">
-                          <i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i>
-                      </div>
-                  )}
-                  <Link href={getUserProfileUrl(authorSlug, authorIsExpert)} className="bg-white border-2 border-gray-200 text-gray-500 w-full py-2 rounded-xl font-bold text-xs shadow-btn shadow-gray-200 btn-game hover:text-rejimde-green hover:border-rejimde-green uppercase inline-block">
-                      Profili Gör
-                  </Link>
-              </div>
+              )}
 
               {/* Completed Users */}
               {plan.completed_users && plan.completed_users.length > 0 && (
