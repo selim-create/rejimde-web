@@ -41,18 +41,25 @@ const safeParse = (data: any, fallback: any = {}) => {
 
 /**
  * Kullanıcı rollerinden birincil rolü belirle
- * Öncelik sırası: rejimde_pro > administrator > editor > diğerleri
+ * Öncelik sırası: administrator > editor > rejimde_pro > rejimde_user
+ * subscriber rolünü rejimde_user olarak normalleştir
  */
 const getPrimaryRole = (roles: string[] | undefined): string => {
     if (!roles || !Array.isArray(roles) || roles.length === 0) {
         return 'rejimde_user';
     }
     
-    if (roles.includes('rejimde_pro')) return 'rejimde_pro';
+    // Öncelik sırası
     if (roles.includes('administrator')) return 'administrator';
     if (roles.includes('editor')) return 'editor';
+    if (roles.includes('rejimde_pro')) return 'rejimde_pro';
+    if (roles.includes('rejimde_user')) return 'rejimde_user';
     
-    return roles[0] || 'rejimde_user';
+    // Subscriber veya diğer roller için rejimde_user olarak normalleştir
+    // (Dashboard erişimi için önemli)
+    if (roles.includes('subscriber')) return 'rejimde_user';
+    
+    return 'rejimde_user'; // Varsayılan olarak rejimde_user
 };
 
 /**
@@ -102,6 +109,12 @@ export async function getMe() {
     
     const gender = json.gender || 'female';
     const finalAvatar = json.avatar_url || json.avatar_urls?.['96'] || getDefaultAvatar(gender);
+
+    // LocalStorage'ı güncelle (mevcut kullanıcılar için)
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('user_slug', json.username);
+        localStorage.setItem('user_id', String(json.id));
+    }
 
     return {
       id: json.id,
@@ -294,7 +307,9 @@ export async function loginUser(username: string, password: string) {
         localStorage.setItem('jwt_token', json.data.token);
         localStorage.setItem('user_email', json.data.user_email);
         localStorage.setItem('user_name', json.data.user_display_name);
-        localStorage.setItem('user_avatar', json.data.avatar_url || 'https://api.dicebear.com/9.x/personas/svg?seed=' + username); 
+        localStorage.setItem('user_id', String(json.data.user_id)); // ID ekle
+        localStorage.setItem('user_slug', json.data.user_nicename); // SLUG EKLE
+        localStorage.setItem('user_avatar', json.data.avatar_url || 'https://api.dicebear.com/9.x/personas/svg?seed=' + json.data.user_nicename); 
         
         // Rol belirleme
         const primaryRole = getPrimaryRole(json.data.roles);
@@ -307,7 +322,8 @@ export async function loginUser(username: string, password: string) {
         // Varsa Rejimde Kullanıcı Verisini de kaydet
         localStorage.setItem('rejimde_user', JSON.stringify({
             id: json.data.user_id,
-            username: json.data.user_nicename,
+            username: json.data.user_nicename, // Bu slug olarak kullanılacak
+            slug: json.data.user_nicename, // Açıkça slug olarak da kaydet
             first_name: json.data.user_display_name,
             type: json.data.roles.includes('rejimde_pro') ? 'professional' : 'standard',
             roles: json.data.roles
@@ -350,6 +366,8 @@ export async function loginWithGoogle(credential: string) {
         localStorage.setItem('jwt_token', json.data.token);
         localStorage.setItem('user_email', json.data.user_email);
         localStorage.setItem('user_name', json.data.user_display_name);
+        localStorage.setItem('user_id', String(json.data.user_id)); // ID ekle
+        localStorage.setItem('user_slug', json.data.user_nicename); // SLUG EKLE
         if(json.data.avatar_url) localStorage.setItem('user_avatar', json.data.avatar_url);
         
         // Rol belirleme
@@ -363,7 +381,8 @@ export async function loginWithGoogle(credential: string) {
         // Varsa Rejimde Kullanıcı Verisini de kaydet
         localStorage.setItem('rejimde_user', JSON.stringify({
             id: json.data.user_id,
-            username: json.data.user_nicename,
+            username: json.data.user_nicename, // Bu slug olarak kullanılacak
+            slug: json.data.user_nicename, // Açıkça slug olarak da kaydet
             first_name: json.data.user_display_name,
             type: json.data.roles.includes('rejimde_pro') ? 'professional' : 'standard',
             roles: json.data.roles
@@ -429,6 +448,8 @@ export async function registerUser(data: any) {
             localStorage.setItem('jwt_token', json.data.token);
             localStorage.setItem('user_email', json.data.user_email);
             localStorage.setItem('user_name', json.data.user_display_name);
+            localStorage.setItem('user_id', String(json.data.user_id)); // ID ekle
+            localStorage.setItem('user_slug', json.data.user_nicename); // SLUG EKLE
             const primaryRole = getPrimaryRole(json.data.roles);
             localStorage.setItem('user_role', primaryRole);
          }
@@ -454,6 +475,8 @@ export function logoutUser() {
     localStorage.removeItem('user_name');
     localStorage.removeItem('user_avatar');
     localStorage.removeItem('user_role');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user_slug');
     localStorage.removeItem('rejimde_user');
     
     // Cookie'leri temizle
