@@ -5,16 +5,16 @@ import { useParams, useRouter } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { auth, getComments, createComment } from '@/lib/api';
 
-// Hazır Klan Avatarları
-const CLAN_AVATARS = [
-  'https://api.dicebear.com/9.x/personas/svg?seed=Clan1&backgroundColor=b6e3f4',
-  'https://api.dicebear.com/9.x/personas/svg?seed=Clan2&backgroundColor=c0aede',
-  'https://api.dicebear.com/9.x/personas/svg?seed=Clan3&backgroundColor=d1d4f9',
-  'https://api.dicebear.com/9.x/personas/svg?seed=Clan4&backgroundColor=ffdfbf',
-  'https://api.dicebear.com/9.x/personas/svg?seed=Clan5&backgroundColor=ffd5dc',
-  'https://api.dicebear.com/9.x/personas/svg?seed=Clan6&backgroundColor=c0aede',
-  'https://api.dicebear.com/9.x/bottts/svg?seed=Clan7&backgroundColor=b6e3f4',
-  'https://api.dicebear.com/9.x/bottts/svg?seed=Clan8&backgroundColor=ffdfbf',
+// Hazır Circle Avatarları
+const CIRCLE_AVATARS = [
+  'https://api.dicebear.com/9.x/personas/svg?seed=Circle1&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/9.x/personas/svg?seed=Circle2&backgroundColor=c0aede',
+  'https://api.dicebear.com/9.x/personas/svg?seed=Circle3&backgroundColor=d1d4f9',
+  'https://api.dicebear.com/9.x/personas/svg?seed=Circle4&backgroundColor=ffdfbf',
+  'https://api.dicebear.com/9.x/personas/svg?seed=Circle5&backgroundColor=ffd5dc',
+  'https://api.dicebear.com/9.x/personas/svg?seed=Circle6&backgroundColor=c0aede',
+  'https://api.dicebear.com/9.x/bottts/svg?seed=Circle7&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/9.x/bottts/svg?seed=Circle8&backgroundColor=ffdfbf',
 ];
 
 // --- MODERN MODAL BİLEŞENİ ---
@@ -42,16 +42,16 @@ const Modal = ({ isOpen, onClose, title, children, footer }: any) => {
     );
 };
 
-export default function ClanDetailPage() {
+export default function CircleDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
 
-  const [clan, setClan] = useState<any>(null);
+  const [circle, setCircle] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isMember, setIsMember] = useState(false);
-  const [isLeader, setIsLeader] = useState(false);
+  const [isMentor, setIsMentor] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Chat States
@@ -80,25 +80,25 @@ export default function ClanDetailPage() {
         const user = await auth.me();
         setCurrentUser(user);
 
-        const clanData = await auth.getClan(slug);
-        if (clanData) {
-          setClan(clanData);
+        const circleData = await auth.getCircle(slug);
+        if (circleData) {
+          setCircle(circleData);
           setSettingsData({
-              name: clanData.name,
-              description: clanData.description,
-              privacy: clanData.privacy,
-              logo: clanData.logo,
-              comment_status: clanData.comment_status || 'open'
+              name: circleData.name,
+              description: circleData.description,
+              privacy: circleData.privacy,
+              logo: circleData.logo,
+              comment_status: circleData.comment_status || 'open'
           });
 
-          if (user && user.clan && user.clan.id === clanData.id) {
+          if (user && user.clan && user.clan.id === circleData.id) {
             setIsMember(true);
-            if (clanData.leader_id && user.id === clanData.leader_id) {
-                setIsLeader(true);
+            if (circleData.leader_id && user.id === circleData.leader_id) {
+                setIsMentor(true);
             }
           }
         } else {
-          router.push('/clans');
+          router.push('/circles');
         }
       } catch (error) {
         console.error('Veri hatası:', error);
@@ -112,10 +112,10 @@ export default function ClanDetailPage() {
 
   // Chat Yükleme ve Polling
   useEffect(() => {
-      if (clan?.id && isMember) {
+      if (circle?.id && isMember) {
           setChatLoading(true);
           const loadMessages = () => {
-              getComments(clan.id).then(msgs => {
+              getComments(circle.id).then(msgs => {
                   // API'den gelen mesajları ters çevir (Eskiden yeniye sıralı chat için)
                   setChatMessages(msgs.reverse());
                   setChatLoading(false);
@@ -126,7 +126,7 @@ export default function ClanDetailPage() {
           const interval = setInterval(loadMessages, 5000); 
           return () => clearInterval(interval);
       }
-  }, [clan?.id, isMember]);
+  }, [circle?.id, isMember]);
 
   // Chat otomatik scroll (Sadece Chat Container)
   useEffect(() => {
@@ -163,11 +163,11 @@ export default function ClanDetailPage() {
       setChatInput('');
 
       try {
-          const res = await createComment(clan.id, tempMsg.text);
+          const res = await createComment(circle.id, tempMsg.text);
           if (!res.success) {
               showMessage("Hata", res.message || "Mesaj gönderilemedi.", "error");
           } else {
-              const msgs = await getComments(clan.id);
+              const msgs = await getComments(circle.id);
               setChatMessages(msgs.reverse());
           }
       } catch (error) {
@@ -178,15 +178,15 @@ export default function ClanDetailPage() {
   const handleJoin = async () => {
     if (!currentUser) return router.push('/login');
     if (currentUser.clan) {
-      showMessage("Hata", "Zaten bir klanın var. Önce ondan ayrılmalısın.", "error");
+      showMessage("Hata", "Zaten bir Circle'dasın. Önce ondan ayrılmalısın.", "error");
       return;
     }
     setActionLoading(true);
     try {
-      await auth.joinClan(clan.id);
+      await auth.joinCircle(circle.id);
       setIsMember(true);
-      setClan({ ...clan, member_count: clan.member_count + 1 });
-      showMessage("Başarılı", "Klana hoş geldin!", "success");
+      setCircle({ ...circle, member_count: circle.member_count + 1 });
+      showMessage("Başarılı", "Circle'a hoş geldin!", "success");
     } catch (error: any) {
       showMessage("Hata", error.message || "Katılma başarısız.", "error");
     } finally {
@@ -197,11 +197,11 @@ export default function ClanDetailPage() {
   const confirmLeave = async () => {
     setActionLoading(true);
     try {
-      await auth.leaveClan();
+      await auth.leaveCircle();
       setIsMember(false);
-      setClan({ ...clan, member_count: clan.member_count - 1 });
+      setCircle({ ...circle, member_count: circle.member_count - 1 });
       closeModal();
-      showMessage("Bilgi", "Klandan ayrıldın.", "info");
+      showMessage("Bilgi", "Circle'dan ayrıldın.", "info");
     } catch (error: any) {
       showMessage("Hata", error.message || "Ayrılma başarısız.", "error");
     } finally {
@@ -213,10 +213,10 @@ export default function ClanDetailPage() {
       e.preventDefault();
       setActionLoading(true);
       try {
-          await auth.updateClan(clan.id, settingsData);
-          setClan({ ...clan, ...settingsData });
+          await auth.updateCircle(circle.id, settingsData);
+          setCircle({ ...circle, ...settingsData });
           closeModal();
-          showMessage("Başarılı", "Klan bilgileri güncellendi!", "success");
+          showMessage("Başarılı", "Circle bilgileri güncellendi!", "success");
       } catch (error: any) {
           showMessage("Hata", error.message, "error");
       } finally {
@@ -240,7 +240,7 @@ export default function ClanDetailPage() {
     );
   }
 
-  if (!clan) return null;
+  if (!circle) return null;
 
   return (
     <div className="min-h-screen pb-20 font-sans text-gray-800 bg-gray-50/50">
@@ -253,8 +253,8 @@ export default function ClanDetailPage() {
                   {/* Logo */}
                   <div className="relative group cursor-pointer shrink-0">
                       <div className="w-32 h-32 md:w-40 md:h-40 bg-white/20 rounded-3xl flex items-center justify-center border-4 border-white/40 shadow-[0_0_30px_rgba(255,255,255,0.3)] backdrop-blur-sm group-hover:scale-105 transition overflow-hidden">
-                          {clan.logo ? (
-                              <img src={clan.logo} alt={clan.name} className="w-full h-full object-cover" />
+                          {circle.logo ? (
+                              <img src={circle.logo} alt={circle.name} className="w-full h-full object-cover" />
                           ) : (
                               <i className="fa-solid fa-shield-halved text-6xl md:text-7xl text-white drop-shadow-md"></i>
                           )}
@@ -264,33 +264,33 @@ export default function ClanDetailPage() {
                   {/* Info */}
                   <div className="text-center md:text-left flex-1 w-full">
                       <div className="flex flex-col md:flex-row items-center md:items-end gap-3 mb-4 justify-center md:justify-start flex-wrap">
-                          <h1 className="text-3xl md:text-5xl font-black uppercase tracking-wide drop-shadow-sm leading-none">{clan.name}</h1>
+                          <h1 className="text-3xl md:text-5xl font-black uppercase tracking-wide drop-shadow-sm leading-none">{circle.name}</h1>
                           <div className="flex flex-wrap items-center justify-center gap-2 mt-2 md:mt-0">
-                              <span className="bg-white/20 px-3 py-1 rounded-lg text-xs font-bold uppercase border border-white/20 flex items-center gap-1 backdrop-blur-sm"><i className="fa-solid fa-users"></i> {clan.member_count} Üye</span>
-                              <span className={`px-3 py-1 rounded-lg text-xs font-bold uppercase border border-white/20 flex items-center gap-1 backdrop-blur-sm ${clan.privacy === 'invite_only' ? 'bg-amber-500/80' : 'bg-green-500/80'}`}>
-                                  <i className={`fa-solid ${clan.privacy === 'invite_only' ? 'fa-lock' : 'fa-globe'}`}></i> {clan.privacy === 'invite_only' ? 'Davetle' : 'Herkese Açık'}
+                              <span className="bg-white/20 px-3 py-1 rounded-lg text-xs font-bold uppercase border border-white/20 flex items-center gap-1 backdrop-blur-sm"><i className="fa-solid fa-users"></i> {circle.member_count} Üye</span>
+                              <span className={`px-3 py-1 rounded-lg text-xs font-bold uppercase border border-white/20 flex items-center gap-1 backdrop-blur-sm ${circle.privacy === 'invite_only' ? 'bg-amber-500/80' : 'bg-green-500/80'}`}>
+                                  <i className={`fa-solid ${circle.privacy === 'invite_only' ? 'fa-lock' : 'fa-globe'}`}></i> {circle.privacy === 'invite_only' ? 'Davetle' : 'Herkese Açık'}
                               </span>
                           </div>
                       </div>
-                      <p className="text-pink-50 font-bold text-lg md:text-xl italic mb-8 px-4 md:px-0 opacity-90">&quot;{clan.description || 'Hedefe birlikte koşuyoruz!'}&quot;</p>
+                      <p className="text-pink-50 font-bold text-lg md:text-xl italic mb-8 px-4 md:px-0 opacity-90">&quot;{circle.description || 'Hedefe birlikte koşuyoruz!'}&quot;</p>
                       <div className="flex flex-wrap gap-3 justify-center md:justify-start">
                           {isMember ? (
                               <>
-                                {isLeader && (
-                                    <button onClick={() => openModal('settings')} className="bg-white text-[#FF6F91] px-6 py-3 rounded-xl font-extrabold uppercase text-sm shadow-[0_4px_0_rgba(0,0,0,0.1)] flex items-center gap-2 hover:bg-pink-50 active:translate-y-1 active:shadow-none transition-all"><i className="fa-solid fa-gear"></i> Ayarlar</button>
+                                {isMentor && (
+                                    <button onClick={() => router.push(`/circles/${slug}/settings`)} className="bg-white text-[#FF6F91] px-6 py-3 rounded-xl font-extrabold uppercase text-sm shadow-[0_4px_0_rgba(0,0,0,0.1)] flex items-center gap-2 hover:bg-pink-50 active:translate-y-1 active:shadow-none transition-all"><i className="fa-solid fa-gear"></i> Ayarlar</button>
                                 )}
                                 <button onClick={() => openModal('invite')} className="bg-pink-800 text-white border-2 border-white/20 px-6 py-3 rounded-xl font-extrabold uppercase text-sm hover:bg-pink-900 transition flex items-center gap-2"><i className="fa-solid fa-user-plus"></i> Üye Davet Et</button>
                               </>
                           ) : (
-                              <button onClick={handleJoin} disabled={actionLoading} className="bg-green-500 text-white border-b-4 border-green-700 px-8 py-3 rounded-xl font-extrabold uppercase text-sm hover:bg-green-400 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 shadow-lg"><i className="fa-solid fa-right-to-bracket"></i> Klana Katıl</button>
+                              <button onClick={handleJoin} disabled={actionLoading} className="bg-green-500 text-white border-b-4 border-green-700 px-8 py-3 rounded-xl font-extrabold uppercase text-sm hover:bg-green-400 active:border-b-0 active:translate-y-1 transition-all flex items-center gap-2 shadow-lg"><i className="fa-solid fa-right-to-bracket"></i> Circle'a Katıl</button>
                           )}
                       </div>
                   </div>
                   {/* Score */}
                   <div className="hidden md:block bg-white/10 px-8 py-4 rounded-2xl border border-white/20 backdrop-blur-md text-center min-w-[150px]">
                       <p className="text-xs font-bold text-pink-100 uppercase mb-1">Toplam Puan</p>
-                      <div className="text-4xl font-black font-mono tracking-widest text-white drop-shadow-md">{clan.total_score}</div>
-                      <div className="text-xs font-bold text-green-300 mt-1 bg-black/20 rounded px-2 py-1 inline-block"><i className="fa-solid fa-arrow-trend-up"></i> Ligde 3.</div>
+                      <div className="text-4xl font-black font-mono tracking-widest text-white drop-shadow-md">{circle.total_score}</div>
+                      <div className="text-xs font-bold text-green-300 mt-1 bg-black/20 rounded px-2 py-1 inline-block"><i className="fa-solid fa-arrow-trend-up"></i> Level 4</div>
                   </div>
               </div>
           </div>
@@ -345,8 +345,8 @@ export default function ClanDetailPage() {
                         </div>
                     </div>
                     <div className="divide-y divide-gray-100">
-                        {clan.members && clan.members.length > 0 ? (
-                            clan.members.map((member: any, index: number) => (
+                        {circle.members && circle.members.length > 0 ? (
+                            circle.members.map((member: any, index: number) => (
                                 <div key={member.id} className={`flex items-center px-6 py-4 transition ${currentUser && currentUser.id === member.id ? 'bg-green-50/50 border-l-4 border-green-500 pl-5' : 'hover:bg-gray-50'}`}>
                                     <span className={`font-black w-6 text-lg text-center ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-700' : 'text-gray-300'}`}>{index + 1}</span>
                                     <div className="relative mr-4 ml-2">
@@ -356,7 +356,7 @@ export default function ClanDetailPage() {
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             <span className={`font-extrabold ${currentUser && currentUser.id === member.id ? 'text-green-600' : 'text-gray-800'}`}>{currentUser && currentUser.id === member.id ? 'SEN' : member.name}</span>
-                                            {member.id === clan.leader_id && <span className="text-[10px] bg-purple-600 text-white px-1.5 py-0.5 rounded uppercase font-bold">Lider</span>}
+                                            {member.id === circle.leader_id && <span className="text-[10px] bg-purple-600 text-white px-1.5 py-0.5 rounded uppercase font-bold">Mentor</span>}
                                         </div>
                                         <span className="text-xs font-bold text-gray-400">0 Puan Katkı</span>
                                     </div>
@@ -366,17 +366,17 @@ export default function ClanDetailPage() {
                             <div className="p-8 text-center text-gray-400 font-bold">Henüz üye listesi yüklenemedi.</div>
                         )}
                     </div>
-                    <button className="w-full py-3 text-center text-xs font-bold text-gray-400 hover:bg-gray-50 uppercase tracking-wide">Tüm Üyeleri Gör ({clan.member_count})</button>
+                    <button className="w-full py-3 text-center text-xs font-bold text-gray-400 hover:bg-gray-50 uppercase tracking-wide">Tüm Üyeleri Gör ({circle.member_count})</button>
                 </div>
             </div>
 
             {/* SAĞ KOLON: CHAT & ACTIONS */}
             <div className="lg:col-span-4 space-y-6">
                 
-                {/* CLAN CHAT */}
+                {/* CIRCLE CHAT */}
                 <div className="bg-white rounded-3xl flex flex-col h-[600px] shadow-lg border-0 overflow-hidden border border-gray-100">
                     <div className="p-4 border-b border-gray-50 flex justify-between items-center bg-white sticky top-0 z-10">
-                        <h3 className="font-extrabold text-gray-700 uppercase text-sm flex items-center gap-2"><i className="fa-regular fa-comments text-gray-400"></i> Klan Sohbeti</h3>
+                        <h3 className="font-extrabold text-gray-700 uppercase text-sm flex items-center gap-2"><i className="fa-regular fa-comments text-gray-400"></i> Circle Sohbeti</h3>
                         <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online</span>
                     </div>
                     
@@ -384,10 +384,10 @@ export default function ClanDetailPage() {
                     <div ref={chatContainerRef} className="flex-1 overflow-y-auto bg-gray-50/50 relative flex flex-col custom-scrollbar">
                         {isMember ? (
                             <>
-                                {clan.comment_status === 'closed' && !isLeader ? (
+                                {circle.comment_status === 'closed' && !isMentor ? (
                                     <div className="flex flex-col items-center justify-center h-full text-center p-6 opacity-60">
                                         <i className="fa-solid fa-comment-slash text-4xl text-gray-300 mb-2"></i>
-                                        <p className="text-sm font-bold text-gray-500">Sohbet lider tarafından kapatıldı.</p>
+                                        <p className="text-sm font-bold text-gray-500">Sohbet Mentor tarafından kapatıldı.</p>
                                     </div>
                                 ) : (
                                     <div className="flex-1 p-4 space-y-4">
@@ -418,13 +418,13 @@ export default function ClanDetailPage() {
                             <div className="h-full flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
                                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-300 mb-4 border-2 border-dashed border-gray-200"><i className="fa-solid fa-lock text-2xl"></i></div>
                                 <h3 className="font-bold text-gray-700">Sohbet Kilitli</h3>
-                                <p className="text-xs font-medium text-gray-400 mt-1 mb-6 max-w-[180px]">Sohbete katılmak için klana üye olmalısın.</p>
+                                <p className="text-xs font-medium text-gray-400 mt-1 mb-6 max-w-[180px]">Sohbete katılmak için Circle'a üye olmalısın.</p>
                                 <button onClick={handleJoin} disabled={actionLoading} className="bg-blue-500 text-white border-b-4 border-blue-700 px-6 py-2 rounded-xl font-extrabold uppercase text-xs hover:bg-blue-400 active:border-b-0 active:translate-y-1 transition-all">Hemen Katıl</button>
                             </div>
                         )}
                     </div>
 
-                    {isMember && clan.comment_status !== 'closed' && (
+                    {isMember && circle.comment_status !== 'closed' && (
                         <div className="p-3 bg-white border-t border-gray-100 sticky bottom-0 z-10">
                             <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
                                 <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Bir mesaj yaz..." className="w-full bg-gray-100 border-2 border-transparent focus:border-purple-200 focus:bg-white rounded-xl text-xs font-bold pl-4 pr-12 py-3 outline-none transition placeholder:text-gray-400" />
@@ -432,7 +432,7 @@ export default function ClanDetailPage() {
                             </form>
                         </div>
                     )}
-                    {isMember && clan.comment_status === 'closed' && (
+                    {isMember && circle.comment_status === 'closed' && (
                         <div className="p-4 bg-gray-100 text-center text-xs font-bold text-gray-500 border-t border-gray-200">
                             <i className="fa-solid fa-lock mr-1"></i> Sohbet kapalı
                         </div>
@@ -440,16 +440,16 @@ export default function ClanDetailPage() {
                 </div>
 
                 {isMember && (
-                    <button onClick={() => openModal('leave_confirm')} disabled={actionLoading} className="w-full border-2 border-red-100 text-red-400 py-4 rounded-2xl font-extrabold uppercase text-xs hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition flex items-center justify-center gap-2 group"><i className="fa-solid fa-arrow-right-from-bracket group-hover:scale-110 transition-transform"></i> Klandan Ayrıl</button>
+                    <button onClick={() => openModal('leave_confirm')} disabled={actionLoading} className="w-full border-2 border-red-100 text-red-400 py-4 rounded-2xl font-extrabold uppercase text-xs hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition flex items-center justify-center gap-2 group"><i className="fa-solid fa-arrow-right-from-bracket group-hover:scale-110 transition-transform"></i> Circle'dan Ayrıl</button>
                 )}
             </div>
         </div>
       </LayoutWrapper>
 
-      {/* SETTINGS MODAL */}
-      <Modal isOpen={activeModal === 'settings'} onClose={closeModal} title="Klan Ayarları" footer={<button onClick={handleSaveSettings} disabled={actionLoading} className="w-full bg-purple-600 text-white py-3 rounded-xl font-extrabold uppercase shadow-btn shadow-purple-200 hover:bg-purple-700 hover:shadow-lg active:translate-y-1 active:shadow-none transition-all">{actionLoading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}</button>}>
+      {/* SETTINGS MODAL - Note: This is deprecated, now using separate settings page */}
+      <Modal isOpen={activeModal === 'settings'} onClose={closeModal} title="Circle Ayarları" footer={<button onClick={handleSaveSettings} disabled={actionLoading} className="w-full bg-purple-600 text-white py-3 rounded-xl font-extrabold uppercase shadow-btn shadow-purple-200 hover:bg-purple-700 hover:shadow-lg active:translate-y-1 active:shadow-none transition-all">{actionLoading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}</button>}>
           <form className="space-y-4">
-              <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Klan Adı</label><input type="text" value={settingsData.name} onChange={(e) => setSettingsData({...settingsData, name: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-2 font-bold focus:border-purple-500 outline-none transition" /></div>
+              <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Circle Adı</label><input type="text" value={settingsData.name} onChange={(e) => setSettingsData({...settingsData, name: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-2 font-bold focus:border-purple-500 outline-none transition" /></div>
               <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Açıklama</label><textarea rows={3} value={settingsData.description} onChange={(e) => setSettingsData({...settingsData, description: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-2 font-bold focus:border-purple-500 outline-none transition resize-none" /></div>
               
               {/* Sohbet Durumu */}
@@ -464,7 +464,7 @@ export default function ClanDetailPage() {
               <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Logo Seçimi</label>
                   <div className="grid grid-cols-4 gap-2">
-                      {CLAN_AVATARS.map((url, idx) => (
+                      {CIRCLE_AVATARS.map((url, idx) => (
                           <div key={idx} onClick={() => setSettingsData({...settingsData, logo: url})} className={`aspect-square rounded-xl cursor-pointer border-2 overflow-hidden relative ${settingsData.logo === url ? 'border-purple-500 ring-2 ring-purple-200' : 'border-transparent hover:border-gray-200'}`}><img src={url} className="w-full h-full object-cover" alt="Logo option" />{settingsData.logo === url && (<div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center"><i className="fa-solid fa-check text-white drop-shadow-md"></i></div>)}</div>
                       ))}
                   </div>
@@ -483,7 +483,7 @@ export default function ClanDetailPage() {
       <Modal isOpen={activeModal === 'invite'} onClose={closeModal} title="Arkadaşlarını Davet Et">
           <div className="text-center">
               <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4 text-pink-500"><i className="fa-solid fa-envelope-open-text text-3xl"></i></div>
-              <p className="text-gray-500 text-sm font-bold mb-6">Bu linki paylaşarak arkadaşlarını klanına katılmaya davet edebilirsin.</p>
+              <p className="text-gray-500 text-sm font-bold mb-6">Bu linki paylaşarak arkadaşlarını Circle'ına katılmaya davet edebilirsin.</p>
               <div className="bg-gray-100 p-3 rounded-xl flex items-center gap-2 mb-6 border-2 border-gray-200"><input type="text" readOnly value={typeof window !== 'undefined' ? window.location.href : ''} className="bg-transparent w-full text-xs font-bold text-gray-600 outline-none" /></div>
               <button onClick={copyInviteLink} className="w-full bg-pink-500 text-white py-3 rounded-xl font-extrabold uppercase shadow-btn shadow-pink-200 hover:bg-pink-600 hover:shadow-lg active:translate-y-1 active:shadow-none transition-all"><i className="fa-regular fa-copy mr-2"></i> Linki Kopyala</button>
           </div>
@@ -493,7 +493,7 @@ export default function ClanDetailPage() {
       <Modal isOpen={activeModal === 'leave_confirm'} onClose={closeModal} title="Ayrılmak İstediğine Emin misin?" footer={<div className="flex gap-3"><button onClick={closeModal} className="flex-1 py-3 rounded-xl font-extrabold text-gray-500 hover:bg-gray-100 transition">İptal</button><button onClick={confirmLeave} disabled={actionLoading} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-extrabold hover:bg-red-600 transition shadow-lg shadow-red-200">Evet, Ayrıl</button></div>}>
           <div className="text-center py-4">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500"><i className="fa-solid fa-heart-crack text-3xl"></i></div>
-              <p className="text-gray-500 font-medium">Klandan ayrılırsan sohbet geçmişine erişemeyecek ve klan puanına katkıda bulunamayacaksın.</p>
+              <p className="text-gray-500 font-medium">Circle'dan ayrılırsan sohbet geçmişine erişemeyecek ve Circle puanına katkıda bulunamayacaksın.</p>
           </div>
       </Modal>
 
