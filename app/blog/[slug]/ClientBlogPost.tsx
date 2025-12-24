@@ -7,6 +7,7 @@ import { earnPoints, getProgress, claimReward } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 
+import SocialShare from "@/components/SocialShare";
 import { getUserProfileUrl, getSafeAvatarUrl } from "@/lib/helpers";
 
 interface ClientBlogPostProps {
@@ -48,6 +49,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
   const [rewardMessage, setRewardMessage] = useState({ title: "", desc: "", points: 0 });
   const [hasClaimed, setHasClaimed] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
   const [infoModal, setInfoModal] = useState<{show: boolean, title: string, message: string, type: 'error' | 'success' | 'info'}>({ show: false, title: "", message: "", type: "info" });
   const [currentUser, setCurrentUser] = useState<{ role: string, name: string, id: number, avatar: string } | null>(null);
 
@@ -212,6 +214,31 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       setClaiming(false);
   };
 
+  // Check if favorited on mount
+  useEffect(() => {
+      if (typeof window !== 'undefined') {
+          const favorites = JSON.parse(localStorage.getItem('favorite_posts') || '[]');
+          setIsFavorited(favorites.includes(post.id));
+      }
+  }, [post.id]);
+
+  const toggleFavorite = () => {
+      if (typeof window !== 'undefined') {
+          const favorites = JSON.parse(localStorage.getItem('favorite_posts') || '[]');
+          if (isFavorited) {
+              const updated = favorites.filter((id: number) => id !== post.id);
+              localStorage.setItem('favorite_posts', JSON.stringify(updated));
+              setIsFavorited(false);
+              setInfoModal({ show: true, title: "Favorilerden Çıkarıldı", message: "Bu yazı favorilerinden kaldırıldı.", type: "info" });
+          } else {
+              favorites.push(post.id);
+              localStorage.setItem('favorite_posts', JSON.stringify(favorites));
+              setIsFavorited(true);
+              setInfoModal({ show: true, title: "Favorilere Eklendi", message: "Bu yazı favorilerine eklendi!", type: "success" });
+          }
+      }
+  };
+
   // Dinamik Kategori Teması
   const catTheme = CATEGORY_THEMES[post.category] || CATEGORY_THEMES['Genel'];
   const categoryBadge = (
@@ -239,9 +266,14 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               )}
 
               <div className="mb-8">
-                  <div className="flex items-center gap-2 mb-4">
+                  <div className="flex items-center gap-2 mb-4 flex-wrap">
                       {categoryBadge}
-                      <span className="text-gray-400 text-xs font-bold ml-2"><i className="fa-regular fa-clock mr-1"></i> {post.read_time} okuma</span>
+                      <span className="text-gray-400 text-xs font-bold"><i className="fa-regular fa-clock mr-1"></i> {post.read_time} okuma</span>
+                      {!hasClaimed && (
+                          <span className="bg-rejimde-yellow/10 text-rejimde-yellow border border-rejimde-yellow/30 px-3 py-1 rounded-lg text-xs font-black ml-auto">
+                              <i className="fa-solid fa-star mr-1"></i> +50 Puan
+                          </span>
+                      )}
                   </div>
                   <h1 className="text-3xl md:text-5xl font-black text-gray-800 leading-tight mb-6">{formattedTitle}</h1>
                   
@@ -258,11 +290,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               <div className="w-full h-80 bg-gray-200 rounded-3xl mb-10 overflow-hidden border-2 border-gray-200 relative group">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={post.image} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" alt="Featured" />
-                  {!hasClaimed && (
-                      <div className="absolute top-4 right-4 bg-rejimde-yellow text-white px-4 py-2 rounded-xl font-black text-sm shadow-btn shadow-yellow-600 rotate-3 border border-white/20 animate-pulse">
-                          <i className="fa-solid fa-star mr-1"></i> +10 Puan Fırsatı
-                      </div>
-                  )}
               </div>
 
               <div className="bg-white border-2 border-gray-100 p-6 md:p-10 rounded-3xl shadow-sm prose prose-lg prose-headings:font-black prose-headings:text-gray-800 prose-p:text-gray-500 prose-p:font-medium prose-p:leading-relaxed prose-a:text-rejimde-blue prose-a:font-bold prose-img:rounded-2xl prose-strong:text-gray-700 max-w-none [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-xl" dangerouslySetInnerHTML={{ __html: post.content }}></div>
@@ -275,19 +302,36 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                   </div>
               )}
 
+              {/* Social Share & Favorites */}
+              <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 bg-gray-50 rounded-2xl border-2 border-gray-100">
+                  <SocialShare url={`/blog/${post.slug}`} title={post.title} description={post.excerpt} />
+                  
+                  <button 
+                      onClick={toggleFavorite}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition ${
+                          isFavorited 
+                              ? 'bg-red-500 text-white hover:bg-red-600' 
+                              : 'bg-white text-gray-600 border-2 border-gray-200 hover:border-red-300 hover:text-red-500'
+                      }`}
+                  >
+                      <i className={`${isFavorited ? 'fa-solid' : 'fa-regular'} fa-heart`}></i>
+                      {isFavorited ? 'Favorilerde' : 'Favorilere Ekle'}
+                  </button>
+              </div>
+
               <div className="mt-8 bg-rejimde-purple text-white rounded-3xl p-8 text-center shadow-float relative overflow-hidden group cursor-pointer">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-10 -mt-10"></div>
                   {hasClaimed ? (
                       <div className="animate-fadeIn">
                           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white/40"><i className="fa-solid fa-check text-3xl"></i></div>
-                          <h3 className="text-2xl font-black mb-2">Harikasın!</h3>
-                          <p className="font-bold text-purple-100">Bu yazıyı tamamladın.</p>
+                          <h3 className="text-2xl font-black mb-2">Okudun, puanı kaptın 😄</h3>
+                          <p className="font-bold text-purple-100">Bu yazıyı tamamladın ve puanını aldın!</p>
                       </div>
                   ) : (
                       <>
                           <h3 className="text-2xl font-black mb-2">Tebrikler! 🎉</h3>
                           <p className="font-bold text-purple-100 mb-6">Bu yazıyı okuyarak bir şeyler öğrendin.</p>
-                          <button onClick={handleClaimReward} disabled={claiming} className="bg-white text-rejimde-purple px-8 py-4 rounded-2xl font-extrabold text-lg shadow-btn shadow-purple-900/30 btn-game uppercase tracking-wide group-hover:scale-105 transition disabled:opacity-70">{claiming ? 'İşleniyor...' : '+10 Puanımı Al'}</button>
+                          <button onClick={handleClaimReward} disabled={claiming} className="bg-white text-rejimde-purple px-8 py-4 rounded-2xl font-extrabold text-lg shadow-btn shadow-purple-900/30 btn-game uppercase tracking-wide group-hover:scale-105 transition disabled:opacity-70">{claiming ? 'İşleniyor...' : 'Puanımı Al (+50)'}</button>
                       </>
                   )}
               </div>
