@@ -7,6 +7,7 @@ import { getPlanBySlug, getMe, earnPoints, getProgress, updateProgress, startPro
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 
+import SocialShare from "@/components/SocialShare";
 
 // --- API Helperları ---
 const approvePlan = async (id: number) => {
@@ -422,6 +423,19 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                           </div>
                       </div>
 
+                      {/* Onaylanmamış Diyet Uyarısı (Herkes için görünür) */}
+                      {!plan.meta?.is_verified && !isExpertUser && (
+                          <div className="mb-6 bg-orange-50 border-2 border-orange-200 p-4 rounded-2xl flex items-center gap-3">
+                              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 shrink-0">
+                                  <i className="fa-solid fa-triangle-exclamation"></i>
+                              </div>
+                              <div>
+                                  <p className="text-sm font-bold text-orange-900">Bu diyet henüz uzman tarafından onaylanmadı</p>
+                                  <p className="text-xs text-orange-700">Diyete başlamadan önce bir uzmana danışmanızı öneririz.</p>
+                              </div>
+                          </div>
+                      )}
+
                       {/* Uzman Onayı Paneli (Sadece Uzmansa ve Onaylanmadıysa) */}
                       {isExpertUser && !plan.meta?.is_verified && (
                           <div className="mb-6 bg-blue-50 border-2 border-blue-100 p-4 rounded-2xl flex items-center justify-between gap-4">
@@ -460,7 +474,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                       )}
 
                       {/* CTA Buttons */}
-                      <div className="flex gap-4">
+                      <div className="flex gap-4 mb-6">
                           {isStarted ? (
                               <div className="flex-1 bg-gray-100 text-gray-500 py-4 rounded-2xl font-extrabold text-lg flex items-center justify-center gap-2 border-2 border-gray-200">
                                   <i className="fa-solid fa-check"></i> Takip Ediliyor
@@ -473,6 +487,11 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                           <button className="bg-white border-2 border-gray-200 text-gray-500 px-6 rounded-2xl font-extrabold text-2xl shadow-btn shadow-gray-200 btn-game hover:text-rejimde-red hover:border-rejimde-red transition">
                               <i className="fa-regular fa-heart"></i>
                           </button>
+                      </div>
+
+                      {/* Social Share */}
+                      <div className="p-4 bg-gray-50 rounded-2xl border-2 border-gray-100">
+                          <SocialShare url={`/diets/${plan.slug}`} title={plan.title} description={plan.excerpt} />
                       </div>
                   </div>
 

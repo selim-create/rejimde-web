@@ -120,9 +120,9 @@ export default function DietsPage() {
                   <p className="text-purple-100 font-bold mb-8 text-lg opacity-90">
                       Boyunu, kilonu ve hedefini söyle, sana en uygun beslenme planını saniyeler içinde oluşturalım.
                   </p>
-                  <button className="bg-white text-rejimde-purple px-8 py-4 rounded-2xl font-extrabold text-sm shadow-xl shadow-purple-900/20 btn-game uppercase flex items-center gap-3 hover:bg-purple-50 transition transform hover:scale-105">
+                  <Link href="/ai-diet-generator" className="bg-white text-rejimde-purple px-8 py-4 rounded-2xl font-extrabold text-sm shadow-xl shadow-purple-900/20 btn-game uppercase flex items-center gap-3 hover:bg-purple-50 transition transform hover:scale-105">
                       <i className="fa-solid fa-robot text-lg"></i> AI Asistanı Başlat
-                  </button>
+                  </Link>
               </div>
               
               <div className="hidden md:flex justify-end relative">
@@ -282,12 +282,20 @@ export default function DietsPage() {
                               )}
 
                               <div className="h-52 bg-gray-100 relative overflow-hidden flex-shrink-0">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img 
-                                      src={plan.image || 'https://images.unsplash.com/photo-1543362906-ac1b481287cf?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'} 
-                                      className="w-full h-full object-cover group-hover:scale-110 transition duration-700" 
-                                      alt={plan.title} 
-                                  />
+                                  {plan.image ? (
+                                      <>
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img 
+                                              src={plan.image} 
+                                              className="w-full h-full object-cover group-hover:scale-110 transition duration-700" 
+                                              alt={plan.title} 
+                                          />
+                                      </>
+                                  ) : (
+                                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-100 to-green-50">
+                                          <i className="fa-solid fa-leaf text-7xl text-green-400 opacity-60"></i>
+                                      </div>
+                                  )}
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90"></div>
                                   <div className="absolute bottom-5 left-5 right-5 text-white">
                                       <h3 className="font-extrabold text-xl shadow-black drop-shadow-md line-clamp-2 mb-2 leading-tight" dangerouslySetInnerHTML={{ __html: plan.title }}></h3>
