@@ -12,7 +12,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null);
   const [score, setScore] = useState(0); 
   const [totalScore, setTotalScore] = useState(0);
-  const [leagueInfo, setLeagueInfo] = useState<any>(null);
+  const [levelInfo, setLevelInfo] = useState<any>(null);
   
   // Content States
   const [activeDiet, setActiveDiet] = useState<any>(null);
@@ -31,8 +31,8 @@ export default function DashboardPage() {
             const userData = await getMe();
             if (userData) {
                 setUser(userData);
-                // Lig bilgisini manuel oluştur veya backend'den al
-                setLeagueInfo(userData.league || { name: 'Bronz Lig', icon: 'fa-medal', color: 'text-amber-700' });
+                // Level bilgisini manuel oluştur veya backend'den al
+                setLevelInfo(userData.league || { name: 'Begin (Level 1)', icon: 'fa-medal', color: 'text-amber-700' });
             }
             
             // 2. Gamification İstatistikleri
@@ -40,7 +40,7 @@ export default function DashboardPage() {
             if (stats) {
                 setScore(stats.daily_score);
                 setTotalScore(stats.total_score);
-                if (stats.league) setLeagueInfo(stats.league);
+                if (stats.league) setLevelInfo(stats.league);
             }
 
             // 3. Aktif Diyet Planı
@@ -107,13 +107,13 @@ export default function DashboardPage() {
                           <i className="fa-solid fa-house text-xl w-8 text-center"></i>
                           <span className="font-extrabold uppercase text-sm">Panelim</span>
                       </Link>
-                      <Link href={user?.clan ? `/clans/${user.clan.slug}` : "/clans"} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                      <Link href={user?.clan ? `/circles/${user.clan.slug}` : "/circles"} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
                           <i className={`fa-solid ${user?.clan ? 'fa-shield-cat' : 'fa-shield-halved'} text-xl w-8 text-center group-hover:text-purple-500`}></i>
-                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Klanım</span>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Circle'ım</span>
                       </Link>
                       <Link href="/leagues" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
                           <i className="fa-solid fa-trophy text-xl w-8 text-center group-hover:text-yellow-500"></i>
-                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Ligler</span>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Levels</span>
                       </Link>
                       <Link href="/dashboard/score" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
                           <i className="fa-solid fa-chart-pie text-xl w-8 text-center group-hover:text-orange-500"></i>
@@ -296,20 +296,20 @@ export default function DashboardPage() {
 
           </div>
 
-          {/* RIGHT SIDEBAR: League & Social */}
+          {/* RIGHT SIDEBAR: Level & Social */}
           <div className="lg:col-span-3 space-y-6">
               
-              {/* LEAGUE WIDGET */}
+              {/* LEVEL WIDGET */}
               <Link href="/leagues" className="block bg-white border-2 border-gray-200 rounded-[2rem] overflow-hidden shadow-card group hover:border-yellow-400 transition cursor-pointer">
-                  <div className={`p-4 border-b-2 flex justify-between items-center ${leagueInfo?.bg ? leagueInfo.bg.replace('bg-gradient-to-br', 'bg') : 'bg-gray-400'} text-white`}>
+                  <div className={`p-4 border-b-2 flex justify-between items-center ${levelInfo?.bg ? levelInfo.bg.replace('bg-gradient-to-br', 'bg') : 'bg-gray-400'} text-white`}>
                       <h3 className="font-extrabold uppercase text-sm flex items-center gap-2">
-                          <i className={`fa-solid ${leagueInfo?.icon || 'fa-trophy'}`}></i> {leagueInfo?.name || 'Ligler'}
+                          <i className={`fa-solid ${levelInfo?.icon || 'fa-trophy'}`}></i> {levelInfo?.name || 'Levels'}
                       </h3>
                       <i className="fa-solid fa-chevron-right text-xs"></i>
                   </div>
                   <div className="p-4 text-center">
                       <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-50 border-2 border-gray-100 mb-2">
-                          <i className={`fa-solid ${leagueInfo?.icon || 'fa-trophy'} text-3xl ${leagueInfo?.color || 'text-gray-400'}`}></i>
+                          <i className={`fa-solid ${levelInfo?.icon || 'fa-trophy'} text-3xl ${levelInfo?.color || 'text-gray-400'}`}></i>
                       </div>
                       <p className="text-xs font-bold text-gray-400 uppercase">Sıralaman</p>
                       <div className="text-3xl font-black text-gray-800 leading-none">#7</div>
@@ -319,12 +319,12 @@ export default function DashboardPage() {
                   </div>
               </Link>
 
-              {/* CLAN WIDGET */}
+              {/* CIRCLE WIDGET */}
               {user?.clan ? (
-                  <Link href={`/clans/${user.clan.slug}`} className="block bg-white border-2 border-gray-200 rounded-[2rem] p-5 shadow-card group hover:border-purple-400 transition">
+                  <Link href={`/circles/${user.clan.slug}`} className="block bg-white border-2 border-gray-200 rounded-[2rem] p-5 shadow-card group hover:border-purple-400 transition">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="font-extrabold text-gray-400 text-xs uppercase px-1 flex items-center gap-2">
-                            <i className="fa-solid fa-shield-cat text-purple-500"></i> Klanın
+                            <i className="fa-solid fa-shield-cat text-purple-500"></i> Circle'ın
                         </h3>
                         <span className="bg-purple-100 text-purple-600 text-[10px] font-black px-2 py-1 rounded-lg">{user.clan.member_count || 1} Üye</span>
                       </div>
@@ -332,7 +332,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-4 mb-4">
                           <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center border-2 border-purple-100 overflow-hidden shrink-0">
                               {user.clan.logo ? (
-                                  <img src={user.clan.logo} className="w-full h-full object-cover" alt="Clan" />
+                                  <img src={user.clan.logo} className="w-full h-full object-cover" alt="Circle" />
                               ) : (
                                   <i className="fa-solid fa-shield text-purple-300 text-2xl"></i>
                               )}
@@ -351,9 +351,9 @@ export default function DashboardPage() {
               ) : (
                   <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-[2rem] p-6 text-center">
                       <i className="fa-solid fa-users-slash text-4xl text-gray-300 mb-2"></i>
-                      <p className="text-xs font-bold text-gray-400 mb-4">Henüz bir klanın yok.</p>
-                      <Link href="/clans" className="block w-full bg-white border-2 border-gray-200 text-gray-600 py-3 rounded-xl font-extrabold text-xs uppercase hover:border-purple-400 hover:text-purple-600 transition shadow-sm">
-                          Klan Bul
+                      <p className="text-xs font-bold text-gray-400 mb-4">Henüz bir Circle'ın yok.</p>
+                      <Link href="/circles" className="block w-full bg-white border-2 border-gray-200 text-gray-600 py-3 rounded-xl font-extrabold text-xs uppercase hover:border-purple-400 hover:text-purple-600 transition shadow-sm">
+                          Circle Bul
                       </Link>
                   </div>
               )}
