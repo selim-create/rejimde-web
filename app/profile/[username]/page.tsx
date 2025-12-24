@@ -53,7 +53,6 @@ interface UserProfile {
     avatar_url: string;
     description: string;
     registered_date: string;
-    level: number;
     location?: string;
     total_score?: number;
     earned_badges?: number[]; 
@@ -143,7 +142,6 @@ export default function PublicProfilePage() {
                     avatar_url: avatar,
                     description: userData.description || "Henüz bir motto eklenmemiş.",
                     registered_date: formattedDate,
-                    level: userData.rejimde_level || 1,
                     location: userData.location || "İstanbul, Türkiye",
                     total_score: userData.rejimde_total_score || 0,
                     earned_badges: userData.rejimde_earned_badges || [],

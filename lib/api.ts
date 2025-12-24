@@ -139,7 +139,9 @@ export async function getMe() {
       
       // Gaming & Social
       circle: json.circle || json.clan || null,  // Backward compatibility
+      clan: json.circle || json.clan || null,     // Backward compatibility alias
       level: json.level || json.league || null,   // Backward compatibility
+      league: json.level || json.league || null,  // Backward compatibility alias
       followers_count: json.followers_count || 0,
       following_count: json.following_count || 0,
       high_fives: json.high_fives || 0,
