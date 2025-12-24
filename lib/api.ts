@@ -166,8 +166,8 @@ export async function updateUser(data: any) {
         current_weight: data.current_weight,
         target_weight: data.target_weight,
         activity_level: data.activity_level,
-        goals: data.goals,
-        notifications: data.notifications,
+        goals: typeof data.goals === 'object' ? JSON.stringify(data.goals) : data.goals,
+        notifications: typeof data.notifications === 'object' ? JSON.stringify(data.notifications) : data.notifications,
         location: data.location,
         
         // Uzman Alanları
