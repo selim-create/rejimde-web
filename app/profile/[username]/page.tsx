@@ -5,14 +5,16 @@ import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { auth } from "@/lib/api"; 
 
-// Lig Tanımları
-const LEAGUES: Record<string, any> = {
-  bronze: { name: 'Bronz Lig', color: 'text-amber-700', bg: 'bg-amber-100', border: 'border-amber-500', icon: 'fa-medal' },
-  silver: { name: 'Gümüş Lig', color: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-400', icon: 'fa-medal' },
-  gold: { name: 'Altın Lig', color: 'text-yellow-600', bg: 'bg-yellow-100', border: 'border-yellow-400', icon: 'fa-crown' },
-  sapphire: { name: 'Safir Lig', color: 'text-blue-600', bg: 'bg-blue-100', border: 'border-blue-500', icon: 'fa-gem' },
-  ruby: { name: 'Yakut Lig', color: 'text-red-600', bg: 'bg-red-100', border: 'border-red-500', icon: 'fa-gem' },
-  diamond: { name: 'Elmas Lig', color: 'text-purple-600', bg: 'bg-purple-100', border: 'border-purple-500', icon: 'fa-gem' },
+// Level Tanımları
+const LEVELS: Record<string, any> = {
+  'level-1': { name: 'Begin', color: 'text-gray-500', bg: 'bg-gray-100', border: 'border-gray-400', icon: 'fa-seedling' },
+  'level-2': { name: 'Adapt', color: 'text-orange-500', bg: 'bg-orange-100', border: 'border-orange-400', icon: 'fa-sync' },
+  'level-3': { name: 'Commit', color: 'text-green-500', bg: 'bg-green-100', border: 'border-green-400', icon: 'fa-check-circle' },
+  'level-4': { name: 'Balance', color: 'text-blue-500', bg: 'bg-blue-100', border: 'border-blue-400', icon: 'fa-scale-balanced' },
+  'level-5': { name: 'Strengthen', color: 'text-red-500', bg: 'bg-red-100', border: 'border-red-400', icon: 'fa-dumbbell' },
+  'level-6': { name: 'Sustain', color: 'text-teal-500', bg: 'bg-teal-100', border: 'border-teal-400', icon: 'fa-infinity' },
+  'level-7': { name: 'Mastery', color: 'text-yellow-500', bg: 'bg-yellow-100', border: 'border-yellow-400', icon: 'fa-crown' },
+  'level-8': { name: 'Transform', color: 'text-purple-600', bg: 'bg-purple-100', border: 'border-purple-500', icon: 'fa-star' },
 };
 
 // --- MODERN MODAL BİLEŞENİ ---
@@ -55,8 +57,8 @@ interface UserProfile {
     location?: string;
     total_score?: number;
     earned_badges?: number[]; 
-    clan?: any;
-    league?: any;
+    circle?: any;
+    level?: any;
     
     // Sosyal
     followers_count: number;
@@ -145,8 +147,8 @@ export default function PublicProfilePage() {
                     location: userData.location || "İstanbul, Türkiye",
                     total_score: userData.rejimde_total_score || 0,
                     earned_badges: userData.rejimde_earned_badges || [],
-                    clan: userData.clan,
-                    league: userData.league || { name: 'Bronz Lig', icon: 'fa-medal', color: 'text-amber-700' },
+                    circle: userData.circle || userData.clan,
+                    level: userData.level || { id: 'level-1', name: 'Begin', slug: 'level-1', icon: 'fa-seedling', color: 'text-gray-500' },
                     
                     followers_count: userData.followers_count || 0,
                     following_count: userData.following_count || 0,
@@ -238,14 +240,14 @@ export default function PublicProfilePage() {
   }
 
   const isOwnProfile = currentUser && currentUser.id === profile.id;
-  const leagueConfig = LEAGUES[profile.league?.slug] || LEAGUES.bronze;
+  const levelConfig = LEVELS[profile.level?.id || profile.level?.slug] || LEVELS['level-1'];
   
-  const displayLeague = {
-      name: profile.league?.name || leagueConfig.name,
-      color: profile.league?.color || leagueConfig.color,
-      border: leagueConfig.border,
-      bg: leagueConfig.bg,
-      icon: profile.league?.icon || leagueConfig.icon
+  const displayLevel = {
+      name: profile.level?.name || levelConfig.name,
+      color: profile.level?.color || levelConfig.color,
+      border: levelConfig.border,
+      bg: levelConfig.bg,
+      icon: profile.level?.icon || levelConfig.icon
   };
 
   return (
@@ -348,16 +350,16 @@ export default function PublicProfilePage() {
                     )}
                 </div>
 
-                {/* Clan Info (Right Side - Desktop Only) */}
-                {profile.clan && (
+                {/* Circle Info (Right Side - Desktop Only) */}
+                {profile.circle && (
                     <div className="hidden lg:block text-right min-w-[180px]">
-                        <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-wider">MÜTTEFİK KLAN</p>
-                        <Link href={`/clans/${profile.clan.slug}`} className="flex items-center gap-3 bg-purple-50 p-3 rounded-2xl border-2 border-purple-100 hover:border-purple-300 transition cursor-pointer group hover:-translate-y-1 duration-200">
+                        <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-wider">CIRCLE</p>
+                        <Link href={`/circles/${profile.circle.slug}`} className="flex items-center gap-3 bg-purple-50 p-3 rounded-2xl border-2 border-purple-100 hover:border-purple-300 transition cursor-pointer group hover:-translate-y-1 duration-200">
                             <div className="w-12 h-12 bg-purple-200 rounded-xl flex items-center justify-center text-purple-600 font-black text-xl group-hover:scale-110 transition overflow-hidden border-2 border-white shadow-sm">
-                                {profile.clan.logo ? <img src={profile.clan.logo} className="w-full h-full object-cover" /> : <i className="fa-solid fa-shield-cat"></i>}
+                                {profile.circle.logo ? <img src={profile.circle.logo} className="w-full h-full object-cover" /> : <i className="fa-solid fa-shield-cat"></i>}
                             </div>
                             <div className="text-left overflow-hidden">
-                                <p className="font-extrabold text-gray-800 text-sm truncate w-24 group-hover:text-purple-700">{profile.clan.name}</p>
+                                <p className="font-extrabold text-gray-800 text-sm truncate w-24 group-hover:text-purple-700">{profile.circle.name}</p>
                                 <p className="text-[10px] font-bold text-purple-500 uppercase">Aktif Üye</p>
                             </div>
                         </Link>
@@ -380,11 +382,11 @@ export default function PublicProfilePage() {
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Gün Seri</div>
             </div>
 
-            <div className={`bg-white border-2 rounded-[2rem] p-4 flex flex-col items-center justify-center text-center shadow-sm hover:-translate-y-1 duration-300 ${displayLeague.border} hover:bg-gray-50`}>
-                <div className={`w-10 h-10 ${displayLeague.bg} rounded-full flex items-center justify-center text-white mb-2 shadow-sm`}>
-                    <i className={`fa-solid ${displayLeague.icon}`}></i>
+            <div className={`bg-white border-2 rounded-[2rem] p-4 flex flex-col items-center justify-center text-center shadow-sm hover:-translate-y-1 duration-300 ${displayLevel.border} hover:bg-gray-50`}>
+                <div className={`w-10 h-10 ${displayLevel.bg} rounded-full flex items-center justify-center text-white mb-2 shadow-sm`}>
+                    <i className={`fa-solid ${displayLevel.icon}`}></i>
                 </div>
-                <div className="text-xl font-black text-gray-800 line-clamp-1">{displayLeague.name}</div>
+                <div className="text-xl font-black text-gray-800 line-clamp-1">{displayLevel.name}</div>
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Mevcut Lig</div>
             </div>
 

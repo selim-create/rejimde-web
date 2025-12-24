@@ -32,7 +32,7 @@ export default function DashboardPage() {
             if (userData) {
                 setUser(userData);
                 // Level bilgisini manuel oluştur veya backend'den al
-                setLevelInfo(userData.league || { name: 'Begin (Level 1)', icon: 'fa-medal', color: 'text-amber-700' });
+                setLevelInfo(userData.level || { name: 'Begin (Level 1)', icon: 'fa-seedling', color: 'text-gray-500' });
             }
             
             // 2. Gamification İstatistikleri
@@ -40,7 +40,7 @@ export default function DashboardPage() {
             if (stats) {
                 setScore(stats.daily_score);
                 setTotalScore(stats.total_score);
-                if (stats.league) setLevelInfo(stats.league);
+                if (stats.level) setLevelInfo(stats.level);
             }
 
             // 3. Aktif Diyet Planı
@@ -111,7 +111,7 @@ export default function DashboardPage() {
                           <i className={`fa-solid ${user?.clan ? 'fa-shield-cat' : 'fa-shield-halved'} text-xl w-8 text-center group-hover:text-purple-500`}></i>
                           <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Circle'ım</span>
                       </Link>
-                      <Link href="/leagues" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                      <Link href="/levels" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
                           <i className="fa-solid fa-trophy text-xl w-8 text-center group-hover:text-yellow-500"></i>
                           <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Levels</span>
                       </Link>
@@ -300,7 +300,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-3 space-y-6">
               
               {/* LEVEL WIDGET */}
-              <Link href="/leagues" className="block bg-white border-2 border-gray-200 rounded-[2rem] overflow-hidden shadow-card group hover:border-yellow-400 transition cursor-pointer">
+              <Link href="/levels" className="block bg-white border-2 border-gray-200 rounded-[2rem] overflow-hidden shadow-card group hover:border-yellow-400 transition cursor-pointer">
                   <div className={`p-4 border-b-2 flex justify-between items-center ${levelInfo?.bg ? levelInfo.bg.replace('bg-gradient-to-br', 'bg') : 'bg-gray-400'} text-white`}>
                       <h3 className="font-extrabold uppercase text-sm flex items-center gap-2">
                           <i className={`fa-solid ${levelInfo?.icon || 'fa-trophy'}`}></i> {levelInfo?.name || 'Levels'}
