@@ -33,7 +33,14 @@ const CIRCLE_AVATARS = [
 export default function CreateCirclePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    motto: string;
+    description: string;
+    privacy: 'public' | 'invite_only';
+    chat_status: 'open' | 'closed';
+    logo: string;
+  }>({
     name: '',
     motto: '',
     description: '',

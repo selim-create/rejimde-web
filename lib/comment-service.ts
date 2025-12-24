@@ -4,14 +4,13 @@ export interface CommentUser {
   name: string;
   slug?: string;
   avatar: string;
-  level?: number;
+  level?: string | number;
   role?: string;
   profession?: string;
   is_expert?: boolean;
   is_online?: boolean;
   is_verified?: boolean;
   score?: number;
-  league?: string;
   badge?: {
     name: string;
     icon: string;
@@ -48,11 +47,10 @@ const mapSafeComment = (c: any): CommentData => {
     let authorSlug = '';
     let authorRole = 'guest';
     let isExpertUser = false;
-    let authorLevel = 1;
+    let authorLevel: string | number = 1;
     let authorProfession = 'Üye';
     let isOnline = false;
     let isVerified = false;
-    let league = 'Başlangıç';
     let score = 0;
     
     if (c.author && typeof c.author === 'object') {
@@ -64,7 +62,6 @@ const mapSafeComment = (c: any): CommentData => {
         authorProfession = c.author.profession || '';
         isOnline = c.author.is_online || false;
         isVerified = c.author.is_verified || false;
-        league = c.author.league || '';
         score = c.author.score || 0;
     } 
     else if (c.author_name) {
@@ -115,7 +112,6 @@ const mapSafeComment = (c: any): CommentData => {
             profession: authorProfession,
             is_online: isOnline,
             is_verified: isVerified,
-            league: league,
             score: score
         },
         replies: Array.isArray(c.replies) ? c.replies.map(mapSafeComment) : []

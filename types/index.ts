@@ -49,5 +49,6 @@ export interface User {
     token: string;
     score: number;
     streak: number;
-    league: 'bronze' | 'silver' | 'gold' | 'sapphire';
+    level: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+    levelName: 'Begin' | 'Adapt' | 'Commit' | 'Balance' | 'Strengthen' | 'Sustain' | 'Mastery' | 'Transform';
 }

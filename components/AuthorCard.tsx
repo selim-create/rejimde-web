@@ -137,7 +137,6 @@ interface AuthorCardProps {
         high_fives?: number;
         is_following?: boolean;
         has_high_fived?: boolean;
-        league?: string;
         career_start_date?: string;
     };
     context?: string;

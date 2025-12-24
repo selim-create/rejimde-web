@@ -42,6 +42,16 @@ const nextConfig: NextConfig = {
         destination: '/circles',
         permanent: true,
       },
+      {
+        source: '/leagues',
+        destination: '/levels',
+        permanent: true,
+      },
+      {
+        source: '/leagues/:path*',
+        destination: '/levels/:path*',
+        permanent: true,
+      },
     ];
   },
 };
