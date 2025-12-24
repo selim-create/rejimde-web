@@ -331,7 +331,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                       <>
                           <h3 className="text-2xl font-black mb-2">Tebrikler! 🎉</h3>
                           <p className="font-bold text-purple-100 mb-6">Bu yazıyı okuyarak bir şeyler öğrendin.</p>
-                          <button onClick={handleClaimReward} disabled={claiming} className="bg-white text-rejimde-purple px-8 py-4 rounded-2xl font-extrabold text-lg shadow-btn shadow-purple-900/30 btn-game uppercase tracking-wide group-hover:scale-105 transition disabled:opacity-70">{claiming ? 'İşleniyor...' : 'Puanımı Al (+50)'}</button>
+                          <button onClick={handleClaimReward} disabled={claiming} className="bg-white text-rejimde-purple px-8 py-4 rounded-2xl font-extrabold text-lg shadow-btn shadow-purple-900/30 btn-game uppercase tracking-wide group-hover:scale-105 transition disabled:opacity-70">{claiming ? 'İşleniyor...' : '+50 Puan Al'}</button>
                       </>
                   )}
               </div>

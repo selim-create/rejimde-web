@@ -222,7 +222,7 @@ export default function BlogPage() {
                             <img src={featuredPost.image} className="w-full h-full object-cover transform group-hover:scale-105 transition duration-700" alt="Featured" />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                             <div className="absolute top-4 right-4">
-                                <span className="bg-rejimde-yellow text-white px-3 py-1 rounded-lg text-sm font-black shadow-lg">
+                                <span className="bg-white/90 backdrop-blur-md text-yellow-600 px-3 py-1.5 rounded-xl text-[10px] font-black border border-yellow-100 shadow-sm flex items-center gap-1.5">
                                     +50p
                                 </span>
                             </div>

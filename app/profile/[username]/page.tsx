@@ -115,6 +115,11 @@ export default function PublicProfilePage() {
             } else {
                 // Use the new getProfileByUsername API function
                 userData = await auth.getProfileByUsername(usernameParam);
+                
+                // Debug log
+                if (!userData) {
+                    console.warn(`Profile not found for username: ${usernameParam}`);
+                }
             }
 
             if (userData) {

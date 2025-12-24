@@ -121,20 +121,22 @@ export default function CommentsSection({
   const [replyTo, setReplyTo] = useState<{id: number, authorName: string} | null>(null);
   
   // User state
-  const [user, setUser] = useState<{ isLoggedIn: boolean, name: string, slug: string, avatar: string, role: string, level?: number } | null>(null);
+  const [user, setUser] = useState<{ isLoggedIn: boolean, name: string, slug: string, avatar: string, role: string, level?: number, score?: number } | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('jwt_token');
       if (token) {
         const storedLevel = localStorage.getItem('user_level');
+        const storedScore = localStorage.getItem('user_score');
         setUser({
           isLoggedIn: true,
           name: localStorage.getItem('user_name') || 'Kullanıcı',
           slug: localStorage.getItem('user_slug') || '', // Slug eklendi
           avatar: localStorage.getItem('user_avatar') || `https://api.dicebear.com/9.x/avataaars/svg?seed=User`,
           role: localStorage.getItem('user_role') || 'rejimde_user',
-          level: storedLevel ? parseInt(storedLevel) : 1
+          level: storedLevel ? parseInt(storedLevel) : 1,
+          score: storedScore ? parseInt(storedScore) : 0
         });
       }
     }
