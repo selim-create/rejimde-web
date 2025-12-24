@@ -50,13 +50,16 @@ export function calculateReadingTime(htmlContent: string): string {
   if (!htmlContent) return '3 dk';
   
   // HTML etiketlerini temizle
-  const text = htmlContent.replace(/<[^>]+>/g, '');
+  const text = htmlContent.replace(/<[^>]+>/g, '').trim();
+  
+  // Boş içerik kontrolü
+  if (!text) return '3 dk';
   
   // Kelimeleri say (Türkçe için de çalışır)
-  const words = text.trim().split(/\s+/).length;
+  const words = text.split(/\s+/).length;
   
   // Ortalama okuma hızı: 200 kelime/dakika
-  const minutes = Math.ceil(words / 200);
+  const minutes = Math.max(1, Math.ceil(words / 200));
   
   return `${minutes} dk`;
 }

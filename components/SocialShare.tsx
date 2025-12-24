@@ -11,7 +11,9 @@ interface SocialShareProps {
 export default function SocialShare({ url, title, description = '' }: SocialShareProps) {
   const [copied, setCopied] = useState(false);
 
-  const shareUrl = typeof window !== 'undefined' ? window.location.origin + url : url;
+  // Ensure we have a complete URL for sharing
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://rejimde.com';
+  const shareUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
   const shareText = description || title;
 
   const handleCopyLink = async () => {
