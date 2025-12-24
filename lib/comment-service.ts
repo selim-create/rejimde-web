@@ -58,7 +58,12 @@ const mapSafeComment = (c: any): CommentData => {
         authorSlug = c.author.slug || c.author.username || '';
         authorRole = c.author.role || 'rejimde_user';
         isExpertUser = c.author.is_expert || c.author.role === 'rejimde_pro' || false;
-        authorLevel = c.author.level || 1;
+        // Handle level - it could be an object or a number
+        if (typeof c.author.level === 'object' && c.author.level) {
+            authorLevel = c.author.level.name || c.author.level.level || 1;
+        } else {
+            authorLevel = c.author.level || 1;
+        }
         authorProfession = c.author.profession || '';
         isOnline = c.author.is_online || false;
         isVerified = c.author.is_verified || false;

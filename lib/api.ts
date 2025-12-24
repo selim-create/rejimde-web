@@ -1158,14 +1158,22 @@ export async function createCircle(data: {
     logo?: string 
 }) {
     try {
+        // Backend'de /clans endpoint'i var, /circles yok
         const res = await fetch(`${API_URL}/rejimde/v1/clans`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify(data)
+            body: JSON.stringify({
+                name: data.name,
+                description: data.description || data.motto || '',
+                privacy: data.privacy,
+                logo: data.logo,
+                comment_status: data.chat_status || 'open'
+            })
         });
+        
         const json = await res.json();
         
-        if (res.ok) {
+        if (res.ok && !json.code) {
             return { success: true, data: json };
         } else {
             throw new Error(json.message || 'Circle oluşturulamadı');
