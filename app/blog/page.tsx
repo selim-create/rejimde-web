@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getBlogPosts } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
-import { getSafeAvatarUrl, isUserExpert, getUserProfileUrl } from "@/lib/helpers";
+import { getSafeAvatarUrl, isUserExpert, getUserProfileUrl, calculateReadingTime } from "@/lib/helpers";
+
+// SEO metadata will be set in useEffect since this is a client component
 
 // Kategori Temaları
 const CATEGORY_THEMES: Record<string, { cardBorder: string, badge: string }> = {
@@ -40,6 +42,19 @@ export default function BlogPage() {
   const itemsPerPage = 6;
 
   useEffect(() => {
+    // SEO için title ve meta ayarla
+    document.title = 'Sağlık & Beslenme Blog | Rejimde';
+    
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'Uzman diyetisyenlerden sağlıklı yaşam, beslenme ve egzersiz tavsiyeleri.');
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'description';
+      meta.content = 'Uzman diyetisyenlerden sağlıklı yaşam, beslenme ve egzersiz tavsiyeleri.';
+      document.head.appendChild(meta);
+    }
+    
     async function initData() {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
@@ -280,6 +295,13 @@ export default function BlogPage() {
                                 <div className="h-48 bg-gray-200 rounded-t-3xl relative overflow-hidden flex-shrink-0">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={post.image} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" alt={post.title} />
+                                    
+                                    {/* Puan badge - sağ üstte */}
+                                    <div className={`absolute top-3 right-3 ${post.sticky ? 'bg-yellow-500' : 'bg-green-500'} text-white px-2 py-1 rounded-lg text-xs font-bold shadow-md`}>
+                                        +{post.sticky ? '50' : '10'}p
+                                    </div>
+                                    
+                                    {/* Kategori badge - sol üstte */}
                                     <span className={`absolute top-4 left-4 px-3 py-1 rounded-lg text-[10px] font-black uppercase shadow-sm border ${theme.badge} bg-opacity-90`}>
                                         {categoryName}
                                     </span>
@@ -289,7 +311,7 @@ export default function BlogPage() {
                                     <p className="text-sm font-bold text-gray-400 mb-4 line-clamp-3" dangerouslySetInnerHTML={{ __html: post.excerpt }}></p>
                                     
                                     <div className="mt-auto pt-4 border-t-2 border-gray-50">
-                                        <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center justify-between mb-3">
                                             {/* Yazar */}
                                             <div className="flex items-center gap-2">
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -301,23 +323,38 @@ export default function BlogPage() {
                                                 <span className="text-xs font-black text-gray-500 truncate max-w-[80px]">{post.author_name}</span>
                                             </div>
 
-                                            {/* Yorum Sayısı */}
-                                            <div className="flex items-center gap-1 text-gray-400">
-                                                <i className="fa-regular fa-comment text-xs"></i>
-                                                <span className="text-xs font-bold">{post.comment_count || 0}</span>
-                                            </div>
+                                            {/* Tarih */}
+                                            <span className="text-xs font-bold text-gray-400">{post.date}</span>
                                         </div>
 
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between mb-3">
                                             {/* Okuma Süresi */}
                                             <div className="flex items-center gap-1 text-gray-400">
                                                 <i className="fa-regular fa-clock text-xs"></i>
-                                                <span className="text-xs font-bold">{post.read_time}</span>
+                                                <span className="text-xs font-bold">{post.read_time || calculateReadingTime(post.content)} dk</span>
                                             </div>
 
-                                            {/* Puan */}
-                                            <span className="text-[10px] font-black text-rejimde-green bg-green-50 px-1.5 py-0.5 rounded border border-green-100">+50p</span>
+                                            {/* Yorum Sayısı */}
+                                            <div className="flex items-center gap-1 text-gray-400">
+                                                <i className="fa-regular fa-comment text-xs"></i>
+                                                <span className="text-xs font-bold">{post.comment_count || 0} yorum</span>
+                                            </div>
                                         </div>
+                                        
+                                        {/* Okuyan avatarlar */}
+                                        {post.last_readers && post.last_readers.length > 0 && (
+                                            <div className="flex items-center gap-2 mt-3">
+                                                <div className="flex -space-x-2">
+                                                    {post.last_readers.slice(0, 3).map((reader: string, i: number) => (
+                                                        /* eslint-disable-next-line @next/next/no-img-element */
+                                                        <img key={i} src={reader} className="w-6 h-6 rounded-full border-2 border-white" alt="" />
+                                                    ))}
+                                                </div>
+                                                {post.read_count > 3 && (
+                                                    <span className="text-xs text-gray-400 font-bold">+{post.read_count - 3} kişi okudu</span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </Link>

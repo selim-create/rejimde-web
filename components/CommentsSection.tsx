@@ -119,6 +119,7 @@ export default function CommentsSection({
   const [comments, setComments] = useState<CommentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [replyTo, setReplyTo] = useState<{id: number, authorName: string} | null>(null);
+  const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'oldest'>('newest');
   
   // User state
   const [user, setUser] = useState<{ isLoggedIn: boolean, name: string, slug: string, avatar: string, role: string, level?: number, score?: number } | null>(null);
@@ -204,6 +205,17 @@ export default function CommentsSection({
       return comments.some(c => c.parent === 0 && (c.author.slug === user.slug || c.author.name === user.name));
   }, [comments, user, context]);
 
+  // Yorum sıralama
+  const sortedComments = React.useMemo(() => {
+    const sorted = [...comments].sort((a, b) => {
+      if (sortBy === 'newest') return new Date(b.date).getTime() - new Date(a.date).getTime();
+      if (sortBy === 'oldest') return new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (sortBy === 'popular') return (b.likes_count || 0) - (a.likes_count || 0);
+      return 0;
+    });
+    return sorted;
+  }, [comments, sortBy]);
+
   const placeholderText = getPlaceholder(context);
 
   return (
@@ -216,9 +228,26 @@ export default function CommentsSection({
                 {title} <span className="bg-gray-200 text-gray-600 text-sm px-2 py-1 rounded-lg ml-1">{comments.length}</span>
             </h3>
             
-            <div className="flex items-center gap-2 text-xs font-bold bg-white px-4 py-2 rounded-xl border-2 border-gray-200 cursor-pointer hover:border-purple-300 transition text-gray-500">
-                <span>En Popüler</span>
-                <i className="fa-solid fa-chevron-down"></i>
+            <div className="relative group">
+                <button className="flex items-center gap-2 text-xs font-bold bg-white px-4 py-2 rounded-xl border-2 border-gray-200 hover:border-purple-300 transition text-gray-500">
+                    <span>
+                        {sortBy === 'newest' && 'En Yeni'}
+                        {sortBy === 'popular' && 'En Popüler'}
+                        {sortBy === 'oldest' && 'En Eski'}
+                    </span>
+                    <i className="fa-solid fa-chevron-down"></i>
+                </button>
+                <div className="absolute right-0 mt-2 w-40 bg-white border-2 border-gray-200 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                    <button onClick={() => setSortBy('newest')} className="w-full text-left px-4 py-2 text-xs font-bold hover:bg-purple-50 transition rounded-t-xl">
+                        En Yeni
+                    </button>
+                    <button onClick={() => setSortBy('popular')} className="w-full text-left px-4 py-2 text-xs font-bold hover:bg-purple-50 transition">
+                        En Popüler
+                    </button>
+                    <button onClick={() => setSortBy('oldest')} className="w-full text-left px-4 py-2 text-xs font-bold hover:bg-purple-50 transition rounded-b-xl">
+                        En Eski
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -252,8 +281,8 @@ export default function CommentsSection({
                 <div className="flex justify-center py-10">
                     <i className="fa-solid fa-circle-notch animate-spin text-3xl text-purple-300"></i>
                 </div>
-            ) : comments.length > 0 ? (
-                comments.map(comment => (
+            ) : sortedComments.length > 0 ? (
+                sortedComments.map(comment => (
                     <MemoizedCommentItem 
                         key={comment.id} 
                         comment={comment} 

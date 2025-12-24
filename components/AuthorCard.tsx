@@ -130,11 +130,15 @@ interface AuthorCardProps {
         isVerified?: boolean;
         level?: number;
         score?: number;
+        rejimde_total_score?: number;
         articleCount?: number;
+        content_count?: number;
         followers_count?: number;
         high_fives?: number;
         is_following?: boolean;
+        has_high_fived?: boolean;
         league?: string;
+        career_start_date?: string;
     };
     context?: string;
 }
@@ -151,7 +155,12 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
     const [isFollowing, setIsFollowing] = useState(author.is_following || false);
     const [followerCount, setFollowerCount] = useState(author.followers_count || 0);
     const [highFives, setHighFives] = useState(author.high_fives || 0);
-    const [hasHighFived, setHasHighFived] = useState(false);
+    const [hasHighFived, setHasHighFived] = useState(author.has_high_fived || false);
+    
+    // Deneyim yılı hesaplama
+    const experienceYears = author.career_start_date 
+        ? new Date().getFullYear() - new Date(author.career_start_date).getFullYear()
+        : null;
 
     const handleFollow = async () => {
         const newState = !isFollowing;
@@ -245,8 +254,8 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                         <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-500 flex items-center justify-center mb-1 text-sm shadow-sm">
                             <i className="fa-solid fa-newspaper"></i>
                         </div>
-                        <span className="font-black text-gray-700 text-sm">{author.articleCount || 0}</span>
-                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Yazı</span>
+                        <span className="font-black text-gray-700 text-sm">{author.content_count || author.articleCount || 0}</span>
+                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">İçerik</span>
                     </div>
                 </div>
 
@@ -259,16 +268,16 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                     
                     <button 
                         onClick={handleFollow}
-                        className={`w-full font-bold py-3 rounded-2xl border-2 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-xs ${isFollowing ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-gray-500 border-gray-200 hover:text-gray-700'}`}
+                        className={`w-full font-bold py-3 rounded-2xl border-2 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-xs ${isFollowing ? 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200' : 'bg-white text-gray-500 border-gray-200 hover:text-gray-700'}`}
                     >
                         <i className={`fa-solid ${isFollowing ? 'fa-user-check' : 'fa-user-plus'}`}></i>
-                        {isFollowing ? 'Takip Ediliyor' : 'Takip Et'}
+                        {isFollowing ? 'Takipten Çık' : 'Takip Et'}
                     </button>
                     
                     {/* Extra Info */}
                     <div className="flex justify-between items-center px-2 pt-1 text-[10px] font-bold text-gray-400">
                         <span>{followerCount} Takipçi</span>
-                        <span>5+ Yıl Tecrübe</span>
+                        <span>{experienceYears ? `${experienceYears}+ Yıl Tecrübe` : '5+ Yıl Tecrübe'}</span>
                     </div>
                 </div>
             </div>
@@ -298,8 +307,8 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                         />
                      </Link>
                      {/* Yazı Sayısı Rozeti (Avatar Üzerinde) */}
-                     <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-[2px] border-white shadow-sm" title="Yazı Sayısı">
-                        {author.articleCount || 1}
+                     <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-[2px] border-white shadow-sm" title="İçerik Sayısı">
+                        {author.content_count || author.articleCount || 1}
                     </div>
                 </div>
                 <div className="mb-2 text-right flex-1 pl-2">
@@ -315,7 +324,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                  {/* Rejimde Skoru */}
                  <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide">Rejimde Skoru</span>
-                    <span className="text-sm font-black text-blue-500">{author.score || author.rejimde_total_score || 0} XP</span>
+                    <span className="text-sm font-black text-blue-500">{author.rejimde_total_score || author.score || 0} XP</span>
                  </div>
                  <div className="w-full bg-gray-100 rounded-full h-3 mb-6 border border-gray-200 overflow-hidden relative">
                      <div className="absolute top-0 left-0 h-full bg-blue-400 w-2/3 shadow-[0_2px_0_rgba(0,0,0,0.1) inset]"></div>
@@ -353,7 +362,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                 
                 <button 
                     onClick={handleFollow}
-                    className={`w-14 font-bold py-3 rounded-2xl border-2 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all flex items-center justify-center ${isFollowing ? 'bg-blue-100 text-blue-500 border-blue-200' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'}`}
+                    className={`w-14 font-bold py-3 rounded-2xl border-2 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all flex items-center justify-center ${isFollowing ? 'bg-blue-100 text-blue-500 border-blue-200 hover:bg-blue-200' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'}`}
                 >
                     <i className={`fa-solid ${isFollowing ? 'fa-user-check' : 'fa-user-plus'} text-lg`}></i>
                 </button>

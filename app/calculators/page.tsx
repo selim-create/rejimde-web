@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getMe, updateUser, earnPoints } from "@/lib/api"; 
+import { getMe, updateUser, earnPoints, saveCalculatorResult } from "@/lib/api"; 
 import MascotDisplay from "@/components/MascotDisplay"; // Added missing import
+
+// SEO metadata set in useEffect since this is a client component
 
 // Hesaplama Türleri
 type CalculatorType = 'bmi' | 'ideal_weight' | 'calorie' | 'water' | 'macro' | 'body_fat' | 'pregnancy' | 'bmr' | 'waist_hip' | null;
@@ -12,6 +14,9 @@ export default function CalculatorsPage() {
   const [activeTool, setActiveTool] = useState<CalculatorType>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Kaydetme durumu için state
+  const [savedCalculators, setSavedCalculators] = useState<string[]>([]);
   
   // Custom Modal States
   const [showResultModal, setShowResultModal] = useState(false);
@@ -31,6 +36,20 @@ export default function CalculatorsPage() {
 
   // Oturum ve Veri Kontrolü
   useEffect(() => {
+    // SEO için title ayarla
+    document.title = 'Sağlık Hesaplayıcıları | Rejimde';
+    
+    // Meta description ayarla
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'BMI, kalori ihtiyacı, ideal kilo ve daha fazlasını hesapla. Ücretsiz sağlık hesaplayıcıları.');
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'description';
+      meta.content = 'BMI, kalori ihtiyacı, ideal kilo ve daha fazlasını hesapla. Ücretsiz sağlık hesaplayıcıları.';
+      document.head.appendChild(meta);
+    }
+    
     async function init() {
         const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
         if (token) {
@@ -183,6 +202,50 @@ export default function CalculatorsPage() {
       }
   };
 
+  // Hesaplama sonucunu kaydetme ve puan kazanma
+  const handleSaveCalculatorResult = async (calculatorType: string, result: any) => {
+      if (!isLoggedIn) {
+          setResultMessage({
+              type: "info",
+              title: "Giriş Yapmalısın",
+              desc: "Sonuçları kaydetmek ve puan kazanmak için giriş yapmalısın."
+          });
+          setShowResultModal(true);
+          return;
+      }
+      
+      if (savedCalculators.includes(calculatorType)) {
+          return; // Zaten kaydedilmiş
+      }
+      
+      setIsSaving(true);
+      try {
+          const res = await saveCalculatorResult(calculatorType, result);
+          if (res.success) {
+              setSavedCalculators([...savedCalculators, calculatorType]);
+              setResultMessage({
+                  type: "success",
+                  title: "Harika! 🎉",
+                  desc: `${res.points_earned || 50} puan kazandın! Hesaplama sonuçların kaydedildi.`
+              });
+              setShowResultModal(true);
+          } else {
+              setResultMessage({
+                  type: "error",
+                  title: "Hata",
+                  desc: res.message || "Sonuçlar kaydedilemedi."
+              });
+              setShowResultModal(true);
+          }
+      } catch (error) {
+          console.error(error);
+          setResultMessage({ type: "error", title: "Hata", desc: "Bir sorun oluştu." });
+          setShowResultModal(true);
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
   const tools = [
     { id: 'ideal_weight', icon: "fa-weight-hanging", color: "text-rejimde-green", bg: "bg-green-100", title: "İdeal Kilo", desc: "Boyuna ve cinsiyetine göre en sağlıklı kilo aralığını öğren.", borderHover: "hover:border-rejimde-green" },
     { id: 'calorie', icon: "fa-fire-flame-curved", color: "text-orange-500", bg: "bg-orange-100", title: "Günlük Kalori", desc: "Kilo hedefine ulaşmak için günde kaç kalori almalısın?", borderHover: "hover:border-orange-500" },
@@ -269,6 +332,20 @@ export default function CalculatorsPage() {
 
     {/* MAIN TOOLS GRID */}
     <div className="max-w-6xl mx-auto px-4 relative">
+        
+        {/* Puan Banner */}
+        {isLoggedIn && (
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-6 rounded-2xl mb-8 shadow-lg">
+                <div className="flex items-center gap-4">
+                    <i className="fa-solid fa-coins text-yellow-300 text-3xl"></i>
+                    <div>
+                        <p className="font-bold text-lg">Sonuçlarını kaydet, <span className="text-yellow-300">+50 puan</span> kazan!</p>
+                        <p className="text-sm text-green-100">Her hesaplama bir kez kaydedilebilir.</p>
+                    </div>
+                </div>
+            </div>
+        )}
+        
         <h2 className="text-2xl font-extrabold text-gray-800 mb-8 flex items-center gap-3">
             <span className="w-8 h-8 bg-rejimde-green rounded-lg flex items-center justify-center text-white text-sm">
                 <i className="fa-solid fa-shapes"></i>
@@ -479,6 +556,52 @@ export default function CalculatorsPage() {
                             )}
                         </div>
                     </div>
+
+                    {/* Save Button */}
+                    {isLoggedIn && (
+                        savedCalculators.includes(activeTool) ? (
+                            <div className="bg-green-100 border-2 border-green-300 text-green-700 px-6 py-4 rounded-2xl font-bold flex items-center gap-3 justify-center">
+                                <i className="fa-solid fa-check-circle text-2xl"></i>
+                                <div>
+                                    <p className="font-black">Sonuçları kaydettin, puanı kaptın! 🎉</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <button 
+                                onClick={() => {
+                                    const result = {
+                                        type: activeTool,
+                                        height,
+                                        weight,
+                                        age,
+                                        gender,
+                                        activity,
+                                        ...(activeTool === 'body_fat' ? { waist, neck, hip } : {}),
+                                        ...(activeTool === 'waist_hip' ? { waist, hip } : {}),
+                                        value: activeTool === 'ideal_weight' ? calculateIdealWeight() :
+                                               activeTool === 'calorie' ? calculateCalories() :
+                                               activeTool === 'water' ? calculateWater() :
+                                               activeTool === 'bmi' ? calculateBMI() :
+                                               activeTool === 'body_fat' ? calculateBodyFat() :
+                                               activeTool === 'bmr' ? calculateBMR() :
+                                               activeTool === 'waist_hip' ? calculateWaistHipRatio() : null
+                                    };
+                                    handleSaveCalculatorResult(activeTool, result);
+                                }}
+                                disabled={isSaving}
+                                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:from-green-600 hover:to-emerald-700 transition disabled:opacity-50"
+                            >
+                                {isSaving ? (
+                                    <i className="fa-solid fa-circle-notch animate-spin"></i>
+                                ) : (
+                                    <>
+                                        <i className="fa-solid fa-coins"></i>
+                                        Sonuçları Kaydet (+50p)
+                                    </>
+                                )}
+                            </button>
+                        )
+                    )}
 
                     <button className="w-full bg-gray-100 text-gray-500 py-3 rounded-xl font-extrabold text-sm hover:bg-gray-200 transition" onClick={() => setActiveTool(null)}>
                         Kapat

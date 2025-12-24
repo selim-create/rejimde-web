@@ -92,27 +92,54 @@ export default function Home() {
             {/* Left Content */}
             <div className="text-center lg:text-left">
                 {isLoggedIn ? (
-                    // LOGGED IN HERO
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-black text-xs uppercase mb-6">
-                            <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
-                            Hoşgeldin Şampiyon
-                        </div>
-                        <h1 className="text-4xl lg:text-6xl font-black text-gray-900 leading-tight mb-6">
-                            Hazır mısın <br />
-                            <span className="text-blue-600">{currentUser?.name?.split(' ')[0]}?</span>
-                        </h1>
-                        <p className="text-xl text-gray-500 font-bold mb-8 max-w-md mx-auto lg:mx-0 leading-relaxed">
-                            Klanın seni bekliyor, hedeflerin çok yakın. Bugün kendin için harika bir şey yap.
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                            <Link href="/dashboard" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-extrabold text-lg shadow-[0_4px_0_rgb(37,99,235)] hover:bg-blue-700 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(37,99,235)] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-3">
-                                <i className="fa-solid fa-gauge-high"></i> Panele Git
-                            </Link>
-                            <Link href="/dashboard/score" className="bg-white text-gray-700 border-2 border-gray-200 px-8 py-4 rounded-2xl font-extrabold text-lg shadow-[0_4px_0_rgb(229,231,235)] hover:bg-gray-50 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(229,231,235)] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-3">
-                                <i className="fa-solid fa-chart-pie text-green-500"></i> Durumumu Gör
-                            </Link>
-                        </div>
+                    <div>
+                        {/* Pro kullanıcı için */}
+                        {currentUser?.roles?.includes('rejimde_pro') ? (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-full font-black text-xs uppercase mb-6">
+                                    <span className="w-2 h-2 bg-purple-600 rounded-full animate-pulse"></span>
+                                    Hoş geldin Uzman
+                                </div>
+                                <h1 className="text-4xl lg:text-6xl font-black text-gray-900 leading-tight mb-6">
+                                    Merhaba <br />
+                                    <span className="text-purple-600">{currentUser?.name?.split(' ')[0]}!</span>
+                                </h1>
+                                <p className="text-xl text-gray-500 font-bold mb-8 max-w-md mx-auto lg:mx-0 leading-relaxed">
+                                    Danışanların seni bekliyor. İçerik oluştur, yorumlara yanıt ver, etkini artır.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                                    <Link href="/dashboard/pro" className="bg-purple-600 text-white px-8 py-4 rounded-2xl font-extrabold text-lg shadow-[0_4px_0_rgb(124,58,237)] hover:bg-purple-700 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(124,58,237)] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-3">
+                                        <i className="fa-solid fa-briefcase"></i> Uzman Paneli
+                                    </Link>
+                                    <Link href="/dashboard/pro/reviews" className="bg-white text-gray-700 border-2 border-gray-200 px-8 py-4 rounded-2xl font-extrabold text-lg shadow-[0_4px_0_rgb(229,231,235)] hover:bg-gray-50 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(229,231,235)] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-3">
+                                        <i className="fa-solid fa-users"></i> İçeriklerim
+                                    </Link>
+                                </div>
+                            </div>
+                        ) : (
+                            // Normal kullanıcı için
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-black text-xs uppercase mb-6">
+                                    <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+                                    Hoşgeldin Şampiyon
+                                </div>
+                                <h1 className="text-4xl lg:text-6xl font-black text-gray-900 leading-tight mb-6">
+                                    Hazır mısın <br />
+                                    <span className="text-blue-600">{currentUser?.name?.split(' ')[0]}?</span>
+                                </h1>
+                                <p className="text-xl text-gray-500 font-bold mb-8 max-w-md mx-auto lg:mx-0 leading-relaxed">
+                                    Klanın seni bekliyor, hedeflerin çok yakın. Bugün kendin için harika bir şey yap.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                                    <Link href="/dashboard" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-extrabold text-lg shadow-[0_4px_0_rgb(37,99,235)] hover:bg-blue-700 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(37,99,235)] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-3">
+                                        <i className="fa-solid fa-gauge-high"></i> Panele Git
+                                    </Link>
+                                    <Link href="/dashboard/score" className="bg-white text-gray-700 border-2 border-gray-200 px-8 py-4 rounded-2xl font-extrabold text-lg shadow-[0_4px_0_rgb(229,231,235)] hover:bg-gray-50 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(229,231,235)] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-3">
+                                        <i className="fa-solid fa-chart-pie text-green-500"></i> Durumumu Gör
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     // GUEST HERO
