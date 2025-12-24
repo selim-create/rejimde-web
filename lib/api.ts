@@ -465,7 +465,6 @@ export function logoutUser() {
 export async function getExperts(filterType?: string) {
   try {
       const data = await fetchAPI('/rejimde/v1/professionals');
-      
       // @ts-ignore
       let experts = data.map((item: any) => ({
         id: item.id,
@@ -481,7 +480,6 @@ export async function getExperts(filterType?: string) {
         is_online: item.is_online,
         location: item.location
       }));
-
       if (filterType) {
           experts = experts.filter((e: any) => e.type === filterType);
       }
@@ -499,17 +497,24 @@ export async function getBlogPosts() {
   try {
     const data = await fetchAPI('/wp/v2/posts?_embed');
     // @ts-ignore
-    return data.map((item: any) => ({
-        id: item.id,
-        title: item.title.rendered,
-        slug: item.slug,
-        excerpt: item.excerpt.rendered.replace(/<[^>]+>/g, ''),
-        image: item._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://placehold.co/600x400',
-        date: new Date(item.date).toLocaleDateString('tr-TR'),
-        author_name: item._embedded?.author?.[0]?.name || 'Rejimde Editör',
-        category: 'Genel',
-        read_time: '5 dk'
-    }));
+    return data.map((item: any) => {
+        // Kategoriyi _embedded üzerinden al
+        const terms = item._embedded?.['wp:term'] || [];
+        const categories = terms[0] || [];
+        const categoryName = categories.length > 0 ? categories[0].name : 'Genel';
+
+        return {
+            id: item.id,
+            title: item.title.rendered,
+            slug: item.slug,
+            excerpt: item.excerpt.rendered.replace(/<[^>]+>/g, ''),
+            image: item._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://placehold.co/600x400',
+            date: new Date(item.date).toLocaleDateString('tr-TR'),
+            author_name: item._embedded?.author?.[0]?.name || 'Rejimde Editör',
+            category: categoryName,
+            read_time: '5 dk'
+        };
+    });
   } catch (error) {
     console.error("Blog yazıları çekilemedi", error);
     return [];
@@ -562,7 +567,7 @@ export async function getPostById(id: number) {
 }
 
 /**
- * TEKİL BLOG YAZISI GETİR (Yazar Detaylarıyla)
+ * TEKİL BLOG YAZISI GETİR (Yazar Detaylarıyla - DÜZELTİLDİ)
  */
 export async function getPostBySlug(slug: string) {
   try {
@@ -572,7 +577,12 @@ export async function getPostBySlug(slug: string) {
     const wordCount = post.content.rendered.replace(/<[^>]+>/g, '').split(/\s+/).length;
     const readTime = Math.ceil(wordCount / 200);
 
-    // Yazar Detaylarını Çek
+    // Kategori Çekme (Düzeltildi)
+    const terms = post._embedded?.['wp:term'] || [];
+    const categories = terms[0] || [];
+    const categoryName = categories.length > 0 ? categories[0].name : 'Genel';
+
+    // Yazar Detayları
     let authorData = {
         name: 'Rejimde Editör',
         avatar: 'https://placehold.co/96',
@@ -604,13 +614,12 @@ export async function getPostBySlug(slug: string) {
         image: post._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://placehold.co/800x400',
         date: new Date(post.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }),
         
-        // Zenginleştirilmiş Yazar Verisi
         author_name: authorData.name,
         author_avatar: authorData.avatar,
         author_slug: authorData.slug,
         author_is_expert: authorData.is_expert,
         
-        category: 'Beslenme',
+        category: categoryName, // Artık dinamik
         read_time: `${readTime} dk`
     };
   } catch (error) {

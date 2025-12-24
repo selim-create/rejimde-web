@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   return {
     title: `${post.title} - Rejimde Blog`,
-    description: post.excerpt.slice(0, 160),
+    description: post.excerpt ? post.excerpt.slice(0, 160) : "Rejimde Blog",
     openGraph: {
       images: [post.image],
     },
@@ -40,8 +40,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   }
 
   // Başlık Formatlayıcı (Kelime Vurgulama)
-  const formatTitle = (title: string) => {
-    // Sayıları ve tırnak içindeki kelimeleri vurgula
+  // Sunucuda render edilir ve Client Component'e ReactNode olarak geçilir
+  const formatTitle = () => {
+    const title = post.title;
     const highlighted = title.replace(
       /(\d+|".*?")/g, 
       '<span class="text-rejimde-green underline decoration-4 decoration-rejimde-yellow underline-offset-4">$1</span>'
@@ -52,7 +53,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   return (
     <div className="min-h-screen pb-20 relative font-sans text-rejimde-text">
        {/* Client Component (State, Interactivity, Progress Bar) */}
-       <ClientBlogPost post={post} relatedPosts={relatedPosts} formattedTitle={formatTitle(post.title)} />
+       <ClientBlogPost post={post} relatedPosts={relatedPosts} formattedTitle={formatTitle()} />
     </div>
   );
 }

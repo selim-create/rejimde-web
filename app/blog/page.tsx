@@ -2,23 +2,22 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { getBlogPosts } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
 import { getSafeAvatarUrl, isUserExpert, getUserProfileUrl } from "@/lib/helpers";
 
 // Kategori Temaları
 const CATEGORY_THEMES: Record<string, { cardBorder: string, badge: string }> = {
-  'Beslenme': { cardBorder: 'hover:border-rejimde-green', badge: 'text-rejimde-green border-rejimde-green bg-green-50' },
-  'Egzersiz': { cardBorder: 'hover:border-rejimde-red', badge: 'text-rejimde-red border-rejimde-red bg-red-50' },
-  'Motivasyon': { cardBorder: 'hover:border-rejimde-purple', badge: 'text-rejimde-purple border-rejimde-purple bg-purple-50' },
-  'Tarif': { cardBorder: 'hover:border-rejimde-yellow', badge: 'text-rejimde-yellowDark border-rejimde-yellow bg-yellow-50' },
-  'Tarifler': { cardBorder: 'hover:border-rejimde-yellow', badge: 'text-rejimde-yellowDark border-rejimde-yellow bg-yellow-50' },
-  'Genel': { cardBorder: 'hover:border-gray-400', badge: 'text-gray-500 border-gray-300 bg-gray-50' },
-  'Bilim & Mitler': { cardBorder: 'hover:border-blue-400', badge: 'text-blue-500 border-blue-400 bg-blue-50' },
-  'Gerçek Hikayeler': { cardBorder: 'hover:border-orange-400', badge: 'text-orange-500 border-orange-400 bg-orange-50' },
-  'Pratik Hayat': { cardBorder: 'hover:border-teal-400', badge: 'text-teal-600 border-teal-400 bg-teal-50' },
-  'Psikoloji': { cardBorder: 'hover:border-indigo-400', badge: 'text-indigo-600 border-indigo-400 bg-indigo-50' },
+  'Beslenme': { cardBorder: 'hover:border-green-400', badge: 'text-green-700 bg-green-50 border-green-200' },
+  'Egzersiz': { cardBorder: 'hover:border-red-400', badge: 'text-red-700 bg-red-50 border-red-200' },
+  'Motivasyon': { cardBorder: 'hover:border-purple-400', badge: 'text-purple-700 bg-purple-50 border-purple-200' },
+  'Tarif': { cardBorder: 'hover:border-yellow-400', badge: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
+  'Tarifler': { cardBorder: 'hover:border-yellow-400', badge: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
+  'Genel': { cardBorder: 'hover:border-gray-400', badge: 'text-gray-600 bg-gray-50 border-gray-200' },
+  'Bilim & Mitler': { cardBorder: 'hover:border-blue-400', badge: 'text-blue-700 bg-blue-50 border-blue-200' },
+  'Gerçek Hikayeler': { cardBorder: 'hover:border-orange-400', badge: 'text-orange-700 bg-orange-50 border-orange-200' },
+  'Pratik Hayat': { cardBorder: 'hover:border-teal-400', badge: 'text-teal-700 bg-teal-50 border-teal-200' },
+  'Psikoloji': { cardBorder: 'hover:border-indigo-400', badge: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
 };
 
 // HTML Decode
@@ -53,24 +52,24 @@ export default function BlogPage() {
                 setCategories(catsData);
             }
 
-            // 2. Yazıları Çek (Embed ile yazar ve görsel dahil)
+            // 2. Yazıları Çek
             const postsRes = await fetch(`${apiUrl}/wp/v2/posts?_embed&per_page=100`);
             let realPosts = [];
             
             if (postsRes.ok) {
                 const postsJson = await postsRes.json();
                 realPosts = postsJson.map((p: any) => {
-                    // Kategori
                     const catId = p.categories && p.categories.length > 0 ? p.categories[0] : null;
                     const catObj = catsData.find((c: any) => c.id === catId);
                     const catName = catObj ? decodeHtml(catObj.name) : "Genel";
                     
-                    // Yazar Bilgisi
                     const author = p._embedded?.author?.[0];
-                    
-                    // Avatar ve Uzman Kontrolü - Helper Fonksiyonlarla
                     const authorAvatar = getSafeAvatarUrl(author?.avatar_url, author?.slug || 'admin');
                     const authorIsExpert = isUserExpert(author?.roles);
+
+                    // Mock Okuyucular (Gerçek API gelene kadar görseli sağlamak için)
+                    const mockReaderCount = Math.floor(Math.random() * 50) + 5;
+                    const mockReaders = [1, 2, 3].map(i => `https://api.dicebear.com/9.x/avataaars/svg?seed=reader_${p.id}_${i}`);
 
                     return {
                         id: p.id,
@@ -86,7 +85,10 @@ export default function BlogPage() {
                         author_is_expert: authorIsExpert,
                         category: catName,
                         read_time: '5 dk', 
-                        sticky: p.sticky 
+                        sticky: p.sticky,
+                        // Yeni Alanlar
+                        last_readers: mockReaders,
+                        read_count: mockReaderCount
                     };
                 });
                 setPosts(realPosts);
@@ -96,35 +98,23 @@ export default function BlogPage() {
             const tagRes = await fetch(`${apiUrl}/wp/v2/tags?orderby=count&order=desc&per_page=10`);
             if (tagRes.ok) setTags(await tagRes.json());
 
-            // 4. Haftanın Okurları
+            // 4. Haftanın Okurları (Leaderboard)
             const leaderRes = await fetch(`${apiUrl}/rejimde/v1/gamification/leaderboard`);
             if (leaderRes.ok) {
                 const leaderData = await leaderRes.json();
                 if (leaderData.status === 'success' && Array.isArray(leaderData.data) && leaderData.data.length > 0) {
-                    const enrichedReaders = leaderData.data.slice(0, 3).map((reader: any) => {
-                        // Okuyucular için de aynı avatar mantığı - Helper fonksiyonla
+                    const enrichedReaders = leaderData.data.slice(0, 10).map((reader: any) => {
                         const readerAvatar = getSafeAvatarUrl(reader.avatar, reader.name);
                         const readerSlug = reader.slug || reader.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-                        return {
-                            ...reader,
-                            avatar: readerAvatar,
-                            slug: readerSlug
-                        };
+                        return { ...reader, avatar: readerAvatar, slug: readerSlug };
                     });
                     setTopReaders(enrichedReaders);
                 } else {
-                    setTopReaders([
-                         { id: 991, name: 'GelinAdayı_99', score: 1250, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=GelinAdayı', slug: 'gelinadayi_99' },
-                         { id: 992, name: 'DamatBey', score: 980, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=DamatBey', slug: 'damatbey' },
-                         { id: 993, name: 'FitGörümce', score: 850, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=FitGörümce', slug: 'fitgorumce' },
-                    ]);
+                    // Fallback Mock Data (10 Kişi)
+                    setTopReaders(generateMockReaders());
                 }
             } else {
-                 setTopReaders([
-                     { id: 991, name: 'GelinAdayı_99', score: 1250, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=GelinAdayı', slug: 'gelinadayi_99' },
-                     { id: 992, name: 'DamatBey', score: 980, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=DamatBey', slug: 'damatbey' },
-                     { id: 993, name: 'FitGörümce', score: 850, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=FitGörümce', slug: 'fitgorumce' },
-                 ]);
+                 setTopReaders(generateMockReaders());
             }
 
         } catch (error) {
@@ -136,6 +126,20 @@ export default function BlogPage() {
 
     initData();
   }, []);
+
+  // Mock Okuyucu Üretici
+  const generateMockReaders = () => [
+      { id: 901, name: 'GelinAdayı_99', score: 1250, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Gelin', slug: 'gelin' },
+      { id: 902, name: 'DamatBey', score: 1180, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Damat', slug: 'damat' },
+      { id: 903, name: 'FitGörümce', score: 950, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Gorumce', slug: 'gorumce' },
+      { id: 904, name: 'KoşuDelisi', score: 820, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Kosu', slug: 'kosu' },
+      { id: 905, name: 'DiyetBüken', score: 760, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Diyet', slug: 'diyet' },
+      { id: 906, name: 'SağlıkOlsun', score: 650, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Saglik', slug: 'saglik' },
+      { id: 907, name: 'ProteinCanavarı', score: 540, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Protein', slug: 'protein' },
+      { id: 908, name: 'YogaSever', score: 430, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Yoga', slug: 'yoga' },
+      { id: 909, name: 'Avokado', score: 320, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Avokado', slug: 'avokado' },
+      { id: 910, name: 'SonÜye', score: 110, avatar: 'https://api.dicebear.com/9.x/personas/svg?seed=Son', slug: 'son' },
+  ];
 
   const featuredPost = posts.find(p => p.sticky) || (posts.length > 0 ? posts[0] : null);
   
@@ -192,7 +196,6 @@ export default function BlogPage() {
                                     alt="Author"
                                 />
                                 <div>
-                                    {/* Profil Linki: Helper fonksiyonla doğru URL */}
                                     <Link href={getUserProfileUrl(featuredPost.author_slug, featuredPost.author_is_expert)} className="font-extrabold text-white hover:underline">
                                         {featuredPost.author_name}
                                     </Link>
@@ -266,7 +269,6 @@ export default function BlogPage() {
                             <Link 
                                 key={post.id} 
                                 href={`/blog/${post.slug}`} 
-                                // DÜZELTME: Dinamik Border Rengi
                                 className={`bg-white border-2 border-gray-200 rounded-3xl p-0 transition shadow-sm hover:shadow-card ${theme.cardBorder} group flex flex-col h-full hover:-translate-y-1 duration-200`}
                             >
                                 <div className="h-48 bg-gray-200 rounded-t-3xl relative overflow-hidden flex-shrink-0">
@@ -279,17 +281,36 @@ export default function BlogPage() {
                                 <div className="p-6 flex flex-col flex-1">
                                     <h3 className="font-extrabold text-xl text-gray-800 mb-3 leading-tight transition" dangerouslySetInnerHTML={{ __html: post.title }}></h3>
                                     <p className="text-sm font-bold text-gray-400 mb-4 line-clamp-3" dangerouslySetInnerHTML={{ __html: post.excerpt }}></p>
-                                    <div className="mt-auto flex items-center justify-between pt-4 border-t-2 border-gray-50">
-                                        <div className="flex items-center gap-2">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img 
-                                                src={post.author_avatar} 
-                                                className="w-6 h-6 rounded-lg bg-gray-200 object-cover" 
-                                                alt="Yazar"
-                                            />
-                                            <span className="text-xs font-black text-gray-500">{post.author_name}</span>
+                                    
+                                    <div className="mt-auto pt-4 border-t-2 border-gray-50">
+                                        <div className="flex items-center justify-between">
+                                            {/* Yazar */}
+                                            <div className="flex items-center gap-2">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img 
+                                                    src={post.author_avatar} 
+                                                    className="w-6 h-6 rounded-lg bg-gray-200 object-cover" 
+                                                    alt="Yazar"
+                                                />
+                                                <span className="text-xs font-black text-gray-500 truncate max-w-[80px]">{post.author_name}</span>
+                                            </div>
+
+                                            {/* Okuyucular ve Puan (YENİ ALAN) */}
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex -space-x-2">
+                                                    {post.last_readers && post.last_readers.map((avatar: string, i: number) => (
+                                                        <div key={i} className="w-6 h-6 rounded-full border-2 border-white relative bg-gray-100">
+                                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                            <img src={avatar} alt="Reader" className="w-full h-full rounded-full object-cover" />
+                                                        </div>
+                                                    ))}
+                                                    <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[8px] font-black text-gray-500">
+                                                        +{post.read_count}
+                                                    </div>
+                                                </div>
+                                                <span className="text-[10px] font-black text-rejimde-green bg-green-50 px-1.5 py-0.5 rounded border border-green-100">+10P</span>
+                                            </div>
                                         </div>
-                                        <span className="text-xs font-black text-rejimde-green bg-green-50 px-2 py-1 rounded">+10 Puan</span>
                                     </div>
                                 </div>
                             </Link>
@@ -367,35 +388,71 @@ export default function BlogPage() {
                       </div>
                   </div>
 
-                  {/* Top Readers (Community) */}
+                  {/* Top Readers (GÜNCELLENDİ: 10 KİŞİ) */}
                   <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-card">
-                      <h3 className="font-extrabold text-gray-700 uppercase text-sm mb-4">Haftanın Okurları</h3>
+                      <div className="flex justify-between items-center mb-4">
+                          <h3 className="font-extrabold text-gray-700 uppercase text-sm">Haftanın Okurları</h3>
+                          <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Top 10</span>
+                      </div>
                       <div className="space-y-3">
-                          {topReaders.length > 0 ? topReaders.map((reader: any, index: number) => (
-                              <div key={reader.id} className="flex items-center gap-3">
-                                  <span className={`font-black w-4 text-center ${index === 0 ? 'text-rejimde-yellowDark' : 'text-gray-400'}`}>{index + 1}</span>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img 
-                                    src={reader.avatar} 
-                                    className="w-8 h-8 rounded-lg bg-gray-200 object-cover" 
-                                    alt="Reader" 
-                                    onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/9.x/personas/svg?seed=${reader.name}` }}
-                                  />
-                                  <div className="flex-1">
-                                      {/* Okuyucular normal kullanıcılar olarak varsayılır */}
-                                      <Link href={getUserProfileUrl(reader.slug || 'user', false)} className="text-xs font-bold text-gray-700 hover:underline hover:text-rejimde-blue block">
-                                          {reader.name}
+                          {topReaders.length > 0 ? topReaders.map((reader: any, index: number) => {
+                              // Sıralama renkleri
+                              let rankColor = 'text-gray-400';
+                              let rankBg = 'bg-gray-100';
+                              if (index === 0) { rankColor = 'text-yellow-600'; rankBg = 'bg-yellow-100 border-yellow-200'; }
+                              else if (index === 1) { rankColor = 'text-gray-600'; rankBg = 'bg-gray-200 border-gray-300'; }
+                              else if (index === 2) { rankColor = 'text-orange-600'; rankBg = 'bg-orange-100 border-orange-200'; }
+
+                              return (
+                                  <div key={reader.id} className="flex items-center gap-3 group">
+                                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs border ${rankBg} ${rankColor}`}>
+                                          {index + 1}
+                                      </div>
+                                      
+                                      <Link href={getUserProfileUrl(reader.slug || 'user', false)} className="relative hover:scale-110 transition-transform">
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img 
+                                            src={reader.avatar} 
+                                            className="w-9 h-9 rounded-xl bg-gray-100 object-cover border-2 border-white shadow-sm" 
+                                            alt="Reader" 
+                                            onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/9.x/personas/svg?seed=${reader.name}` }}
+                                          />
+                                          {index < 3 && (
+                                              <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-yellow-400 rounded-full border-2 border-white flex items-center justify-center">
+                                                  <i className="fa-solid fa-crown text-[6px] text-white"></i>
+                                              </div>
+                                          )}
                                       </Link>
-                                      <p className="text-[10px] font-bold text-gray-400">Puan Lideri</p>
+                                      
+                                      <div className="flex-1 min-w-0">
+                                          <Link href={getUserProfileUrl(reader.slug || 'user', false)} className="text-xs font-bold text-gray-700 hover:text-rejimde-blue truncate block transition">
+                                              {reader.name}
+                                          </Link>
+                                          <div className="flex items-center gap-1">
+                                             <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                 <div className="h-full bg-rejimde-green rounded-full" style={{width: `${Math.min((reader.score / 2000) * 100, 100)}%`}}></div>
+                                             </div>
+                                          </div>
+                                      </div>
+                                      
+                                      <div className="text-right">
+                                          <span className="text-xs font-black text-gray-700 block">{reader.score}</span>
+                                          <span className="text-[9px] font-bold text-gray-400 uppercase">Puan</span>
+                                      </div>
                                   </div>
-                                  <span className="text-xs font-black text-rejimde-green">{reader.score} P</span>
-                              </div>
-                          )) : (
-                              <div className="text-center py-4">
-                                  <MascotDisplay state="idle_dashboard" size={80} showBubble={false} />
+                              );
+                          }) : (
+                              <div className="text-center py-6">
+                                  <MascotDisplay state="idle_dashboard" size={60} showBubble={false} />
                                   <p className="text-xs text-gray-400 font-bold mt-2">Henüz veri yok.</p>
                               </div>
                           )}
+                      </div>
+                      
+                      <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+                          <Link href="/leagues" className="text-xs font-bold text-rejimde-blue hover:underline">
+                              Tüm Sıralamayı Gör
+                          </Link>
                       </div>
                   </div>
 

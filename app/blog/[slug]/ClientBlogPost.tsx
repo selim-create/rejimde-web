@@ -7,7 +7,7 @@ import { earnPoints, getProgress, claimReward } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 
-import { getUserProfileUrl } from "@/lib/helpers";
+import { getUserProfileUrl, getSafeAvatarUrl } from "@/lib/helpers";
 
 interface ClientBlogPostProps {
   post: any;
@@ -15,25 +15,30 @@ interface ClientBlogPostProps {
   formattedTitle: React.ReactNode;
 }
 
-// Meslek ID'sine göre Türkçe Etiket Bulucu
-const SPECIALTY_CATEGORIES = [
-    { title: "Beslenme", items: [{ id: "dietitian_spec", label: "Diyetisyen" }, { id: "dietitian", label: "Diyetisyen" }] },
-    { title: "Hareket", items: [{ id: "pt", label: "PT / Fitness Koçu" }, { id: "trainer", label: "Antrenör" }] },
-    // ... (Diğer kategoriler comment-service.ts ile aynı)
-];
-
-const getProfessionLabel = (slug: string = '') => {
-    if (!slug) return '';
-    const slugLower = slug.toLowerCase();
-    for (const cat of SPECIALTY_CATEGORIES) {
-        const found = cat.items.find(item => item.id === slugLower || slugLower.includes(item.id));
-        if (found) return found.label;
-    }
-    return slug.charAt(0).toUpperCase() + slug.slice(1);
+// URL Slug Yardımcısı
+const slugify = (text: string) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-');
 };
 
-const slugify = (text: string) => {
-  return text.toString().toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w\-]+/g, '').replace(/\-\-+/g, '-');
+// KATEGORİ TEMALARI
+// Gelen kategori ismine göre stil döndürür. Eşleşme yoksa 'Genel' temasını kullanır.
+const CATEGORY_THEMES: Record<string, { cardBorder: string, badge: string, icon: string }> = {
+  'Beslenme': { cardBorder: 'hover:border-green-400', badge: 'text-green-700 bg-green-50 border border-green-200', icon: 'fa-carrot' },
+  'Egzersiz': { cardBorder: 'hover:border-red-400', badge: 'text-red-700 bg-red-50 border border-red-200', icon: 'fa-dumbbell' },
+  'Motivasyon': { cardBorder: 'hover:border-purple-400', badge: 'text-purple-700 bg-purple-50 border border-purple-200', icon: 'fa-fire' },
+  'Tarif': { cardBorder: 'hover:border-yellow-400', badge: 'text-yellow-700 bg-yellow-50 border border-yellow-200', icon: 'fa-utensils' },
+  'Tarifler': { cardBorder: 'hover:border-yellow-400', badge: 'text-yellow-700 bg-yellow-50 border border-yellow-200', icon: 'fa-utensils' },
+  'Genel': { cardBorder: 'hover:border-gray-400', badge: 'text-gray-600 bg-gray-50 border border-gray-200', icon: 'fa-tag' },
+  'Bilim & Mitler': { cardBorder: 'hover:border-blue-400', badge: 'text-blue-700 bg-blue-50 border border-blue-200', icon: 'fa-atom' },
+  'Gerçek Hikayeler': { cardBorder: 'hover:border-orange-400', badge: 'text-orange-700 bg-orange-50 border border-orange-200', icon: 'fa-book-open' },
+  'Pratik Hayat': { cardBorder: 'hover:border-teal-400', badge: 'text-teal-700 bg-teal-50 border border-teal-200', icon: 'fa-leaf' },
+  'Psikoloji': { cardBorder: 'hover:border-indigo-400', badge: 'text-indigo-700 bg-indigo-50 border border-indigo-200', icon: 'fa-brain' },
 };
 
 export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: ClientBlogPostProps) {
@@ -46,7 +51,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
   const [infoModal, setInfoModal] = useState<{show: boolean, title: string, message: string, type: 'error' | 'success' | 'info'}>({ show: false, title: "", message: "", type: "info" });
   const [currentUser, setCurrentUser] = useState<{ role: string, name: string, id: number, avatar: string } | null>(null);
 
-  // Yazar Detayları - Varsayılan Değerler ile Başlat (Hata Önlemek İçin)
+  // Yazar Detayları
   const [authorDetail, setAuthorDetail] = useState<any>({
       id: 0,
       name: post.author_name || "Yazar",
@@ -110,21 +115,15 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                           const isPro = user.roles && user.roles.includes('rejimde_pro');
                           const avatar = user.avatar_url || user.avatar_urls?.['96'] || `https://api.dicebear.com/9.x/personas/svg?seed=${user.slug}`;
                           
-                          let profession = '';
-                          if (isPro) {
-                              const rawProfession = user.profession || ''; 
-                              profession = getProfessionLabel(rawProfession) || 'Uzman'; 
-                          }
-
                           setAuthorDetail({
                               id: user.id,
                               name: user.name,
                               slug: user.slug,
                               avatar: avatar,
                               isExpert: isPro,
-                              isVerified: isPro, // Pro ise onaylı sayalım (veya user.is_verified_expert)
+                              isVerified: isPro,
                               role: isPro ? 'rejimde_pro' : 'rejimde_user',
-                              profession: profession,
+                              profession: user.profession || (isPro ? 'Uzman' : ''),
                               level: user.rejimde_level || 5, 
                               score: user.rejimde_score || 0,
                               articleCount: user.posts_count || 12, 
@@ -213,16 +212,25 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       setClaiming(false);
   };
 
-  const categoryName = post.category ? <span dangerouslySetInnerHTML={{ __html: post.category }} /> : "Genel";
+  // Dinamik Kategori Teması
+  const catTheme = CATEGORY_THEMES[post.category] || CATEGORY_THEMES['Genel'];
+  const categoryBadge = (
+    <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase flex items-center gap-1 ${catTheme.badge}`}>
+        <i className={`fa-solid ${catTheme.icon}`}></i>
+        {post.category || "Genel"}
+    </span>
+  );
 
   return (
     <>
+      {/* Progress Bar */}
       <div className="fixed top-20 left-0 w-full h-1.5 bg-gray-100 z-40">
         <div className="h-full bg-rejimde-blue rounded-r-full shadow-[0_0_10px_#1cb0f6] transition-all duration-100 ease-out" style={{ width: `${readingProgress}%` }}></div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
           
+          {/* LEFT: Article Content */}
           <article className="lg:col-span-8 relative">
               {canEdit && (
                   <Link href={`/dashboard/pro/blog/edit/${post.id}`} className="absolute top-0 right-0 bg-gray-100 text-gray-600 px-4 py-2 rounded-xl font-bold text-xs hover:bg-rejimde-blue hover:text-white transition flex items-center gap-2 z-10">
@@ -232,8 +240,8 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
 
               <div className="mb-8">
                   <div className="flex items-center gap-2 mb-4">
-                      <span className="bg-blue-50 text-rejimde-blue px-3 py-1 rounded-lg text-xs font-black uppercase">{categoryName}</span>
-                      <span className="text-gray-400 text-xs font-bold"><i className="fa-regular fa-clock mr-1"></i> {post.read_time} okuma</span>
+                      {categoryBadge}
+                      <span className="text-gray-400 text-xs font-bold ml-2"><i className="fa-regular fa-clock mr-1"></i> {post.read_time} okuma</span>
                   </div>
                   <h1 className="text-3xl md:text-5xl font-black text-gray-800 leading-tight mb-6">{formattedTitle}</h1>
                   
@@ -289,16 +297,39 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               </section>
           </article>
 
+          {/* RIGHT: Sticky Sidebar */}
           <aside className="hidden lg:block lg:col-span-4 space-y-6">
-              <div className="sticky top-24 z-10">
+              <div className="sticky top-24 z-10 space-y-6">
+                  {/* Ortak Yazar Kartı */}
                   <AuthorCard author={authorDetail} context="Yazar" />
+
+                  {/* YENİ: Okuyanlar Bölümü (Mock) */}
+                  <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-sm">
+                      <h4 className="font-extrabold text-gray-700 mb-4 flex items-center gap-2">
+                          <i className="fa-solid fa-book-open-reader text-rejimde-blue"></i> Okuyanlar
+                      </h4>
+                      <div className="flex -space-x-3 overflow-hidden mb-2 pl-2">
+                          {[1,2,3,4,5].map((i) => (
+                              <div key={i} className="w-10 h-10 rounded-full border-2 border-white relative block hover:scale-110 transition-transform bg-gray-100">
+                                   {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={`https://api.dicebear.com/9.x/avataaars/svg?seed=Reader${i}`} alt="Okuyucu" className="w-full h-full object-cover rounded-full" />
+                              </div>
+                          ))}
+                          <div className="w-10 h-10 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
+                              +12
+                          </div>
+                      </div>
+                      <p className="text-xs font-bold text-gray-400">
+                          17 kişi bu yazıyı okuyup puan kazandı.
+                      </p>
+                  </div>
               </div>
 
               <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 relative z-0">
                   <h3 className="font-extrabold text-gray-400 text-xs uppercase mb-4">Bunları da Oku</h3>
                   <div className="space-y-4">
                       {relatedPosts.map((relPost: any) => (
-                          <Link href={`/blog/${relPost.slug}`} key={relPost.id} className="flex gap-3 group">
+                          <Link href={`/blog/${relPost.slug}`} key={relPost.id} className={`flex gap-3 group p-2 rounded-xl transition border border-transparent ${CATEGORY_THEMES[relPost.category || 'Genel']?.cardBorder || 'hover:border-gray-300'}`}>
                               <div className="w-16 h-16 bg-gray-200 rounded-xl shrink-0 border-2 border-transparent group-hover:border-rejimde-blue transition overflow-hidden relative">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={relPost.image} alt={relPost.title} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "https://placehold.co/100x100?text=Blog" }} />

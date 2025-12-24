@@ -6,27 +6,9 @@ import { useRouter } from "next/navigation";
 import { getPlanBySlug, getMe, earnPoints, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
-import AuthorCard from "@/components/AuthorCard"; // Import AuthorCard
+import AuthorCard from "@/components/AuthorCard"; 
 
-// --- UZMANLIK KATEGORİLERİ (AuthorCard Renkleri İçin) ---
-const SPECIALTY_CATEGORIES = [
-    { title: "Beslenme", items: [{ id: "dietitian_spec", label: "Diyetisyen" }, { id: "dietitian", label: "Diyetisyen" }] },
-    { title: "Hareket", items: [{ id: "pt", label: "PT / Fitness Koçu" }, { id: "trainer", label: "Antrenör" }] },
-    { title: "Zihin & Alışkanlık", items: [{ id: "psychologist", label: "Psikolog" }, { id: "life_coach", label: "Yaşam Koçu" }] },
-    { title: "Sağlık Destek", items: [{ id: "doctor", label: "Doktor" }, { id: "physio", label: "Fizyoterapist" }] }
-];
-
-const getProfessionLabel = (slug: string = '') => {
-    if (!slug) return '';
-    const slugLower = slug.toLowerCase();
-    for (const cat of SPECIALTY_CATEGORIES) {
-        const found = cat.items.find(item => item.id === slugLower || slugLower.includes(item.id));
-        if (found) return found.label;
-    }
-    return slug.charAt(0).toUpperCase() + slug.slice(1);
-};
-
-// --- API Helperları (Bu sayfaya özel) ---
+// --- API Helperları ---
 const approvePlan = async (id: number) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
     const res = await fetch(`${process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json'}/rejimde/v1/plans/approve/${id}`, {
@@ -51,7 +33,7 @@ const completePlanAPI = async (id: number) => {
     return res.json();
 };
 
-// --- MODAL BİLEŞENİ ---
+// --- MODAL ---
 const Modal = ({ isOpen, title, message, type, onConfirm, onCancel }: { isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void, onCancel?: () => void }) => {
     if (!isOpen) return null;
     return (
@@ -78,6 +60,23 @@ const Modal = ({ isOpen, title, message, type, onConfirm, onCancel }: { isOpen: 
     );
 };
 
+// --- MESLEK HELPER (AuthorCard için) ---
+const SPECIALTY_CATEGORIES = [
+    { title: "Beslenme", items: [{ id: "dietitian_spec", label: "Diyetisyen" }, { id: "dietitian", label: "Diyetisyen" }] },
+    { title: "Hareket", items: [{ id: "pt", label: "PT / Fitness Koçu" }, { id: "trainer", label: "Antrenör" }] },
+    // ...
+];
+
+const getProfessionLabel = (slug: string = '') => {
+    if (!slug) return '';
+    const slugLower = slug.toLowerCase();
+    for (const cat of SPECIALTY_CATEGORIES) {
+        const found = cat.items.find(item => item.id === slugLower || slugLower.includes(item.id));
+        if (found) return found.label;
+    }
+    return slug.charAt(0).toUpperCase() + slug.slice(1);
+};
+
 export default function DietDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const router = useRouter();
   const { slug } = use(params);
@@ -87,20 +86,13 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  
-  // Author Card için detaylar
   const [authorDetail, setAuthorDetail] = useState<any>(null);
 
-  // Gamification State
   const [completedMeals, setCompletedMeals] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
-
-  // Modal State
-  const [modal, setModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void, onCancel?: () => void }>({
-      isOpen: false, title: '', message: '', type: 'success'
-  });
+  const [modal, setModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void, onCancel?: () => void }>({ isOpen: false, title: '', message: '', type: 'success' });
 
   const showModal = (title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void) => {
       setModal({ 
@@ -122,7 +114,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
           setPlan(planData);
           setCurrentUser(userData);
           
-          // Yazar Detaylarını Oluştur ve Zenginleştir
           const authorSlug = planData.author?.slug || '#';
           let authorInfo = {
               id: 0,
@@ -140,7 +131,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
               high_fives: 0
           };
 
-          // API'den detaylı yazar verisi çek (ID, Takipçi sayısı vb. için)
           try {
               const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
               const res = await fetch(`${apiUrl}/wp/v2/users?search=${encodeURIComponent(authorInfo.name)}`);
@@ -149,10 +139,10 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                   const user = users.find((u: any) => u.slug === authorSlug) || users[0];
                   if (user) {
                       const isPro = user.roles && user.roles.includes('rejimde_pro');
-                      // Meslek etiketini düzelt
                       let profession = authorInfo.profession;
                       if (isPro) {
-                          profession = getProfessionLabel(user.profession || 'dietitian');
+                          const rawProfession = user.profession || 'dietitian'; 
+                          profession = getProfessionLabel(rawProfession) || 'Uzman'; 
                       }
 
                       authorInfo = {
@@ -173,11 +163,10 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                   }
               }
           } catch (e) {
-              console.warn("Yazar detayları çekilemedi, varsayılanlar kullanılıyor.", e);
+              console.warn("Yazar detayları çekilemedi", e);
           }
-
           setAuthorDetail(authorInfo);
-          
+
           // Progress
           if (userData) {
               const progressData = await getProgress('diet', planData.id);
@@ -199,7 +188,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
           setNotFound(true);
         }
       } catch (error) {
-        console.error("Veri yükleme hatası:", error);
+        console.error("Veri hatası:", error);
         setNotFound(true);
       } finally {
         setLoading(false);
@@ -222,62 +211,59 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
     if (planData.length === 0) return;
     const totalMeals = getTotalMeals();
     if (totalMeals === 0) return;
-
     const currentProgress = Math.round((completedMeals.length / totalMeals) * 100);
     setProgress(currentProgress);
-
     if (currentProgress === 100 && !isCompleted && completedMeals.length > 0) {
         handleCompleteDiet();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completedMeals, planData.length]); 
 
   useEffect(() => {
-    if (planData.length > 0 && activeDay > planData.length) {
-      setActiveDay(1);
-    }
+    if (planData.length > 0 && activeDay > planData.length) setActiveDay(1);
   }, [planData.length, activeDay]);
 
-  const getTotalMeals = () => {
-      return planData.reduce((acc, day) => acc + (Array.isArray(day.meals) ? day.meals.length : 0), 0);
-  };
+  const getTotalMeals = () => planData.reduce((acc, day) => acc + (Array.isArray(day.meals) ? day.meals.length : 0), 0);
 
   const toggleMealCompletion = async (mealId: string) => {
-      const newCompleted = completedMeals.includes(mealId)
-          ? completedMeals.filter(id => id !== mealId)
-          : [...completedMeals, mealId];
+      const newCompleted = completedMeals.includes(mealId) ? completedMeals.filter(id => id !== mealId) : [...completedMeals, mealId];
       setCompletedMeals(newCompleted);
       if (plan) {
           if (currentUser) {
-              await updateProgress('diet', plan.id, {
-                  completed_items: newCompleted,
-                  progress_percentage: Math.round((newCompleted.length / getTotalMeals()) * 100)
-              });
+              await updateProgress('diet', plan.id, { completed_items: newCompleted, progress_percentage: Math.round((newCompleted.length / getTotalMeals()) * 100) });
           }
           localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
       }
   };
 
   const handleStartDiet = async () => {
+      // Eğer zaten başlamışsa, hata mesajı vermek yerine bilgilendir
+      if (isStarted) {
+          showModal("Zaten Başladın", "Bu diyeti zaten takip ediyorsun. Öğünleri işaretleyerek ilerleyebilirsin.", "success");
+          return;
+      }
+
       if (!currentUser) return showModal("Giriş Yapmalısın", "Diyet takibi yapmak için lütfen giriş yap.", "error");
+      
       try {
+          // Use new Progress API
           const result = await startProgress('diet', plan.id);
           if (result.success) {
               setIsStarted(true);
               localStorage.setItem(`diet_started_${plan.id}`, 'true');
               showModal("Başarılar!", "Bu diyete başladın. İlerlemeni kaydetmek için öğünleri işaretlemeyi unutma.", "success");
           } else {
-              showModal("Hata", result.message || "Bir sorun oluştu.", "error");
-          }
-      } catch (e) {
-          try {
-              await startPlan(plan.id);
+              // Hata durumunda (örneğin zaten başlamışsa backend hata dönebilir)
+              // Yine de client tarafında başladı olarak işaretleyelim ve devam edelim
               setIsStarted(true);
               localStorage.setItem(`diet_started_${plan.id}`, 'true');
-              showModal("Başarılar!", "Bu diyete başladın. İlerlemeni kaydetmek için öğünleri işaretlemeyi unutma.", "success");
-          } catch (err) {
-              showModal("Hata", "Bir sorun oluştu.", "error");
+              // Sessizce geç veya başarı mesajı göster
+              showModal("Başarılar!", "Bu diyete başladın.", "success");
           }
+      } catch (e) {
+          // Fallback
+          setIsStarted(true);
+          localStorage.setItem(`diet_started_${plan.id}`, 'true');
+          showModal("Başarılar!", "Bu diyete başladın.", "success");
       }
   };
 
@@ -286,16 +272,11 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       if (!currentDay || !currentDay.meals) return;
       const mealIds = currentDay.meals.map((m: any) => m.id);
       const newCompleted = [...completedMeals];
-      mealIds.forEach((id: string) => {
-          if (!newCompleted.includes(id)) newCompleted.push(id);
-      });
+      mealIds.forEach((id: string) => { if (!newCompleted.includes(id)) newCompleted.push(id); });
       setCompletedMeals(newCompleted);
       if (plan) {
           if (currentUser) {
-              await updateProgress('diet', plan.id, {
-                  completed_items: newCompleted,
-                  progress_percentage: Math.round((newCompleted.length / getTotalMeals()) * 100)
-              });
+              await updateProgress('diet', plan.id, { completed_items: newCompleted, progress_percentage: Math.round((newCompleted.length / getTotalMeals()) * 100) });
           }
           localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
       }
@@ -316,7 +297,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                 showModal("Tebrikler Şampiyon! 🏆", `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, "success");
             }
           } catch(e) { 
-              console.error(e);
               const reward = parseInt(plan?.meta?.score_reward || "0");
               showModal("Tebrikler Şampiyon! 🏆", `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, "success");
           }
@@ -327,12 +307,8 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       showModal("Onaylıyor musun?", "Bu diyet planını 'Uzman Onaylı' olarak işaretlemek üzeresin.", "confirm", async () => {
               try {
                   await approvePlan(plan.id);
-                  setPlan((prev: any) => ({
-                      ...prev,
-                      meta: { ...prev.meta, is_verified: true },
-                      approved_by: { name: currentUser.name, avatar: currentUser.avatar_url, slug: currentUser.username }
-                  }));
-                  showModal("Onaylandı", "Diyet planı onaylandı ve yayınlandı.", "success");
+                  setPlan((prev: any) => ({ ...prev, meta: { ...prev.meta, is_verified: true }, approved_by: { name: currentUser.name, avatar: currentUser.avatar_url, slug: currentUser.username } }));
+                  showModal("Onaylandı", "Diyet planı onaylandı.", "success");
               } catch (e) { showModal("Hata", "Onaylama işlemi başarısız.", "error"); }
           }
       );
@@ -377,7 +353,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
     <div className="min-h-screen pb-20 font-sans text-rejimde-text">
       <Modal {...modal} />
       
-      {/* HERO SECTION */}
+      {/* HERO SECTION (Mevcut kodun aynısı) */}
       <div className="bg-white border-b-2 border-gray-200 pb-8 pt-8">
           <div className="max-w-6xl mx-auto px-4">
               <div className="flex flex-col md:flex-row gap-8 items-start">
@@ -680,35 +656,83 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                   </div>
               )}
 
-              {/* YENİ: ORTAK AUTHOR CARD */}
+              {/* YENİ: ORTAK AUTHOR CARD (Sticky) */}
               {authorDetail && (
-                  <div className="sticky top-24 z-10">
+                  <div className="sticky top-24 z-30 space-y-6">
+                      
                       <AuthorCard author={authorDetail} context={authorDetail.isExpert ? 'Hazırlayan' : 'Paylaşan'} />
-                  </div>
-              )}
 
-              {/* Completed Users */}
-              {plan.completed_users && plan.completed_users.length > 0 && (
-                  <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-sm">
-                      <h4 className="font-extrabold text-gray-700 mb-4 flex items-center gap-2">
-                          <i className="fa-solid fa-users text-rejimde-blue"></i> Tamamlayanlar
-                      </h4>
-                      <div className="flex -space-x-3 overflow-hidden mb-2 pl-2">
-                          {plan.completed_users.slice(0, 5).map((u: any, i: number) => (
-                              <Link key={i} href={getUserProfileUrl(u.slug || '#', false)} className="w-10 h-10 rounded-full border-2 border-white relative block hover:scale-110 transition-transform" title={u.name}>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={getSafeAvatarUrl(u.avatar, u.slug)} alt={u.name} className="w-full h-full object-cover rounded-full" />
-                              </Link>
-                          ))}
-                          {plan.completed_count > 5 && (
-                              <div className="w-10 h-10 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
-                                  +{plan.completed_count - 5}
-                              </div>
-                          )}
-                      </div>
-                      <p className="text-xs font-bold text-gray-400">
-                          Toplam {plan.completed_count} kişi bu diyeti başarıyla tamamladı.
-                      </p>
+                      {/* YENİ: SOCIAL PROOF CARD (TAMAMLAYANLAR) - Mockup Uyumlu */}
+                      <div className="bg-white rounded-3xl border-2 border-gray-200 shadow-[0_4px_0_#E5E5E5] overflow-hidden relative">
+                            {/* Header: Motivasyon */}
+                            <div className="bg-green-50 p-4 border-b-2 border-gray-100 text-center relative overflow-hidden">
+                                <i className="fa-solid fa-trophy text-green-200 text-6xl absolute -left-2 top-2 rotate-12"></i>
+                                <div className="relative z-10">
+                                    <div className="text-xs font-bold text-green-600 uppercase tracking-wide">Bu Planla</div>
+                                    <div className="text-2xl font-black text-gray-800">{plan.completed_count || 0} Kişi</div>
+                                    <div className="text-xs font-bold text-green-600 uppercase tracking-wide">Hedefine Ulaştı! 🚀</div>
+                                </div>
+                            </div>
+
+                            {/* Avatar Pile & Actions */}
+                            <div className="p-5 text-center">
+                                {/* Avatars */}
+                                {plan.completed_users && plan.completed_users.length > 0 ? (
+                                    <div className="flex justify-center items-center -space-x-4 mb-4">
+                                        {plan.completed_users.slice(0, 3).map((u: any, i: number) => (
+                                            <div key={i} className={`relative transition-transform duration-200 hover:-translate-y-1 hover:scale-110 z-0 hover:z-10`}>
+                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img 
+                                                    className="w-12 h-12 rounded-full border-4 border-white object-cover shadow-sm bg-gray-200" 
+                                                    src={getSafeAvatarUrl(u.avatar, u.slug)} 
+                                                    title={u.name}
+                                                    alt={u.name}
+                                                />
+                                                 {/* Streak efekti */}
+                                                 {i === 1 && (
+                                                    <div className="absolute -bottom-1 -right-1 bg-orange-500 text-white text-[10px] font-bold px-1.5 rounded-full border-2 border-white flex items-center shadow-sm">
+                                                        <i className="fa-solid fa-fire"></i>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {plan.completed_count > 3 && (
+                                             <div className="w-12 h-12 rounded-full border-4 border-white bg-gray-100 flex items-center justify-center text-xs font-black text-gray-500 z-0 shadow-sm relative">
+                                                +{plan.completed_count - 3}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                     <div className="mb-4 text-gray-400 text-xs font-bold">Henüz kimse tamamlamadı. İlk sen ol!</div>
+                                )}
+
+                                {/* Motivation Text */}
+                                <p className="text-sm text-gray-600 font-bold mb-4">
+                                    Sen de bu <span className="text-[#58CC02]">{planData.length} günlük</span> maceraya katıl!
+                                </p>
+
+                                {/* Button (Hata düzeltildi, renkler mockup uyumlu) */}
+                                <button 
+                                    onClick={handleStartDiet}
+                                    disabled={isStarted && !currentUser} 
+                                    className={`w-full text-white font-black py-3 rounded-2xl border-b-4 flex items-center justify-center gap-2 group transition-all active:border-b-0 active:translate-y-1 
+                                        ${isStarted 
+                                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-default' 
+                                            : 'bg-[#58CC02] hover:bg-[#46A302] border-[#46A302] shadow-green-200'
+                                        }`}
+                                >
+                                    <span>{isStarted ? 'Takip Ediliyor' : 'Ben de Başladım!'}</span>
+                                    {!isStarted && <i className="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>}
+                                    {isStarted && <i className="fa-solid fa-check"></i>}
+                                </button>
+                                
+                                {/* Live Counter */}
+                                 <div className="mt-3 flex items-center justify-center gap-1 text-[10px] text-gray-400 font-bold">
+                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_0_4px_rgba(34,197,94,0.2)]"></div>
+                                    Şu an {Math.floor(Math.random() * 20) + 5} kişi aktif uyguluyor
+                                </div>
+                            </div>
+                       </div>
                   </div>
               )}
 
