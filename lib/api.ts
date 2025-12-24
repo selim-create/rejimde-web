@@ -1307,117 +1307,55 @@ export async function getProfileByUsername(username: string) {
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         };
 
-        // ÖNCELİK: Kendi API endpoint'imizi kullan (herkese açık)
+        // Rejimde API kullan (herkese açık)
         const res = await fetch(`${API_URL}/rejimde/v1/profile/${encodeURIComponent(username)}`, { 
             headers,
             cache: 'no-store'
         });
         
-        if (res.ok) {
-            const json = await res.json();
-            // API rejimde/v1/profile response formatı: { id, username, display_name, roles, ... }
-            const userData = json.data || json;
-            
-            // Avatar URL'yi belirle
-            const gender = userData.gender || 'neutral';
-            const avatar = userData.avatar_url || getDefaultAvatar(gender);
-            
-            // Rolü belirle
-            const primaryRole = getPrimaryRole(userData.roles);
-            
-            return {
-                id: userData.id,
-                name: userData.display_name || userData.name,
-                username: userData.username,
-                slug: userData.slug || userData.username,
-                email: userData.email,
-                description: userData.description || '',
-                avatar_url: avatar,
-                avatar_urls: userData.avatar_urls || { '96': avatar },
-                roles: userData.roles || [],
-                role: primaryRole,
-                
-                // Meta veriler
-                registered_date: userData.registered_date,
-                location: userData.location || '',
-                gender: userData.gender || 'neutral',
-                
-                // Gamification - Backend'den gelen isimleri kullan
-                rejimde_level: userData.level || userData.rejimde_level || 1,
-                rejimde_total_score: userData.total_score || userData.rejimde_total_score || 0,
-                rejimde_earned_badges: userData.earned_badges || userData.rejimde_earned_badges || [],
-                
-                // Social
-                followers_count: userData.followers_count || 0,
-                following_count: userData.following_count || 0,
-                high_fives: userData.high_fives || 0,
-                is_following: userData.is_following || false,
-                
-                // Clan & League
-                clan: userData.clan || null,
-                league: userData.league || { 
-                    id: 'bronze', 
-                    name: 'Bronz Lig', 
-                    slug: 'bronze', 
-                    icon: 'fa-medal', 
-                    color: 'text-amber-700' 
-                },
-                
-                // Expert fields
-                profession: userData.profession || '',
-                title: userData.title || '',
-                bio: userData.bio || '',
-                branches: userData.branches || '',
-                services: userData.services || '',
-                is_expert: userData.is_expert || false,
-            };
+        if (!res.ok) {
+            console.warn('Profile API failed:', res.status);
+            return null;
         }
-        
-        // Fallback: WordPress API dene (geriye uyumluluk)
-        console.warn('Rejimde profile API failed, trying WordPress API...');
-        const wpRes = await fetch(`${API_URL}/wp/v2/users?slug=${username}&context=view`, { 
-            headers,
-            cache: 'no-store'
-        });
-        
-        if (!wpRes.ok) return null;
-        
-        const users = await wpRes.json();
-        if (users.length === 0) return null;
-        
-        const wpUser = users[0];
-        const wpGender = wpUser.gender || 'neutral';
-        const wpAvatar = wpUser.avatar_url || wpUser.avatar_urls?.['96'] || getDefaultAvatar(wpGender);
+
+        const json = await res.json();
+        const userData = json.data || json;
         
         return {
-            id: wpUser.id,
-            name: wpUser.name,
-            username: wpUser.slug,
-            slug: wpUser.slug,
-            email: wpUser.email,
-            description: wpUser.description || '',
-            avatar_url: wpAvatar,
-            avatar_urls: wpUser.avatar_urls,
-            roles: wpUser.roles || [],
-            role: getPrimaryRole(wpUser.roles),
-            registered_date: wpUser.registered_date,
-            location: wpUser.location || '',
-            gender: wpGender,
-            rejimde_level: wpUser.rejimde_level || 1,
-            rejimde_total_score: wpUser.rejimde_total_score || 0,
-            rejimde_earned_badges: wpUser.rejimde_earned_badges || [],
-            followers_count: wpUser.followers_count || 0,
-            following_count: wpUser.following_count || 0,
-            high_fives: wpUser.high_fives || 0,
-            is_following: wpUser.is_following || false,
-            clan: wpUser.clan || null,
-            league: wpUser.league || { id: 'bronze', name: 'Bronz Lig', slug: 'bronze', icon: 'fa-medal', color: 'text-amber-700' },
-            profession: wpUser.profession || '',
-            title: wpUser.title || '',
-            bio: wpUser.bio || '',
-            branches: wpUser.branches || '',
-            services: wpUser.services || '',
-            is_expert: false,
+            id: userData.id,
+            name: userData.display_name || userData.name,
+            username: userData.username,
+            slug: userData.slug || userData.username,
+            description: userData.description || '',
+            avatar_url: userData.avatar_url,
+            roles: userData.roles || [],
+            registered_date: userData.registered_date,
+            location: userData.location || '',
+            
+            // Gamification
+            rejimde_level: userData.level || 1,
+            rejimde_total_score: userData.total_score || 0,
+            rejimde_earned_badges: userData.earned_badges || [],
+            
+            // Social
+            followers_count: userData.followers_count || 0,
+            following_count: userData.following_count || 0,
+            high_fives: userData.high_fives || 0,
+            is_following: userData.is_following || false,
+            has_high_fived: userData.has_high_fived || false,
+            
+            // Clan & League
+            clan: userData.clan || null,
+            league: userData.league || { id: 'bronze', name: 'Bronz Lig', slug: 'bronze' },
+            
+            // Expert
+            is_expert: userData.is_expert || false,
+            profession: userData.profession || '',
+            title: userData.title || '',
+            bio: userData.bio || '',
+            is_verified: userData.is_verified || false,
+            content_count: userData.content_count || 0,
+            career_start_date: userData.career_start_date || '',
         };
     } catch (error) {
         console.error('getProfileByUsername error:', error);

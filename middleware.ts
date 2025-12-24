@@ -34,12 +34,14 @@ export function middleware(request: NextRequest) {
     }
   }
   
-  // Pro kullanıcılar sadece kendi panellerine erişebilir
+  // Dashboard erişim kontrolü
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     // Pro kullanıcı normal dashboard'a erişemez
     if (userRole === 'rejimde_pro' && !pathname.startsWith('/dashboard/pro')) {
       return NextResponse.redirect(new URL('/dashboard/pro', request.url));
     }
+    // Normal kullanıcı (rejimde_user) dashboard'a erişebilir
+    // Admin ve editor her yere erişebilir
   }
   
   // Settings sayfası için de pro kullanıcıları kendi ayarlarına yönlendir
