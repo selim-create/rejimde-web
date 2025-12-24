@@ -319,11 +319,14 @@ export async function loginUser(username: string, password: string) {
         document.cookie = `jwt_token=${json.data.token}; path=/; max-age=604800; SameSite=Lax`;
         document.cookie = `user_role=${primaryRole}; path=/; max-age=604800; SameSite=Lax`;
         
-        // Varsa Rejimde Kullanıcı Verisini de kaydet
+        // Rejimde Kullanıcı Verisini kaydet
+        // NOT: username ve slug aynı değeri (user_nicename) içerir
+        // - username: Eski kodlarla uyumluluk için
+        // - slug: Profil URL'leri için açık isim
         localStorage.setItem('rejimde_user', JSON.stringify({
             id: json.data.user_id,
-            username: json.data.user_nicename, // Bu slug olarak kullanılacak
-            slug: json.data.user_nicename, // Açıkça slug olarak da kaydet
+            username: json.data.user_nicename,
+            slug: json.data.user_nicename,
             first_name: json.data.user_display_name,
             type: json.data.roles.includes('rejimde_pro') ? 'professional' : 'standard',
             roles: json.data.roles
@@ -378,11 +381,14 @@ export async function loginWithGoogle(credential: string) {
         document.cookie = `jwt_token=${json.data.token}; path=/; max-age=604800; SameSite=Lax`;
         document.cookie = `user_role=${primaryRole}; path=/; max-age=604800; SameSite=Lax`;
         
-        // Varsa Rejimde Kullanıcı Verisini de kaydet
+        // Rejimde Kullanıcı Verisini kaydet
+        // NOT: username ve slug aynı değeri (user_nicename) içerir
+        // - username: Eski kodlarla uyumluluk için
+        // - slug: Profil URL'leri için açık isim
         localStorage.setItem('rejimde_user', JSON.stringify({
             id: json.data.user_id,
-            username: json.data.user_nicename, // Bu slug olarak kullanılacak
-            slug: json.data.user_nicename, // Açıkça slug olarak da kaydet
+            username: json.data.user_nicename,
+            slug: json.data.user_nicename,
             first_name: json.data.user_display_name,
             type: json.data.roles.includes('rejimde_pro') ? 'professional' : 'standard',
             roles: json.data.roles
