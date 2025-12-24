@@ -17,7 +17,7 @@ export default function ProDashboardLayout({ children }:  { children: React. Rea
       return;
     }
 
-    const allowedRoles = ['rejimde_pro', 'administrator', 'editor'];
+    const allowedRoles = ['rejimde_pro', 'rejimde_user', 'administrator', 'editor', 'author', 'contributor'];
     if (role && allowedRoles.includes(role)) {
       setIsReady(true);
     } else {
