@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   const userRole = request.cookies.get('user_role')?.value;
   
   // Public sayfalar - kontrol yok
-  const publicPaths = ['/', '/login', '/register', '/forgot-password', '/blog', '/experts', '/sozluk', '/diets', '/exercises', '/tools', '/about'];
+  const publicPaths = ['/', '/login', '/register', '/forgot-password', '/blog', '/experts', '/sozluk', '/diets', '/exercises', '/tools', '/about', '/calculators', '/clans', '/leagues', '/profile', '/privacy', '/contact'];
   const isPublic = publicPaths.some(path => pathname === path || pathname.startsWith(path + '/'));
   
   if (isPublic) {
@@ -34,11 +34,18 @@ export function middleware(request: NextRequest) {
     }
   }
   
-  // Normal dashboard'a pro kullanıcı erişemez (kendi paneline gitsin)
-  if (pathname === '/dashboard' || pathname === '/settings') {
+  // Pro kullanıcılar sadece kendi panellerine erişebilir
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
+    // Pro kullanıcı normal dashboard'a erişemez
+    if (userRole === 'rejimde_pro' && !pathname.startsWith('/dashboard/pro')) {
+      return NextResponse.redirect(new URL('/dashboard/pro', request.url));
+    }
+  }
+  
+  // Settings sayfası için de pro kullanıcıları kendi ayarlarına yönlendir
+  if (pathname === '/settings') {
     if (userRole === 'rejimde_pro') {
-      const redirect = pathname === '/settings' ? '/dashboard/pro/settings' : '/dashboard/pro';
-      return NextResponse.redirect(new URL(redirect, request.url));
+      return NextResponse.redirect(new URL('/dashboard/pro/settings', request.url));
     }
   }
   

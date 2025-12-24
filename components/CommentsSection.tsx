@@ -322,7 +322,7 @@ const CommentForm = ({ user, onSubmit, allowRating, isReply = false, autoFocus =
                     />
                     {user?.isLoggedIn && !isReply && (
                         <div className="text-[10px] font-black text-center text-purple-600 mt-1 bg-purple-50 rounded-md py-0.5">
-                            LVL {user.level || 1}
+                            {user.role === 'rejimde_pro' ? `${user.score || 0} XP` : `LVL ${user.level || 1}`}
                         </div>
                     )}
                 </div>
