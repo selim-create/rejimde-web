@@ -1147,7 +1147,14 @@ export async function getCircleBySlug(slug: string) {
     }
 }
 
-export async function createCircle(data: { name: string; motto?: string; description: string; privacy: string; chat_status?: string; logo?: string }) {
+export async function createCircle(data: { 
+    name: string; 
+    motto?: string; 
+    description: string; 
+    privacy: 'public' | 'invite_only'; 
+    chat_status?: 'open' | 'closed'; 
+    logo?: string 
+}) {
     try {
         const res = await fetch(`${API_URL}/rejimde/v1/clans`, {
             method: 'POST',

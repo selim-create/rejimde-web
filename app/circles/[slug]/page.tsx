@@ -308,7 +308,7 @@ export default function CircleDetailPage() {
                         <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center text-green-600 text-3xl group-hover:scale-110 transition border-2 border-green-200"><i className="fa-solid fa-shoe-prints"></i></div>
                         <div>
                             <h2 className="text-xl font-extrabold text-gray-800">Büyük Yürüyüş</h2>
-                            <p className="text-gray-500 font-bold text-sm">Klan olarak toplam <span className="text-gray-800 font-extrabold">500.000 adım</span> atın.</p>
+                            <p className="text-gray-500 font-bold text-sm">Circle olarak toplam <span className="text-gray-800 font-extrabold">500.000 adım</span> atın.</p>
                             <p className="text-xs font-bold text-gray-400 mt-1 flex items-center gap-1"><i className="fa-regular fa-clock"></i> Bitiş: 2 Gün 14 Saat</p>
                         </div>
                     </div>

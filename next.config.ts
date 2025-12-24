@@ -28,8 +28,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: '/clans',
-        destination: '/circles',
+        source: '/clans/create',
+        destination: '/circles/create',
         permanent: true,
       },
       {
@@ -38,8 +38,8 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: '/clans/create',
-        destination: '/circles/create',
+        source: '/clans',
+        destination: '/circles',
         permanent: true,
       },
     ];
