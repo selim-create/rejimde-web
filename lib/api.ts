@@ -1120,11 +1120,11 @@ export async function approveExercisePlan(id: number) {
 
 /**
  * ==========================================
- * KLAN (CLAN) API FONKSİYONLARI
+ * CIRCLE (CLAN) API FONKSİYONLARI
  * ==========================================
  */
 
-export async function getClans(search?: string) {
+export async function getCircles(search?: string) {
     try {
         let endpoint = '/rejimde/v1/clans';
         if (search) endpoint += `?search=${encodeURIComponent(search)}`;
@@ -1132,22 +1132,29 @@ export async function getClans(search?: string) {
         const data = await fetchAPI(endpoint);
         return Array.isArray(data) ? data : [];
     } catch (error) {
-        console.error("Klanlar çekilemedi", error);
+        console.error("Circles çekilemedi", error);
         return [];
     }
 }
 
-export async function getClanBySlug(slug: string) {
+export async function getCircleBySlug(slug: string) {
     try {
         const data = await fetchAPI(`/rejimde/v1/clans/${slug}`);
         return data;
     } catch (error) {
-        console.error("Klan detayı çekilemedi", error);
+        console.error("Circle detayı çekilemedi", error);
         return null;
     }
 }
 
-export async function createClan(data: { name: string; description: string; privacy: string; logo?: string }) {
+export async function createCircle(data: { 
+    name: string; 
+    motto?: string; 
+    description: string; 
+    privacy: 'public' | 'invite_only'; 
+    chat_status?: 'open' | 'closed'; 
+    logo?: string 
+}) {
     try {
         const res = await fetch(`${API_URL}/rejimde/v1/clans`, {
             method: 'POST',
@@ -1159,14 +1166,14 @@ export async function createClan(data: { name: string; description: string; priv
         if (res.ok) {
             return { success: true, data: json };
         } else {
-            throw new Error(json.message || 'Klan oluşturulamadı');
+            throw new Error(json.message || 'Circle oluşturulamadı');
         }
     } catch (error: any) {
         throw new Error(error.message || 'Sunucu hatası');
     }
 }
 
-export async function updateClan(id: number, data: any) {
+export async function updateCircle(id: number, data: any) {
     try {
         const res = await fetch(`${API_URL}/rejimde/v1/clans/${id}`, {
             method: 'POST',
@@ -1181,9 +1188,9 @@ export async function updateClan(id: number, data: any) {
     }
 }
 
-export async function joinClan(clanId: number) {
+export async function joinCircle(circleId: number) {
     try {
-        const res = await fetch(`${API_URL}/rejimde/v1/clans/${clanId}/join`, {
+        const res = await fetch(`${API_URL}/rejimde/v1/clans/${circleId}/join`, {
             method: 'POST',
             headers: getAuthHeaders()
         });
@@ -1195,7 +1202,7 @@ export async function joinClan(clanId: number) {
     }
 }
 
-export async function leaveClan() {
+export async function leaveCircle() {
     try {
         const res = await fetch(`${API_URL}/rejimde/v1/clans/leave`, {
             method: 'POST',
@@ -1208,6 +1215,14 @@ export async function leaveClan() {
         throw new Error(error.message || 'Hata oluştu');
     }
 }
+
+// Backward compatibility - Old clan functions
+export const getClans = getCircles;
+export const getClanBySlug = getCircleBySlug;
+export const createClan = createCircle;
+export const updateClan = updateCircle;
+export const joinClan = joinCircle;
+export const leaveClan = leaveCircle;
 
 /**
  * ==========================================
@@ -1566,7 +1581,15 @@ export const auth = {
     uploadCertificate,    // Alias
     getGamificationStats, // Gamification
     getAllBadges,         // Badges
-    getClans,             // Clans
+    // Circles (with backward compatibility)
+    getCircles,
+    getCircle: getCircleBySlug,
+    createCircle,
+    updateCircle,
+    joinCircle,
+    leaveCircle,
+    // Backward compatibility aliases
+    getClans,
     getClan: getClanBySlug, 
     createClan,
     updateClan,

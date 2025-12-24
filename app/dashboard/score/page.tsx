@@ -12,7 +12,7 @@ export default function ScoreAnalysisPage() {
   // Data States
   const [currentScore, setCurrentScore] = useState(0);
   const [level, setLevel] = useState(1);
-  const [leagueName, setLeagueName] = useState('Bronz Lig');
+  const [levelName, setLevelName] = useState('Begin (Level 1)');
   const [earnedBadgeIds, setEarnedBadgeIds] = useState<number[]>([]);
   const [allBadges, setAllBadges] = useState<any[]>([]);
 
@@ -39,9 +39,9 @@ export default function ScoreAnalysisPage() {
                 setCurrentScore(stats.total_score || 0);
                 setLevel(stats.level || 1);
                 
-                // Lig bilgisi
+                // Level bilgisi
                 if (stats.league && stats.league.name) {
-                    setLeagueName(stats.league.name);
+                    setLevelName(stats.league.name);
                 }
 
                 // Kazanılan rozet ID'leri (Array değilse boş array yap)
@@ -122,7 +122,7 @@ export default function ScoreAnalysisPage() {
                       </div>
 
                       <div className="absolute -bottom-4 bg-blue-600 text-white px-5 py-2 rounded-xl border-4 border-white shadow-lg text-sm font-black uppercase flex items-center gap-2">
-                          <i className="fa-solid fa-gem"></i> {leagueName}
+                          <i className="fa-solid fa-gem"></i> {levelName}
                       </div>
                   </div>
 

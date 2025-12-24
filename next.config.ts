@@ -25,6 +25,25 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/clans/create',
+        destination: '/circles/create',
+        permanent: true,
+      },
+      {
+        source: '/clans/:slug',
+        destination: '/circles/:slug',
+        permanent: true,
+      },
+      {
+        source: '/clans',
+        destination: '/circles',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

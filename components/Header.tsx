@@ -174,11 +174,11 @@ export default function Header() {
               Uzmanlar
             </Link>
             <div className="h-6 w-px bg-gray-200 mx-2"></div>
-            <Link href="/clans" className={`flex items-center gap-2 px-4 py-2 rounded-xl font-extrabold text-sm uppercase tracking-wide transition-all duration-200 ${isActive('/clans') ? 'bg-rejimde-purple text-white shadow-md transform scale-105' : 'text-rejimde-purple bg-purple-50 border border-purple-100 hover:bg-purple-100'}`}>
-              <i className="fa-solid fa-users text-lg"></i> Klanlar
+            <Link href="/circles" className={`flex items-center gap-2 px-4 py-2 rounded-xl font-extrabold text-sm uppercase tracking-wide transition-all duration-200 ${isActive('/circles') ? 'bg-rejimde-purple text-white shadow-md transform scale-105' : 'text-rejimde-purple bg-purple-50 border border-purple-100 hover:bg-purple-100'}`}>
+              <i className="fa-solid fa-users text-lg"></i> Circles
             </Link>
             <Link href="/leagues" className={`flex items-center gap-2 px-4 py-2 rounded-xl font-extrabold text-sm uppercase tracking-wide transition-all duration-200 ${isActive('/leagues') ? 'bg-rejimde-yellow text-white shadow-md transform scale-105' : 'text-rejimde-yellowDark bg-yellow-50 border border-yellow-100 hover:bg-yellow-100'}`}>
-              <i className="fa-solid fa-trophy text-lg"></i> Ligler
+              <i className="fa-solid fa-trophy text-lg"></i> Levels
             </Link>
           </nav>
 
@@ -322,12 +322,12 @@ export default function Header() {
                 <i className="fa-solid fa-user-doctor w-6 text-center mr-2"></i> Uzmanlar
             </Link>
             
-            <Link href="/clans" className="block px-4 py-3 rounded-xl font-extrabold text-rejimde-purple bg-purple-50 border border-purple-100 flex items-center" onClick={() => setIsMobileMenuOpen(false)}>
-                <i className="fa-solid fa-users w-6 text-center mr-2"></i> Klanlar
+            <Link href="/circles" className="block px-4 py-3 rounded-xl font-extrabold text-rejimde-purple bg-purple-50 border border-purple-100 flex items-center" onClick={() => setIsMobileMenuOpen(false)}>
+                <i className="fa-solid fa-users w-6 text-center mr-2"></i> Circles
             </Link>
 
             <Link href="/leagues" className="block px-4 py-3 rounded-xl font-extrabold text-rejimde-yellowDark bg-yellow-50 border border-yellow-100 flex items-center" onClick={() => setIsMobileMenuOpen(false)}>
-                <i className="fa-solid fa-trophy w-6 text-center mr-2"></i> Rejimde Ligi
+                <i className="fa-solid fa-trophy w-6 text-center mr-2"></i> Rejimde Levels
             </Link>
           </div>
           

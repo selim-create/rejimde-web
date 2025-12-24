@@ -5,22 +5,24 @@ import { useRouter } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { auth } from '@/lib/api';
 
-export default function ClansPage() {
+export default function CirclesPage() {
   const router = useRouter();
-  const [clans, setClans] = useState<any[]>([]);
+  const [circles, setCircles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userClan, setUserClan] = useState<any>(null);
+  const [userCircle, setUserCircle] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const userRes = await auth.me();
+        setCurrentUser(userRes);
         if (userRes && userRes.clan) {
-            setUserClan(userRes.clan);
+            setUserCircle(userRes.clan);
         }
-        const clansRes = await auth.getClans();
-        setClans(clansRes);
+        const circlesRes = await auth.getCircles();
+        setCircles(circlesRes);
       } catch (error) {
         console.error('Veri çekilemedi', error);
       } finally {
@@ -31,9 +33,9 @@ export default function ClansPage() {
   }, []);
 
   // Arama filtresi
-  const filteredClans = clans.filter(clan => 
-    clan.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (clan.description && clan.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredCircles = circles.filter(circle => 
+    circle.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (circle.description && circle.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   if (loading) {
@@ -53,7 +55,7 @@ export default function ClansPage() {
         
         <div className="max-w-6xl mx-auto px-4 text-center relative z-10">
             <h1 className="text-3xl md:text-5xl font-black mb-4 tracking-tight drop-shadow-sm">
-                Klanını Bul, Gücüne Güç Kat
+                Circle'ını Bul, Gücüne Güç Kat
             </h1>
             <p className="text-purple-100 font-bold text-lg mb-8 max-w-2xl mx-auto opacity-90">
                 Seninle aynı hedefe koşan insanlarla takım ol. Birlikte zayıflamak, tek başına zayıflamaktan %60 daha etkili.
@@ -62,7 +64,7 @@ export default function ClansPage() {
             <div className="max-w-xl mx-auto relative mb-8 group">
                 <input 
                     type="text" 
-                    placeholder="Klan adı veya etiket ara (Örn: Düğün, Koşu)..." 
+                    placeholder="Circle adı veya etiket ara (Örn: Düğün, Koşu)..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full bg-white border-4 border-purple-400/50 focus:border-purple-300 rounded-2xl py-4 pl-14 pr-4 font-bold text-gray-600 outline-none transition text-lg shadow-lg placeholder:text-gray-300" 
@@ -88,55 +90,73 @@ export default function ClansPage() {
       </div>
 
       <LayoutWrapper>
-        {/* CLANS GRID */}
+        {/* CIRCLES GRID */}
         <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-12">
             
-            {/* Create Clan Card */}
-            <div 
-                onClick={() => router.push('/clans/create')}
-                className="bg-gray-100 border-4 border-dashed border-gray-300 rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-white hover:border-green-400 hover:shadow-xl transition-all duration-300 group h-full min-h-[340px]"
-            >
-                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-gray-300 text-4xl mb-6 group-hover:text-green-500 group-hover:scale-110 transition-all duration-300 shadow-sm border-4 border-gray-100 group-hover:border-green-100">
-                    <i className="fa-solid fa-plus"></i>
+            {/* Create Circle Card - Rol bazlı */}
+            {currentUser?.roles?.includes('rejimde_pro') ? (
+                <div 
+                    onClick={() => router.push('/circles/create')}
+                    className="bg-gray-100 border-4 border-dashed border-gray-300 rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-white hover:border-green-400 hover:shadow-xl transition-all duration-300 group h-full min-h-[340px]"
+                >
+                    <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-gray-300 text-4xl mb-6 group-hover:text-green-500 group-hover:scale-110 transition-all duration-300 shadow-sm border-4 border-gray-100 group-hover:border-green-100">
+                        <i className="fa-solid fa-plus"></i>
+                    </div>
+                    <h3 className="font-extrabold text-2xl text-gray-700 mb-3 group-hover:text-green-600 transition-colors">Kendi Circle'ını Oluştur</h3>
+                    <p className="text-sm font-bold text-gray-400 mb-8 px-4">
+                        Topluluğunu kur, Circle Mentor ol.
+                    </p>
+                    <button className="bg-white border-2 border-green-500 text-green-600 px-8 py-3 rounded-2xl font-extrabold text-sm uppercase shadow-sm group-hover:bg-green-500 group-hover:text-white group-hover:shadow-md transition-all">
+                        Oluştur
+                    </button>
                 </div>
-                <h3 className="font-extrabold text-2xl text-gray-700 mb-3 group-hover:text-green-600 transition-colors">Kendi Klanını Kur</h3>
-                <p className="text-sm font-bold text-gray-400 mb-8 px-4">
-                    Arkadaşlarını topla, kuralları sen koy, liderlik et.
-                </p>
-                <button className="bg-white border-2 border-green-500 text-green-600 px-8 py-3 rounded-2xl font-extrabold text-sm uppercase shadow-sm group-hover:bg-green-500 group-hover:text-white group-hover:shadow-md transition-all">
-                    Oluştur
-                </button>
-            </div>
+            ) : (
+                <div 
+                    onClick={() => router.push('/experts/invite')}
+                    className="bg-gray-100 border-4 border-dashed border-gray-300 rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-white hover:border-blue-400 hover:shadow-xl transition-all duration-300 group h-full min-h-[340px]"
+                >
+                    <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-gray-300 text-4xl mb-6 group-hover:text-blue-500 group-hover:scale-110 transition-all duration-300 shadow-sm border-4 border-gray-100 group-hover:border-blue-100">
+                        <i className="fa-solid fa-user-plus"></i>
+                    </div>
+                    <h3 className="font-extrabold text-2xl text-gray-700 mb-3 group-hover:text-blue-600 transition-colors">Uzman Davet Et</h3>
+                    <p className="text-sm font-bold text-gray-400 mb-8 px-4">
+                        Circle oluşturmak için Rejimde Uzmanı olmalısın. Bir uzman davet et!
+                    </p>
+                    <button className="bg-white border-2 border-blue-500 text-blue-600 px-8 py-3 rounded-2xl font-extrabold text-sm uppercase shadow-sm group-hover:bg-blue-500 group-hover:text-white group-hover:shadow-md transition-all">
+                        Davet Et
+                    </button>
+                </div>
+            )}
 
-            {/* My Clan Card (If exists) */}
-            {userClan && (
+            {/* My Circle Card (If exists) */}
+            {userCircle && (
                <div 
-                  onClick={() => router.push(`/clans/${userClan.slug}`)}
+                  onClick={() => router.push(`/circles/${userCircle.slug}`)}
                   className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-1 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer h-full min-h-[340px] flex flex-col"
                >
                   <div className="bg-white rounded-[1.3rem] h-full flex flex-col overflow-hidden relative">
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
                       <div className="absolute top-4 right-4 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm">
-                          Senin Klanın
+                          Senin Circle'ın
                       </div>
 
                       <div className="pt-10 pb-6 px-6 flex flex-col items-center text-center flex-1">
                           <div className="w-24 h-24 rounded-3xl bg-indigo-50 flex items-center justify-center mb-4 shadow-inner border-4 border-white ring-4 ring-indigo-50 overflow-hidden">
-                              {userClan.logo ? (
-                                  <img src={userClan.logo} alt={userClan.name} className="w-full h-full object-cover" />
+                              {userCircle.logo ? (
+                                  <img src={userCircle.logo} alt={userCircle.name} className="w-full h-full object-cover" />
                               ) : (
                                   <i className="fa-solid fa-shield-cat text-4xl text-indigo-400"></i>
                               )}
                           </div>
                           
-                          <h3 className="font-black text-2xl text-gray-800 mb-1 line-clamp-1">{userClan.name}</h3>
-                          <p className="text-xs font-bold text-indigo-400 uppercase mb-6 tracking-wide">Lider</p>
+                          <h3 className="font-black text-2xl text-gray-800 mb-1 line-clamp-1">{userCircle.name}</h3>
+                          <p className="text-xs font-bold text-indigo-400 uppercase mb-6 tracking-wide">Circle Mentor</p>
                           
                           <div className="w-full mt-auto">
                               <div className="grid grid-cols-2 gap-2 mb-6 w-full">
                                   <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                                       <div className="text-gray-400 text-[10px] font-black uppercase mb-1">Puan</div>
-                                      <div className="text-indigo-600 font-black text-lg">{userClan.total_score || 0}</div>
+                                      <div className="text-indigo-600 font-black text-lg">{userCircle.total_score || 0}</div>
                                   </div>
                                   <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                                       <div className="text-gray-400 text-[10px] font-black uppercase mb-1">Sıra</div>
@@ -144,7 +164,7 @@ export default function ClansPage() {
                                   </div>
                               </div>
                               <button className="w-full bg-indigo-600 text-white py-3 rounded-xl font-extrabold text-sm uppercase shadow-[0_4px_0_rgb(67,56,202)] hover:bg-indigo-700 hover:shadow-[0_2px_0_rgb(67,56,202)] hover:translate-y-[2px] transition-all">
-                                  Klanına Git
+                                  Circle'ına Git
                               </button>
                           </div>
                       </div>
@@ -152,11 +172,11 @@ export default function ClansPage() {
                </div>
             )}
 
-            {/* Dynamic Clan Cards */}
-            {filteredClans.filter(c => !userClan || c.id !== userClan.id).map((clan) => (
+            {/* Dynamic Circle Cards */}
+            {filteredCircles.filter(c => !userCircle || c.id !== userCircle.id).map((circle) => (
                 <div 
-                    key={clan.id} 
-                    onClick={() => router.push(`/clans/${clan.slug}`)}
+                    key={circle.id} 
+                    onClick={() => router.push(`/circles/${circle.slug}`)}
                     className="bg-white border-2 border-gray-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:border-purple-400 transition-all duration-300 group flex flex-col h-full relative hover:-translate-y-2 cursor-pointer min-h-[340px]"
                 >
                     {/* Banner Area */}
@@ -164,8 +184,8 @@ export default function ClansPage() {
                         <div className="absolute inset-0 opacity-30" style={{backgroundImage: 'radial-gradient(#d8b4fe 1px, transparent 1px)', backgroundSize: '12px 12px'}}></div>
                         
                         <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center border-4 border-white shadow-lg absolute -bottom-10 z-10 overflow-hidden transform group-hover:scale-105 transition-transform duration-300">
-                            {clan.logo ? (
-                                <img src={clan.logo} alt={clan.name} className="w-full h-full object-cover" />
+                            {circle.logo ? (
+                                <img src={circle.logo} alt={circle.name} className="w-full h-full object-cover" />
                             ) : (
                                 <i className="fa-solid fa-shield text-4xl text-purple-200"></i>
                             )}
@@ -174,29 +194,29 @@ export default function ClansPage() {
 
                     {/* Content */}
                     <div className="pt-14 pb-6 px-6 text-center flex-1 flex flex-col">
-                        <h3 className="font-black text-xl text-gray-800 mb-1 group-hover:text-purple-600 transition-colors line-clamp-1">{clan.name}</h3>
+                        <h3 className="font-black text-xl text-gray-800 mb-1 group-hover:text-purple-600 transition-colors line-clamp-1">{circle.name}</h3>
                         <p className="text-xs font-bold text-gray-400 uppercase mb-5 line-clamp-1">
-                            {clan.description ? `"${clan.description.substring(0, 30)}..."` : '"Hedefe odaklan"'}
+                            {circle.description ? `"${circle.description.substring(0, 30)}..."` : '"Hedefe odaklan"'}
                         </p>
                         
                         {/* Stats */}
                         <div className="flex justify-center gap-4 mb-6 border-y-2 border-gray-50 py-4 bg-gray-50/50 rounded-xl">
                             <div className="text-center px-2">
-                                <div className="font-black text-gray-800 text-lg">{clan.member_count}</div>
+                                <div className="font-black text-gray-800 text-lg">{circle.member_count}</div>
                                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Üye</div>
                             </div>
                             <div className="w-0.5 bg-gray-200 h-10 self-center"></div>
                             <div className="text-center px-2">
-                                <div className="font-black text-green-500 text-lg">{clan.total_score}</div>
+                                <div className="font-black text-green-500 text-lg">{circle.total_score}</div>
                                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Puan</div>
                             </div>
                         </div>
 
                         <div className="mt-auto space-y-2">
                             <div className="flex items-center justify-center gap-2 mb-3">
-                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${clan.privacy === 'invite_only' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                                    <i className={`fa-solid ${clan.privacy === 'invite_only' ? 'fa-lock' : 'fa-globe'} mr-1`}></i>
-                                    {clan.privacy === 'invite_only' ? 'Davetle' : 'Herkese Açık'}
+                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${circle.privacy === 'invite_only' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                    <i className={`fa-solid ${circle.privacy === 'invite_only' ? 'fa-lock' : 'fa-globe'} mr-1`}></i>
+                                    {circle.privacy === 'invite_only' ? 'Davetle' : 'Herkese Açık'}
                                 </span>
                             </div>
                             <button className="w-full bg-purple-600 text-white py-3 rounded-xl font-extrabold text-sm uppercase shadow-[0_4px_0_rgb(107,33,168)] hover:bg-purple-700 hover:shadow-[0_2px_0_rgb(107,33,168)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all">
