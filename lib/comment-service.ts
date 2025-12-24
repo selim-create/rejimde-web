@@ -4,7 +4,7 @@ export interface CommentUser {
   name: string;
   slug?: string;
   avatar: string;
-  level?: string | number;
+  level?: string | number | { name: string; level: number; [key: string]: any };
   role?: string;
   profession?: string;
   is_expert?: boolean;

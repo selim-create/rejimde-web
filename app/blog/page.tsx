@@ -132,26 +132,46 @@ export default function BlogPage() {
             }
 
             // 3. Etiketleri Çek
-            const tagRes = await fetch(`${apiUrl}/wp/v2/tags?orderby=count&order=desc&per_page=10`);
-            if (tagRes.ok) setTags(await tagRes.json());
+            try {
+                const tagRes = await fetch(`${apiUrl}/wp/v2/tags?orderby=count&order=desc&per_page=10`, {
+                    cache: 'no-store',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                if (tagRes.ok) setTags(await tagRes.json());
+            } catch (error) {
+                console.error('Etiket fetch hatası:', error);
+                setTags([]);
+            }
 
             // 4. Haftanın Okurları (Leaderboard)
-            const leaderRes = await fetch(`${apiUrl}/rejimde/v1/gamification/leaderboard`);
-            if (leaderRes.ok) {
-                const leaderData = await leaderRes.json();
-                if (leaderData.status === 'success' && Array.isArray(leaderData.data) && leaderData.data.length > 0) {
-                    const enrichedReaders = leaderData.data.slice(0, 10).map((reader: any) => {
-                        const readerAvatar = getSafeAvatarUrl(reader.avatar, reader.name);
-                        const readerSlug = reader.slug || reader.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-                        return { ...reader, avatar: readerAvatar, slug: readerSlug };
-                    });
-                    setTopReaders(enrichedReaders);
+            try {
+                const leaderRes = await fetch(`${apiUrl}/rejimde/v1/gamification/leaderboard`, {
+                    cache: 'no-store',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                if (leaderRes.ok) {
+                    const leaderData = await leaderRes.json();
+                    if (leaderData.status === 'success' && Array.isArray(leaderData.data) && leaderData.data.length > 0) {
+                        const enrichedReaders = leaderData.data.slice(0, 10).map((reader: any) => {
+                            const readerAvatar = getSafeAvatarUrl(reader.avatar, reader.name);
+                            const readerSlug = reader.slug || reader.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+                            return { ...reader, avatar: readerAvatar, slug: readerSlug };
+                        });
+                        setTopReaders(enrichedReaders);
+                    } else {
+                        // Fallback Mock Data (10 Kişi)
+                        setTopReaders(generateMockReaders());
+                    }
                 } else {
-                    // Fallback Mock Data (10 Kişi)
-                    setTopReaders(generateMockReaders());
+                     setTopReaders(generateMockReaders());
                 }
-            } else {
-                 setTopReaders(generateMockReaders());
+            } catch (error) {
+                console.error('Leaderboard fetch hatası:', error);
+                setTopReaders(generateMockReaders());
             }
 
         } catch (error) {
