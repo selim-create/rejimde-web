@@ -1159,6 +1159,7 @@ export async function createCircle(data: {
 }) {
     try {
         // Backend'de /clans endpoint'i var, /circles yok
+        // Frontend field mappings: motto/description -> description, chat_status -> comment_status
         const res = await fetch(`${API_URL}/rejimde/v1/clans`, {
             method: 'POST',
             headers: getAuthHeaders(),
