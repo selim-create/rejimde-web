@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import MascotDisplay from "@/components/MascotDisplay";
 import { getMe, getBlogPosts, getPlans, getExercisePlans, getClans, getExperts } from "@/lib/api";
+import { translateDifficulty } from "@/lib/helpers";
 
 export default function Home() {
   // Auth State
@@ -195,7 +196,7 @@ export default function Home() {
                             </div>
                             <div className="min-w-0">
                                 <h4 className="font-bold text-gray-800 truncate group-hover:text-green-700">{diet.title}</h4>
-                                <p className="text-xs text-gray-400 font-bold">{diet.meta?.difficulty || 'Orta'} • {diet.meta?.calories || '1500'} kcal</p>
+                                <p className="text-xs text-gray-400 font-bold">{translateDifficulty(diet.meta?.difficulty)} • {diet.meta?.calories || '1500'} kcal</p>
                             </div>
                         </Link>
                     )) : (
@@ -218,7 +219,7 @@ export default function Home() {
                             </div>
                             <div className="min-w-0">
                                 <h4 className="font-bold text-gray-800 truncate group-hover:text-red-700">{ex.title}</h4>
-                                <p className="text-xs text-gray-400 font-bold">{ex.meta?.difficulty || 'Başlangıç'} • {ex.meta?.duration || '15'} dk</p>
+                                <p className="text-xs text-gray-400 font-bold">{translateDifficulty(ex.meta?.difficulty)} • {ex.meta?.duration || '15'} dk</p>
                             </div>
                         </Link>
                     )) : (

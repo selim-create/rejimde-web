@@ -40,3 +40,50 @@ export function getSafeAvatarUrl(avatarUrl: string | undefined | null, slug: str
   // Fallback: DiceBear kullan
   return `https://api.dicebear.com/9.x/personas/svg?seed=${slug || 'default'}`;
 }
+
+/**
+ * HTML içeriğinden okuma süresini hesaplar
+ * @param htmlContent - HTML içerik
+ * @returns string - Okuma süresi (örn: "5 dk")
+ */
+export function calculateReadingTime(htmlContent: string): string {
+  if (!htmlContent) return '3 dk';
+  
+  // HTML etiketlerini temizle
+  const text = htmlContent.replace(/<[^>]+>/g, '');
+  
+  // Kelimeleri say (Türkçe için de çalışır)
+  const words = text.trim().split(/\s+/).length;
+  
+  // Ortalama okuma hızı: 200 kelime/dakika
+  const minutes = Math.ceil(words / 200);
+  
+  return `${minutes} dk`;
+}
+
+/**
+ * Zorluk seviyesini İngilizce'den Türkçe'ye çevirir
+ * @param difficulty - İngilizce zorluk seviyesi
+ * @returns string - Türkçe zorluk seviyesi
+ */
+export function translateDifficulty(difficulty: string | undefined): string {
+  if (!difficulty) return 'Orta';
+  
+  const difficultyMap: Record<string, string> = {
+    'easy': 'Kolay',
+    'medium': 'Orta',
+    'hard': 'Zor',
+    'beginner': 'Başlangıç',
+    'intermediate': 'Orta',
+    'advanced': 'İleri',
+    // Türkçe değerler zaten Türkçe ise olduğu gibi dön
+    'kolay': 'Kolay',
+    'orta': 'Orta',
+    'zor': 'Zor',
+    'başlangıç': 'Başlangıç',
+    'ileri': 'İleri'
+  };
+  
+  const lowerDifficulty = difficulty.toLowerCase();
+  return difficultyMap[lowerDifficulty] || difficulty;
+}

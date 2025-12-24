@@ -1,5 +1,8 @@
 export const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://api.rejimde.com/wp-json';
 
+// Import helper functions
+import { calculateReadingTime, translateDifficulty } from './helpers';
+
 // --- AVATAR PAKETİ ---
 export const AVATAR_PACK = [
   { id: '1', url: 'https://api.dicebear.com/9.x/personas/svg?seed=Felix', gender: 'male' },
@@ -503,6 +506,9 @@ export async function getBlogPosts() {
         const categories = terms[0] || [];
         const categoryName = categories.length > 0 ? categories[0].name : 'Genel';
 
+        // Okuma süresini içerikten hesapla
+        const readTime = calculateReadingTime(item.content?.rendered || item.excerpt?.rendered || '');
+
         return {
             id: item.id,
             title: item.title.rendered,
@@ -512,7 +518,7 @@ export async function getBlogPosts() {
             date: new Date(item.date).toLocaleDateString('tr-TR'),
             author_name: item._embedded?.author?.[0]?.name || 'Rejimde Editör',
             category: categoryName,
-            read_time: '5 dk'
+            read_time: readTime
         };
     });
   } catch (error) {
