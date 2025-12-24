@@ -86,6 +86,7 @@ export default function BlogPage() {
                         category: catName,
                         read_time: '5 dk', 
                         sticky: p.sticky,
+                        comment_count: p._embedded?.['replies']?.[0]?.length || 0,
                         // Yeni Alanlar
                         last_readers: mockReaders,
                         read_count: mockReaderCount
@@ -220,6 +221,11 @@ export default function BlogPage() {
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={featuredPost.image} className="w-full h-full object-cover transform group-hover:scale-105 transition duration-700" alt="Featured" />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                            <div className="absolute top-4 right-4">
+                                <span className="bg-rejimde-yellow text-white px-3 py-1 rounded-lg text-sm font-black shadow-lg">
+                                    +50p
+                                </span>
+                            </div>
                             <div className="absolute bottom-4 left-4 flex gap-2">
                                 <span className="bg-black/50 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold text-white uppercase border border-white/10">
                                     <i className="fa-regular fa-clock mr-1"></i> {featuredPost.read_time}
@@ -283,7 +289,7 @@ export default function BlogPage() {
                                     <p className="text-sm font-bold text-gray-400 mb-4 line-clamp-3" dangerouslySetInnerHTML={{ __html: post.excerpt }}></p>
                                     
                                     <div className="mt-auto pt-4 border-t-2 border-gray-50">
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between mb-2">
                                             {/* Yazar */}
                                             <div className="flex items-center gap-2">
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -295,21 +301,22 @@ export default function BlogPage() {
                                                 <span className="text-xs font-black text-gray-500 truncate max-w-[80px]">{post.author_name}</span>
                                             </div>
 
-                                            {/* Okuyucular ve Puan (YENİ ALAN) */}
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex -space-x-2">
-                                                    {post.last_readers && post.last_readers.map((avatar: string, i: number) => (
-                                                        <div key={i} className="w-6 h-6 rounded-full border-2 border-white relative bg-gray-100">
-                                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                            <img src={avatar} alt="Reader" className="w-full h-full rounded-full object-cover" />
-                                                        </div>
-                                                    ))}
-                                                    <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[8px] font-black text-gray-500">
-                                                        +{post.read_count}
-                                                    </div>
-                                                </div>
-                                                <span className="text-[10px] font-black text-rejimde-green bg-green-50 px-1.5 py-0.5 rounded border border-green-100">+10P</span>
+                                            {/* Yorum Sayısı */}
+                                            <div className="flex items-center gap-1 text-gray-400">
+                                                <i className="fa-regular fa-comment text-xs"></i>
+                                                <span className="text-xs font-bold">{post.comment_count || 0}</span>
                                             </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between">
+                                            {/* Okuma Süresi */}
+                                            <div className="flex items-center gap-1 text-gray-400">
+                                                <i className="fa-regular fa-clock text-xs"></i>
+                                                <span className="text-xs font-bold">{post.read_time}</span>
+                                            </div>
+
+                                            {/* Puan */}
+                                            <span className="text-[10px] font-black text-rejimde-green bg-green-50 px-1.5 py-0.5 rounded border border-green-100">+50p</span>
                                         </div>
                                     </div>
                                 </div>

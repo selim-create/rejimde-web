@@ -518,7 +518,8 @@ export async function getBlogPosts() {
             date: new Date(item.date).toLocaleDateString('tr-TR'),
             author_name: item._embedded?.author?.[0]?.name || 'Rejimde Editör',
             category: categoryName,
-            read_time: readTime
+            read_time: readTime,
+            comment_count: item._embedded?.['replies']?.[0]?.length || 0
         };
     });
   } catch (error) {
