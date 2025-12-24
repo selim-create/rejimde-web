@@ -1548,6 +1548,16 @@ export const auth = {
     createDictionaryItem,
     updateDictionaryItem,
     deleteDictionaryItem,
+    getPostById,
+    getPostBySlug,
+    getBlogPosts,
+    createPost,
+    updatePost,
+    deletePost,
+    getProfileByUsername,  // Profile fetch by username
+    saveCalculatorResult,  // Calculator results
+};
+
 /**
  * ==========================================
  * CALCULATOR RESULT SAVING
@@ -1583,17 +1593,3 @@ export async function saveCalculatorResult(calculatorType: string, result: any) 
         return { success: false, message: 'Sunucu hatası.' };
     }
 }
-
-/**
- * ==========================================
- * EXPORTS
- * ==========================================
- */
-    getPostBySlug,
-    getBlogPosts,
-    createPost,
-    updatePost,
-    deletePost,
-    getProfileByUsername,  // Profile fetch by username
-    saveCalculatorResult,  // Calculator results
-};
