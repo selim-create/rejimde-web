@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   const userRole = request.cookies.get('user_role')?.value;
   
   // Public sayfalar - kontrol yok
-  const publicPaths = ['/', '/login', '/register', '/forgot-password', '/blog', '/experts', '/sozluk', '/diets', '/exercises', '/tools', '/about', '/calculators', '/clans', '/leagues', '/profile', '/privacy', '/contact'];
+  const publicPaths = ['/', '/login', '/register', '/forgot-password', '/blog', '/experts', '/sozluk', '/diets', '/exercises', '/tools', '/about', '/calculators', '/circles', '/levels', '/profile', '/privacy', '/contact'];
   const isPublic = publicPaths.some(path => pathname === path || pathname.startsWith(path + '/'));
   
   if (isPublic) {

@@ -537,7 +537,7 @@ const CommentItem = ({
                                 <i className="fa-solid fa-bolt text-yellow-400 text-[8px]"></i> {author.level}
                             </div>
                         )}
-                        {(author.score || author.league) && (
+                        {(author.score || author.level) && (
                             <span className="text-[9px] text-gray-500 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-100 shadow-sm">
                                 {author.score ? `${author.score} P` : ''}
                             </span>

@@ -28,7 +28,7 @@ export default function Footer() {
             <h5 className="font-extrabold text-gray-700 uppercase tracking-wide text-sm mb-4">Platform</h5>
             <ul className="space-y-3">
               <li><Link href="/calculators" className="text-gray-500 font-bold hover:text-rejimde-blue transition block hover:translate-x-1 duration-200">Hesaplamalar</Link></li>
-              <li><Link href="/leagues" className="text-gray-500 font-bold hover:text-rejimde-yellowDark transition block hover:translate-x-1 duration-200">Rejimde Ligi <span className="text-[10px] bg-red-100 text-red-500 px-1.5 rounded ml-1">HOT</span></Link></li>
+              <li><Link href="/levels" className="text-gray-500 font-bold hover:text-rejimde-yellowDark transition block hover:translate-x-1 duration-200">Rejimde Levels <span className="text-[10px] bg-red-100 text-red-500 px-1.5 rounded ml-1">HOT</span></Link></li>
               <li><Link href="/experts" className="text-gray-500 font-bold hover:text-rejimde-green transition block hover:translate-x-1 duration-200">Uzmanlar</Link></li>
               <li><Link href="/blog" className="text-gray-500 font-bold hover:text-rejimde-purple transition block hover:translate-x-1 duration-200">Blog</Link></li>
             </ul>

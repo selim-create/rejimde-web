@@ -52,7 +52,7 @@ const mapSafeComment = (c: any): CommentData => {
     let authorProfession = 'Üye';
     let isOnline = false;
     let isVerified = false;
-    let league = 'Başlangıç';
+    let level = 'Begin';
     let score = 0;
     
     if (c.author && typeof c.author === 'object') {
@@ -64,7 +64,7 @@ const mapSafeComment = (c: any): CommentData => {
         authorProfession = c.author.profession || '';
         isOnline = c.author.is_online || false;
         isVerified = c.author.is_verified || false;
-        league = c.author.league || '';
+        level = c.author.level || '';
         score = c.author.score || 0;
     } 
     else if (c.author_name) {
@@ -115,7 +115,7 @@ const mapSafeComment = (c: any): CommentData => {
             profession: authorProfession,
             is_online: isOnline,
             is_verified: isVerified,
-            league: league,
+            level: level,
             score: score
         },
         replies: Array.isArray(c.replies) ? c.replies.map(mapSafeComment) : []

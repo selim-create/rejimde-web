@@ -138,8 +138,8 @@ export async function getMe() {
       location: json.location || '',
       
       // Gaming & Social
-      clan: json.clan || null, 
-      league: json.league || null,
+      circle: json.circle || json.clan || null,  // Backward compatibility
+      level: json.level || json.league || null,   // Backward compatibility
       followers_count: json.followers_count || 0,
       following_count: json.following_count || 0,
       high_fives: json.high_fives || 0,
@@ -1391,9 +1391,9 @@ export async function getProfileByUsername(username: string) {
             is_following: userData.is_following || false,
             has_high_fived: userData.has_high_fived || false,
             
-            // Clan & League
-            clan: userData.clan || null,
-            league: userData.league || { id: 'bronze', name: 'Bronz Lig', slug: 'bronze' },
+            // Clan & League (with backward compatibility)
+            circle: userData.circle || userData.clan || null,
+            level: userData.level || { id: 'level-1', name: 'Begin', level: 1, slug: 'begin' },
             
             // Expert
             is_expert: userData.is_expert || false,
