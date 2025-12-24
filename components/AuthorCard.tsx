@@ -315,7 +315,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                  {/* Rejimde Skoru */}
                  <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide">Rejimde Skoru</span>
-                    <span className="text-sm font-black text-blue-500">{author.score || 0} XP</span>
+                    <span className="text-sm font-black text-blue-500">{author.score || author.rejimde_total_score || 0} XP</span>
                  </div>
                  <div className="w-full bg-gray-100 rounded-full h-3 mb-6 border border-gray-200 overflow-hidden relative">
                      <div className="absolute top-0 left-0 h-full bg-blue-400 w-2/3 shadow-[0_2px_0_rgba(0,0,0,0.1) inset]"></div>
