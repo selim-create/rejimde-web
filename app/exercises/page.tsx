@@ -117,10 +117,9 @@ export default function ExercisesPage() {
                   <p className="text-blue-100 font-bold mb-8 text-lg opacity-90">
                       Ekipmanlarını, seviyeni ve hedefini seç, yapay zeka senin için en verimli antrenman programını oluştursun.
                   </p>
-                  <Link href="/dashboard/pro/exercises/create" className="bg-white text-blue-600 px-8 py-4 rounded-2xl font-extrabold text-sm shadow-xl shadow-blue-900/20 btn-game uppercase flex items-center gap-3 hover:bg-blue-50 transition transform hover:scale-105 inline-flex">
-                      <i className="fa-solid fa-plus"></i> Kendi Programını Oluştur
+                  <Link href="/ai-workout-generator" className="bg-white text-blue-600 px-8 py-4 rounded-2xl font-extrabold text-sm shadow-xl shadow-blue-900/20 btn-game uppercase flex items-center gap-3 hover:bg-blue-50 transition transform hover:scale-105 inline-flex">
+                      <i className="fa-solid fa-robot"></i> AI Asistanı Başlat
                   </Link>
-                  {/* AI Linki eklenebilir: href="/ai-workout-generator" */}
               </div>
               
               <div className="hidden md:flex justify-end relative">
@@ -280,12 +279,20 @@ export default function ExercisesPage() {
                               )}
 
                               <div className="h-52 bg-gray-100 relative overflow-hidden flex-shrink-0">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img 
-                                      src={plan.image || 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'} 
-                                      className="w-full h-full object-cover group-hover:scale-110 transition duration-700" 
-                                      alt={plan.title} 
-                                  />
+                                  {plan.image ? (
+                                      <>
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img 
+                                              src={plan.image} 
+                                              className="w-full h-full object-cover group-hover:scale-110 transition duration-700" 
+                                              alt={plan.title} 
+                                          />
+                                      </>
+                                  ) : (
+                                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-50">
+                                          <i className="fa-solid fa-dumbbell text-7xl text-blue-400 opacity-60"></i>
+                                      </div>
+                                  )}
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90"></div>
                                   <div className="absolute bottom-5 left-5 right-5 text-white">
                                       <h3 className="font-extrabold text-xl shadow-black drop-shadow-md line-clamp-2 mb-2 leading-tight" dangerouslySetInnerHTML={{ __html: plan.title }}></h3>

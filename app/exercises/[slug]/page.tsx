@@ -7,6 +7,7 @@ import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, getProgr
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; // Import AuthorCard
+import SocialShare from "@/components/SocialShare";
 
 // --- UZMANLIK KATEGORİLERİ (AuthorCard Renkleri İçin) ---
 const SPECIALTY_CATEGORIES = [
@@ -631,19 +632,26 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
                           </div>
                       </div>
 
-                      <div className="flex gap-4">
-                          {isStarted ? (
-                              <Link href={`/exercises/${slug}/assistant`} className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-extrabold text-lg flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-gray-400/50 animate-pulse-slow">
-                                  <i className="fa-solid fa-play"></i> Asistanı Başlat
-                              </Link>
-                          ) : (
-                              <button onClick={handleStartPlan} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-extrabold text-lg shadow-btn shadow-blue-200 btn-game uppercase flex items-center justify-center gap-2 group hover:bg-blue-700 transition">
-                                  <i className="fa-solid fa-dumbbell group-hover:scale-110 transition"></i> Programa Başla
+                      <div className="flex flex-col gap-4">
+                          <div className="flex gap-4">
+                              {isStarted ? (
+                                  <Link href={`/exercises/${slug}/assistant`} className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-extrabold text-lg flex items-center justify-center gap-2 hover:bg-black transition shadow-lg shadow-gray-400/50 animate-pulse-slow">
+                                      <i className="fa-solid fa-play"></i> Asistanı Başlat
+                                  </Link>
+                              ) : (
+                                  <button onClick={handleStartPlan} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-extrabold text-lg shadow-btn shadow-blue-200 btn-game uppercase flex items-center justify-center gap-2 group hover:bg-blue-700 transition">
+                                      <i className="fa-solid fa-dumbbell group-hover:scale-110 transition"></i> Programa Başla
+                                  </button>
+                              )}
+                              <button className="bg-white border-2 border-gray-200 text-gray-500 px-6 rounded-2xl font-extrabold text-2xl shadow-btn shadow-gray-200 btn-game hover:text-rejimde-red hover:border-rejimde-red transition">
+                                  <i className="fa-regular fa-heart"></i>
                               </button>
-                          )}
-                          <button onClick={shareOnWhatsApp} className="bg-white border-2 border-gray-200 text-gray-500 px-6 rounded-2xl font-extrabold text-2xl shadow-btn shadow-gray-200 btn-game hover:text-green-500 hover:border-green-500 transition">
-                              <i className="fa-brands fa-whatsapp"></i>
-                          </button>
+                          </div>
+
+                          {/* Social Share */}
+                          <div className="p-4 bg-gray-50 rounded-2xl border-2 border-gray-100">
+                              <SocialShare url={`/exercises/${slug}`} title={plan?.title || ''} description={plan?.excerpt || ''} />
+                          </div>
                       </div>
                   </div>
 
