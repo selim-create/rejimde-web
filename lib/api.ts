@@ -1321,13 +1321,16 @@ export async function getProfileByUsername(username: string) {
         const json = await res.json();
         const userData = json.data || json;
         
+        // Avatar URL with fallback
+        const avatarUrl = userData.avatar_url || getDefaultAvatar(userData.gender || 'neutral');
+        
         return {
             id: userData.id,
             name: userData.display_name || userData.name,
             username: userData.username,
             slug: userData.slug || userData.username,
             description: userData.description || '',
-            avatar_url: userData.avatar_url,
+            avatar_url: avatarUrl,
             roles: userData.roles || [],
             registered_date: userData.registered_date,
             location: userData.location || '',

@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Metadata } from "next";
 import Link from "next/link";
 import { getMe, updateUser, earnPoints, saveCalculatorResult } from "@/lib/api"; 
 import MascotDisplay from "@/components/MascotDisplay"; // Added missing import
 
-// Note: Metadata can't be exported from client components, so we'll add it to layout or use next/head
-// For now, we'll use document.title in useEffect
+// SEO metadata set in useEffect since this is a client component
 
 // Hesaplama Türleri
 type CalculatorType = 'bmi' | 'ideal_weight' | 'calorie' | 'water' | 'macro' | 'body_fat' | 'pregnancy' | 'bmr' | 'waist_hip' | null;

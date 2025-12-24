@@ -268,11 +268,10 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                     
                     <button 
                         onClick={handleFollow}
-                        disabled={isFollowing}
-                        className={`w-full font-bold py-3 rounded-2xl border-2 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-xs ${isFollowing ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white text-gray-500 border-gray-200 hover:text-gray-700'}`}
+                        className={`w-full font-bold py-3 rounded-2xl border-2 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-xs ${isFollowing ? 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200' : 'bg-white text-gray-500 border-gray-200 hover:text-gray-700'}`}
                     >
                         <i className={`fa-solid ${isFollowing ? 'fa-user-check' : 'fa-user-plus'}`}></i>
-                        {isFollowing ? 'Takip Ediyorsun' : 'Takip Et'}
+                        {isFollowing ? 'Takipten Çık' : 'Takip Et'}
                     </button>
                     
                     {/* Extra Info */}
@@ -363,8 +362,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                 
                 <button 
                     onClick={handleFollow}
-                    disabled={isFollowing}
-                    className={`w-14 font-bold py-3 rounded-2xl border-2 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all flex items-center justify-center ${isFollowing ? 'bg-blue-100 text-blue-500 border-blue-200 cursor-not-allowed' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'}`}
+                    className={`w-14 font-bold py-3 rounded-2xl border-2 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all flex items-center justify-center ${isFollowing ? 'bg-blue-100 text-blue-500 border-blue-200 hover:bg-blue-200' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'}`}
                 >
                     <i className={`fa-solid ${isFollowing ? 'fa-user-check' : 'fa-user-plus'} text-lg`}></i>
                 </button>
