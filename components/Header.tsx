@@ -30,12 +30,13 @@ export default function Header() {
       setIsLoggedIn(true);
       const name = localStorage.getItem('user_name') || 'Kullanıcı';
       const storedAvatar = localStorage.getItem('user_avatar') || '';
-      const username = localStorage.getItem('user_email')?.split('@')[0] || 'user'; 
       
-      const avatar = getSafeAvatarUrl(storedAvatar, username);
+      // DÜZELTME: user_slug kullan, email'den türetme!
+      const slug = localStorage.getItem('user_slug') || '';
+      const avatar = getSafeAvatarUrl(storedAvatar, slug || name);
       const role = localStorage.getItem('user_role') || 'rejimde_user';
       
-      setUser({ name, avatar, username });
+      setUser({ name, avatar, username: slug }); // username yerine slug
       setUserRole(role);
     } else {
       setIsLoggedIn(false);
@@ -57,6 +58,9 @@ export default function Header() {
           const userData = await getMe();
           if (userData) {
             localStorage.setItem('user_name', userData.name);
+            localStorage.setItem('user_slug', userData.username); // SLUG GÜNCELLE
+            localStorage.setItem('user_id', String(userData.id)); // ID GÜNCELLE
+            
             const remoteAvatar = getSafeAvatarUrl(userData.avatar_url, userData.username || userData.name);
             localStorage.setItem('user_avatar', remoteAvatar);
             
