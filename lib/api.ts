@@ -1548,11 +1548,52 @@ export const auth = {
     createDictionaryItem,
     updateDictionaryItem,
     deleteDictionaryItem,
-    getPostById,
+/**
+ * ==========================================
+ * CALCULATOR RESULT SAVING
+ * ==========================================
+ */
+
+/**
+ * Save calculator result and earn points
+ */
+export async function saveCalculatorResult(calculatorType: string, result: any) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/calculators/save`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                calculator_type: calculatorType,
+                result: result
+            }),
+        });
+        const json = await res.json();
+        
+        if (!res.ok) {
+            return { success: false, message: json.message || 'Kaydedilemedi.' };
+        }
+        
+        return { 
+            success: true, 
+            data: json.data,
+            points_earned: json.points_earned || 50 
+        };
+    } catch (error) {
+        console.error('saveCalculatorResult error:', error);
+        return { success: false, message: 'Sunucu hatası.' };
+    }
+}
+
+/**
+ * ==========================================
+ * EXPORTS
+ * ==========================================
+ */
     getPostBySlug,
     getBlogPosts,
     createPost,
     updatePost,
     deletePost,
-    getProfileByUsername  // Profile fetch by username
+    getProfileByUsername,  // Profile fetch by username
+    saveCalculatorResult,  // Calculator results
 };
