@@ -11,12 +11,22 @@ export function useNotifications() {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    // Token yoksa API çağrısı yapma
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const result = await getNotifications({ limit: 50 });
-      setNotifications(result.notifications);
-      setUnreadCount(result.unread_count);
+      setNotifications(result.notifications || []);
+      setUnreadCount(result.unread_count || 0);
     } catch (error) {
-      console.error('Error refreshing notifications:', error);
+      // API mevcut değilse veya hata varsa sessizce devam et
+      console.warn('Notifications API not available:', error);
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setIsLoading(false);
     }

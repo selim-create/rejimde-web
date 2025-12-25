@@ -11,12 +11,25 @@ export function useExpertNotifications() {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    // Token ve rol kontrolü
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    const role = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
+    
+    // Pro değilse API çağrısı yapma
+    if (!token || role !== 'rejimde_pro') {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const result = await getExpertNotifications({ limit: 50 });
-      setNotifications(result.notifications);
-      setUnreadCount(result.unread_count);
+      setNotifications(result.notifications || []);
+      setUnreadCount(result.unread_count || 0);
     } catch (error) {
-      console.error('Error refreshing expert notifications:', error);
+      // API mevcut değilse veya hata varsa sessizce devam et
+      console.warn('Expert notifications API not available:', error);
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setIsLoading(false);
     }
