@@ -20,6 +20,10 @@ export default function NotificationDropdown({ isPro = false }: NotificationDrop
   const notificationsLink = isPro ? '/dashboard/pro/notifications' : '/dashboard/notifications';
   const displayNotifications = notifications.slice(0, 5);
 
+  const handleMarkSingleAsRead = (id: number) => {
+    markAsRead([id]);
+  };
+
   return (
     <div className="relative group h-12 flex items-center">
       <button className="relative w-10 h-10 rounded-xl border-2 border-gray-200 hover:border-rejimde-blue transition flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-rejimde-blue focus:ring-offset-2">
@@ -66,7 +70,7 @@ export default function NotificationDropdown({ isPro = false }: NotificationDrop
                 <NotificationItem
                   key={notification.id}
                   notification={notification}
-                  onRead={markAsRead}
+                  onRead={handleMarkSingleAsRead}
                   compact
                 />
               ))
