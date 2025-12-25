@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
-import { auth } from '@/lib/api';
+import { auth, getProgress, startProgress } from '@/lib/api';
 import Link from 'next/link';
 import MascotDisplay from '@/components/MascotDisplay';
 
@@ -64,6 +64,7 @@ export default function DictionaryDetailPage() {
   const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [learned, setLearned] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -71,6 +72,21 @@ export default function DictionaryDetailPage() {
             const data = await auth.getDictionaryItem(slug);
             if (data) {
                 setItem(data);
+                
+                // Check if user is logged in
+                const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+                if (token) {
+                    const userData = await auth.me();
+                    setCurrentUser(userData);
+                    
+                    // Check if already read
+                    if (userData && data.id) {
+                        const progressData = await getProgress('dictionary', data.id);
+                        if (progressData && (progressData.is_started || progressData.started)) {
+                            setLearned(true);
+                        }
+                    }
+                }
             } else {
                 // Bulunamadıysa listeye yönlendirilebilir veya hata gösterilebilir
                 // router.push('/sozluk');
@@ -84,10 +100,27 @@ export default function DictionaryDetailPage() {
     fetchData();
   }, [slug]);
 
-  const handleLearn = () => {
-      // Puan kazanma (Simülasyon)
-      setLearned(true);
-      // auth.earnPoints('read_blog') gibi bir aksiyon tetiklenebilir
+  const handleLearn = async () => {
+      if (!currentUser) {
+          alert("Puan kazanmak için giriş yapmalısın!");
+          return;
+      }
+      
+      if (learned) return;
+      
+      try {
+          // Mark as read/learned via API
+          const result = await startProgress('dictionary', item.id);
+          
+          if (result.success || result.already_started) {
+              setLearned(true);
+          } else {
+              alert("İşlem sırasında bir hata oluştu.");
+          }
+      } catch (e) {
+          console.error('Dictionary learn error:', e);
+          alert("İşlem sırasında bir hata oluştu.");
+      }
   };
 
   if (loading) return (
