@@ -2207,43 +2207,59 @@ export async function getNotifications(options?: {
 }): Promise<{ notifications: Notification[]; unread_count: number }> {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    
+    // Token yoksa boş dön
     if (!token) {
       return { notifications: [], unread_count: 0 };
     }
 
     const params = new URLSearchParams();
-    if (options?.limit) params.append('limit', options.limit.toString());
-    if (options?.offset) params.append('offset', options.offset.toString());
-    if (options?.unread_only) params.append('unread_only', 'true');
+    if (options?.limit) params.append('limit', String(options.limit));
+    if (options?.offset) params.append('offset', String(options.offset));
+    if (options?.unread_only) params.append('is_read', '0');
     if (options?.category) params.append('category', options.category);
 
-    const res = await fetch(`${API_URL}/rejimde/v1/notifications?${params.toString()}`, {
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    
+    const res = await fetch(`${API_URL}/rejimde/v1/notifications${queryString}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
 
-    // 404 or 403 - API not available yet
+    // HTTP error handling
     if (!res.ok) {
-      console.warn(`Notifications API returned ${res.status}`);
+      console.warn('Notifications API error:', res.status);
       return { notifications: [], unread_count: 0 };
     }
 
     const text = await res.text();
     
-    // HTML response check (WordPress 404 page returned if API not available)
-    if (text.startsWith('<') || text.startsWith('<!DOCTYPE')) {
-      console.warn('Notifications API returned HTML instead of JSON');
+    // Boş yanıt kontrolü
+    if (!text || text.trim() === '') {
+      return { notifications: [], unread_count: 0 };
+    }
+    
+    // HTML kontrolü (API mevcut değilse WordPress 404 döner)
+    if (text.trim().startsWith('<')) {
+      console.warn('Notifications API returned HTML');
       return { notifications: [], unread_count: 0 };
     }
 
     const json = JSON.parse(text);
-
+    
+    // Backend format: { status: 'success', data: [...] }
     if (json.status === 'success') {
+      const notifications = Array.isArray(json.data) ? json.data : [];
+      
+      // Unread count'u hesapla
+      const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+      
       return {
-        notifications: json.data?.notifications || [],
-        unread_count: json.data?.unread_count || 0,
+        notifications: notifications,
+        unread_count: unreadCount
       };
     }
+
     return { notifications: [], unread_count: 0 };
   } catch (error) {
     console.error('getNotifications error:', error);
@@ -2253,15 +2269,23 @@ export async function getNotifications(options?: {
 
 export async function getUnreadNotificationCount(): Promise<number> {
   try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    if (!token) return 0;
+
     const res = await fetch(`${API_URL}/rejimde/v1/notifications/unread-count`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
-    const json = await res.json();
 
-    if (json.status === 'success') {
+    if (!res.ok) return 0;
+
+    const json = await res.json();
+    
+    // Backend format: { status: 'success', data: { unread_count: N } }
+    if (json.status === 'success' && json.data) {
       return json.data.unread_count || 0;
     }
+
     return 0;
   } catch (error) {
     console.error('getUnreadNotificationCount error:', error);
@@ -2271,13 +2295,18 @@ export async function getUnreadNotificationCount(): Promise<number> {
 
 export async function markNotificationsAsRead(ids?: number[]): Promise<boolean> {
   try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    if (!token) return false;
+
     const res = await fetch(`${API_URL}/rejimde/v1/notifications/mark-read`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ notification_ids: ids }),
+      body: JSON.stringify({ ids: ids || 'all' })
     });
-    const json = await res.json();
 
+    if (!res.ok) return false;
+
+    const json = await res.json();
     return json.status === 'success';
   } catch (error) {
     console.error('markNotificationsAsRead error:', error);
@@ -2383,36 +2412,50 @@ export async function getExpertNotifications(options?: {
     }
 
     const params = new URLSearchParams();
-    if (options?.limit) params.append('limit', options.limit.toString());
-    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.limit) params.append('limit', String(options.limit));
+    if (options?.offset) params.append('offset', String(options.offset));
 
-    const res = await fetch(`${API_URL}/rejimde/v1/expert/notifications?${params.toString()}`, {
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    
+    const res = await fetch(`${API_URL}/rejimde/v1/expert/notifications${queryString}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
 
-    // 404 or 403 - API not available yet
+    // HTTP error handling
     if (!res.ok) {
-      console.warn(`Expert notifications API returned ${res.status}`);
+      console.warn('Expert notifications API error:', res.status);
       return { notifications: [], unread_count: 0 };
     }
 
     const text = await res.text();
     
-    // HTML response check (WordPress 404 page returned if API not available)
-    if (text.startsWith('<') || text.startsWith('<!DOCTYPE')) {
-      console.warn('Expert notifications API returned HTML instead of JSON');
+    // Boş yanıt kontrolü
+    if (!text || text.trim() === '') {
+      return { notifications: [], unread_count: 0 };
+    }
+    
+    // HTML kontrolü (API mevcut değilse WordPress 404 döner)
+    if (text.trim().startsWith('<')) {
+      console.warn('Expert notifications API returned HTML');
       return { notifications: [], unread_count: 0 };
     }
 
     const json = JSON.parse(text);
 
+    // Backend format: { status: 'success', data: [...] }
     if (json.status === 'success') {
+      const notifications = Array.isArray(json.data) ? json.data : [];
+      
+      // Unread count'u hesapla
+      const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+      
       return {
-        notifications: json.data?.notifications || [],
-        unread_count: json.data?.unread_count || 0,
+        notifications: notifications,
+        unread_count: unreadCount
       };
     }
+
     return { notifications: [], unread_count: 0 };
   } catch (error) {
     console.error('getExpertNotifications error:', error);

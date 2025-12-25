@@ -19,6 +19,10 @@ export default function NotificationsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 
+  const handleMarkSingleAsRead = (id: number) => {
+    markAsRead([id]);
+  };
+
   const filteredNotifications = notifications.filter((notification) => {
     if (selectedCategory !== 'all' && notification.category !== selectedCategory) {
       return false;
@@ -111,7 +115,7 @@ export default function NotificationsPage() {
               <NotificationItem
                 key={notification.id}
                 notification={notification}
-                onRead={markAsRead}
+                onRead={handleMarkSingleAsRead}
               />
             ))
           )}
