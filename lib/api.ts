@@ -1,7 +1,32 @@
 export const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://api.rejimde.com/wp-json';
 
+// Import types
+import type { PlanListItem, PlanDetail, PlanEditData, BackendResponse, ApiResponse } from '@/types';
+
 // Import helper functions
 import { calculateReadingTime, translateDifficulty } from './helpers';
+
+// --- TYPE GUARDS ---
+/**
+ * Type guard to check if response is a BackendResponse with success status
+ */
+function isSuccessBackendResponse<T>(response: any): response is BackendResponse<T> & { status: 'success'; data: T } {
+  return response && response.status === 'success' && response.data !== undefined;
+}
+
+/**
+ * Type guard to check if response has data property
+ */
+function hasDataProperty<T>(response: any): response is { data: T } {
+  return response && response.data !== undefined && typeof response.data === 'object';
+}
+
+/**
+ * Type guard to check if response is a valid plan object
+ */
+function isPlanObject(response: any): boolean {
+  return response && typeof response === 'object' && 'id' in response && typeof response.id === 'number';
+}
 
 // --- AVATAR PAKETİ ---
 export const AVATAR_PACK = [
@@ -64,6 +89,7 @@ const getPrimaryRole = (roles: string[] | undefined): string => {
 
 /**
  * Temel Fetch Fonksiyonu
+ * Tüm API çağrıları için merkezi hata yönetimi ve tutarlı yanıt formatı sağlar
  */
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const headers = { 'Content-Type': 'application/json' };
@@ -76,10 +102,39 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
       }
   };
 
-  const res = await fetch(`${API_URL}${endpoint}`, { ...mergedOptions, cache: 'no-store' });
-  const text = await res.text();
-  if (!text) return null;
-  try { return JSON.parse(text); } catch (e) { throw new Error('Sunucu hatası.'); }
+  try {
+    const res = await fetch(`${API_URL}${endpoint}`, { ...mergedOptions, cache: 'no-store' });
+    
+    // HTTP hata kodlarını kontrol et
+    if (!res.ok) {
+      console.warn(`API Error: ${res.status} ${res.statusText} - ${endpoint}`);
+      // Hata yanıtını ayrıştırmaya çalış
+      const text = await res.text();
+      if (text) {
+        try {
+          const errorData = JSON.parse(text);
+          return errorData; // Backend hata formatını koru
+        } catch (e) {
+          // JSON parse edilemezse null dön
+          return null;
+        }
+      }
+      return null;
+    }
+    
+    const text = await res.text();
+    if (!text) return null;
+    
+    try { 
+      return JSON.parse(text); 
+    } catch (e) { 
+      console.error('JSON parse error:', e, 'Response:', text.substring(0, 200));
+      throw new Error('Sunucu hatası.'); 
+    }
+  } catch (error) {
+    console.error('fetchAPI error:', endpoint, error);
+    throw error;
+  }
 }
 
 /**
@@ -1086,174 +1141,340 @@ export async function createComment(postId: number, content: string, context: st
 
 /**
  * DİYET PLANLARINI LİSTELE
+ * Backend'den gelen planları alır ve tutarlı format sağlar
  */
-export async function getPlans(category?: string, difficulty?: string) {
+export async function getPlans(category?: string, difficulty?: string): Promise<PlanListItem[]> {
   try {
     let endpoint = '/rejimde/v1/plans'; 
     const params = new URLSearchParams();
     
-    if (category && category !== 'Tümü') params.append('category', category);
-    if (difficulty) params.append('difficulty', difficulty);
+    // Parametreleri valide et ve ekle
+    if (category && category !== 'Tümü' && category.trim() !== '') {
+      params.append('category', category);
+    }
+    if (difficulty && difficulty.trim() !== '') {
+      params.append('difficulty', difficulty);
+    }
     
     if (params.toString()) endpoint += `?${params.toString()}`;
 
     const response = await fetchAPI(endpoint);
     
-    if (response && response.status === 'success') {
-        return response.data;
+    // Backend yanıt formatlarını destekle - Type guard kullan
+    // Format 1: { status: 'success', data: [...] }
+    if (isSuccessBackendResponse<PlanListItem[]>(response)) {
+      return Array.isArray(response.data) ? response.data : [];
     }
+    
+    // Format 2: Direkt array dönüyorsa
+    if (Array.isArray(response)) {
+      return response;
+    }
+    
+    // Format 3: { data: [...] } (status olmadan)
+    if (hasDataProperty<PlanListItem[]>(response) && Array.isArray(response.data)) {
+      return response.data;
+    }
+    
     return [];
   } catch (error) {
-    console.error("Planlar çekilemedi", error);
+    console.error("Planlar çekilemedi:", error);
     return [];
   }
 }
 
 /**
  * DİYET PLANI OLUŞTUR
+ * Plan verilerini valide eder ve backend'e gönderir
  */
 export async function createPlan(data: any) {
   try {
+    // Temel veri validasyonu
+    if (!data || typeof data !== 'object') {
+      return { success: false, message: 'Geçersiz plan verisi.' };
+    }
+    
+    if (!data.title || data.title.trim() === '') {
+      return { success: false, message: 'Plan başlığı gerekli.' };
+    }
+    
     const res = await fetch(`${API_URL}/rejimde/v1/plans/create`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (json.status === 'success') return { success: true, data: json.data };
-    return { success: false, message: json.message };
+    
+    const text = await res.text();
+    let json;
+    
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch (e) {
+      console.error('createPlan: JSON parse hatası', e);
+      return { success: false, message: 'Sunucu yanıtı işlenemedi.' };
+    }
+    
+    // Başarılı yanıt kontrolü
+    if (res.ok && json.status === 'success') {
+      return { success: true, data: json.data };
+    }
+    
+    // Hata mesajını döndür
+    return { 
+      success: false, 
+      message: json.message || json.error || 'Plan oluşturulamadı.' 
+    };
   } catch (error) {
+    console.error('createPlan error:', error);
     return { success: false, message: 'Sunucu hatası.' };
   }
 }
 
 /**
  * DİYET PLANI GÜNCELLE
+ * Plan verilerini valide eder ve backend'e gönderir
  */
 export async function updatePlan(id: number, data: any) {
   try {
+    // ID validasyonu
+    if (!id || isNaN(id) || id <= 0) {
+      return { success: false, message: 'Geçersiz plan ID.' };
+    }
+    
+    // Temel veri validasyonu
+    if (!data || typeof data !== 'object') {
+      return { success: false, message: 'Geçersiz plan verisi.' };
+    }
+    
     const res = await fetch(`${API_URL}/rejimde/v1/plans/update/${id}`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (json.status === 'success') return { success: true, data: json.data };
-    return { success: false, message: json.message };
+    
+    const text = await res.text();
+    let json;
+    
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch (e) {
+      console.error('updatePlan: JSON parse hatası', e);
+      return { success: false, message: 'Sunucu yanıtı işlenemedi.' };
+    }
+    
+    // Başarılı yanıt kontrolü
+    if (res.ok && json.status === 'success') {
+      return { success: true, data: json.data };
+    }
+    
+    // Hata mesajını döndür
+    return { 
+      success: false, 
+      message: json.message || json.error || 'Plan güncellenemedi.' 
+    };
   } catch (error) {
+    console.error('updatePlan error:', error);
     return { success: false, message: 'Sunucu hatası.' };
   }
 }
 
 /**
  * DİYET PLANI DETAY (Slug ile)
+ * Backend'den plan detayını alır ve tutarlı format sağlar
  */
-export async function getPlanBySlug(slug: string) {
+export async function getPlanBySlug(slug: string): Promise<PlanDetail | null> {
   try {
-    const response = await fetchAPI(`/rejimde/v1/plans/${slug}`);
-    if (response && response.status === 'success' && response.data) {
+    // Slug validasyonu
+    if (!slug || typeof slug !== 'string' || slug.trim() === '') {
+      console.warn('getPlanBySlug: Geçersiz slug parametresi');
+      return null;
+    }
+    
+    const response = await fetchAPI(`/rejimde/v1/plans/${encodeURIComponent(slug)}`);
+    
+    // Backend yanıt formatlarını destekle - Type guard kullan
+    // Format 1: { status: 'success', data: {...} }
+    if (isSuccessBackendResponse<PlanDetail>(response)) {
       return response.data;
     }
+    
+    // Format 2: { data: {...} } (status olmadan)
+    if (hasDataProperty<PlanDetail>(response)) {
+      return response.data;
+    }
+    
+    // Format 3: Direkt obje dönüyorsa (id varsa geçerli plan objesi)
+    if (isPlanObject(response)) {
+      return response as PlanDetail;
+    }
+    
+    // Hata yanıtı kontrolü
+    if (response && (response.code || response.error)) {
+      console.warn('getPlanBySlug: Backend hatası', response.message || response.code);
+      return null;
+    }
+    
     return null;
   } catch (error) {
-    console.error("Plan detayı çekilemedi", error);
+    console.error("Plan detayı çekilemedi:", error);
     return null;
   }
 }
 
+// Default values for plan metadata
+const DEFAULT_PLAN_META = {
+    difficulty: 'medium' as const,
+    duration: '7',
+    calories: '',
+    score_reward: '100',
+    diet_category: '',
+};
+
 /**
  * DİYET PLANI ID İLE (Edit için)
+ * WordPress REST API'den plan detayını alır ve düzenleme için hazırlar
  */
-export async function getPlan(id: number | string) {
+export async function getPlan(id: number | string): Promise<ApiResponse<PlanEditData>> {
     try {
+        // ID validasyonu
+        if (!id || (typeof id === 'string' && id.trim() === '')) {
+            return { success: false, message: 'Geçersiz plan ID.' } as ApiResponse<PlanEditData>;
+        }
+        
         const post = await fetchAPI(`/wp/v2/rejimde_plan/${id}?context=edit&_embed`, {
             headers: getAuthHeaders()
         });
         
-        if(!post || post.code) {
-             console.warn("Plan çekilemedi:", post);
-             return { success: false, message: 'Plan bulunamadı.' };
+        // Hata kontrolü
+        if (!post || post.code || post.error) {
+             console.warn("Plan çekilemedi:", post?.message || post?.code);
+             return { 
+               success: false, 
+               message: post?.message || 'Plan bulunamadı veya erişim yetkiniz yok.' 
+             } as ApiResponse<PlanEditData>;
         }
         
+        // Plan verisi parse et
         let planData = [];
         if (post.meta && post.meta.plan_data) {
              planData = typeof post.meta.plan_data === 'string' 
                 ? safeParse(post.meta.plan_data, []) 
-                : post.meta.plan_data;
+                : (Array.isArray(post.meta.plan_data) ? post.meta.plan_data : []);
         }
 
+        // Alışveriş listesi parse et
         let shoppingList = [];
         if (post.meta && post.meta.shopping_list) {
              shoppingList = typeof post.meta.shopping_list === 'string' 
                 ? safeParse(post.meta.shopping_list, []) 
-                : post.meta.shopping_list;
+                : (Array.isArray(post.meta.shopping_list) ? post.meta.shopping_list : []);
         }
 
-        const formattedData = {
+        const formattedData: PlanEditData = {
             id: post.id,
-            title: post.title.raw || post.title.rendered,
-            content: post.content.raw || post.content.rendered,
-            status: post.status,
+            title: post.title?.raw || post.title?.rendered || '',
+            content: post.content?.raw || post.content?.rendered || '',
+            status: post.status || 'draft',
             plan_data: planData,
             shopping_list: shoppingList,
-            tags: post.tags || [],
+            tags: Array.isArray(post.tags) ? post.tags.map(String) : [],
             meta: {
-                difficulty: post.meta?.difficulty,
-                duration: post.meta?.duration,
-                calories: post.meta?.calories,
-                score_reward: post.meta?.score_reward,
-                diet_category: post.meta?.diet_category,
-                rank_math_title: post.meta?.rank_math_title,
-                rank_math_description: post.meta?.rank_math_description,
-                rank_math_focus_keyword: post.meta?.rank_math_focus_keyword
+                difficulty: post.meta?.difficulty || DEFAULT_PLAN_META.difficulty,
+                duration: post.meta?.duration || DEFAULT_PLAN_META.duration,
+                calories: post.meta?.calories || DEFAULT_PLAN_META.calories,
+                score_reward: post.meta?.score_reward || DEFAULT_PLAN_META.score_reward,
+                diet_category: post.meta?.diet_category || DEFAULT_PLAN_META.diet_category,
+                rank_math_title: post.meta?.rank_math_title || '',
+                rank_math_description: post.meta?.rank_math_description || '',
+                rank_math_focus_keyword: post.meta?.rank_math_focus_keyword || ''
             },
-            featured_media_id: post.featured_media,
+            featured_media_id: post.featured_media || 0,
             featured_media_url: post._embedded?.['wp:featuredmedia']?.[0]?.source_url || ''
         };
 
         return { success: true, data: formattedData };
     } catch (e) {
         console.error("getPlan hatası:", e);
-        return { success: false, message: 'Plan yüklenirken hata oluştu.' };
+        return { success: false, message: 'Plan yüklenirken hata oluştu.' } as ApiResponse<PlanEditData>;
     }
 }
 
 /**
  * Egzersiz Planlarını Listele
+ * Backend'den gelen egzersiz planlarını alır ve tutarlı format sağlar
  */
 export async function getExercisePlans(category?: string, difficulty?: string) {
   try {
     let endpoint = '/rejimde/v1/exercises'; 
     const params = new URLSearchParams();
     
-    if (category && category !== 'Tümü') params.append('category', category);
-    if (difficulty) params.append('difficulty', difficulty);
+    // Parametreleri valide et ve ekle
+    if (category && category !== 'Tümü' && category.trim() !== '') {
+      params.append('category', category);
+    }
+    if (difficulty && difficulty.trim() !== '') {
+      params.append('difficulty', difficulty);
+    }
     
     if (params.toString()) endpoint += `?${params.toString()}`;
 
     const response = await fetchAPI(endpoint);
-    if (response && response.status === 'success') {
-        return response.data;
+    
+    // Backend yanıt formatlarını destekle
+    if (response && response.status === 'success' && response.data) {
+      return Array.isArray(response.data) ? response.data : [];
     }
+    
+    if (response && Array.isArray(response)) {
+      return response;
+    }
+    
+    if (response && response.data && Array.isArray(response.data)) {
+      return response.data;
+    }
+    
     return [];
   } catch (error) {
-    console.error("Egzersiz planları çekilemedi", error);
+    console.error("Egzersiz planları çekilemedi:", error);
     return [];
   }
 }
 
 /**
  * Egzersiz Planı Detay (Slug)
+ * Backend'den egzersiz planı detayını alır ve tutarlı format sağlar
  */
 export async function getExercisePlanBySlug(slug: string) {
   try {
-    const response = await fetchAPI(`/rejimde/v1/exercises/${slug}`);
-    if (response && response.status === 'success') {
+    // Slug validasyonu
+    if (!slug || typeof slug !== 'string' || slug.trim() === '') {
+      console.warn('getExercisePlanBySlug: Geçersiz slug parametresi');
+      return null;
+    }
+    
+    const response = await fetchAPI(`/rejimde/v1/exercises/${encodeURIComponent(slug)}`);
+    
+    // Backend yanıt formatlarını destekle
+    if (response && response.status === 'success' && response.data) {
       return response.data;
     }
+    
+    if (response && response.data && typeof response.data === 'object') {
+      return response.data;
+    }
+    
+    if (response && response.id && typeof response === 'object') {
+      return response;
+    }
+    
+    if (response && (response.code || response.error)) {
+      console.warn('getExercisePlanBySlug: Backend hatası', response.message || response.code);
+      return null;
+    }
+    
     return null;
   } catch (error) {
-    console.error("Egzersiz planı detayı çekilemedi", error);
+    console.error("Egzersiz planı detayı çekilemedi:", error);
     return null;
   }
 }

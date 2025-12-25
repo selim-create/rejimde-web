@@ -202,7 +202,22 @@ export default function EditDietPage({ params }: { params: Promise<{ id: string 
 
                 // Plan Data (Günler)
                 if (data.plan_data && Array.isArray(data.plan_data)) {
-                    setDays(data.plan_data);
+                    // PlanDay[] to DayPlan[] - add missing id field and ensure all required fields
+                    const convertedDays = data.plan_data.map((day, idx) => ({
+                        id: String(idx + 1),
+                        dayNumber: day.dayNumber,
+                        meals: day.meals.map(meal => ({
+                            id: meal.id,
+                            type: meal.type,
+                            time: meal.time || '08:00',
+                            title: meal.title,
+                            content: meal.content,
+                            calories: meal.calories || '',
+                            tags: meal.tags || [],
+                            tip: meal.tip || ''
+                        }))
+                    }));
+                    setDays(convertedDays);
                 } else {
                     setDays([{ id: '1', dayNumber: 1, meals: [{ id: 'm1', type: 'breakfast', time: '08:00', title: '', content: '', calories: '', tags: [], tip: '' }] }]);
                 }

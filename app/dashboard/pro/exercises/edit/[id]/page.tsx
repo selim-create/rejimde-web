@@ -184,7 +184,21 @@ export default function EditExercisePage({ params }: { params: Promise<{ id: str
                     }
 
                     if (Array.isArray(pData)) {
-                        setDays(pData);
+                        // PlanDay[] to DayPlan[] - convert meals to exercises structure
+                        const convertedDays = pData.map((day: { dayNumber: number; meals?: any[] }, idx: number) => ({
+                            id: String(idx + 1),
+                            dayNumber: day.dayNumber,
+                            exercises: (day.meals || []).map((meal: { id: string; title?: string; content?: string; tags?: string[] }) => ({
+                                id: meal.id,
+                                name: meal.title || '',
+                                sets: '3',
+                                reps: '12',
+                                rest: '60',
+                                notes: meal.content || '',
+                                tags: meal.tags || []
+                            }))
+                        }));
+                        setDays(convertedDays);
                     } else {
                          setDays([{ id: '1', dayNumber: 1, exercises: [{ id: 'e1', name: '', sets: '3', reps: '12', rest: '60', notes: '', tags: [] }] }]);
                     }

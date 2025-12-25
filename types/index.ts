@@ -5,6 +5,15 @@ export interface ApiResponse<T> {
     message?: string;
 }
 
+// Backend API Yanıt Formatı (rejimde/v1 endpoints)
+export interface BackendResponse<T> {
+    status: 'success' | 'error';
+    data?: T;
+    message?: string;
+    code?: string;
+    error?: string;
+}
+
 // Uzman (Professional) Tipi
 export interface Expert {
     id: number;
@@ -59,4 +68,83 @@ export interface User {
         color: string;
         description: string;
     };
+}
+
+// Diyet Planı Öğün Tipi
+export interface PlanMeal {
+    id: string;
+    type: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'pre-workout' | 'post-workout';
+    title: string;
+    time?: string;
+    content: string;
+    calories?: string;
+    tags?: string[];
+    tip?: string;
+}
+
+// Diyet Planı Günü
+export interface PlanDay {
+    dayNumber: number;
+    meals: PlanMeal[];
+}
+
+// Diyet Planı Meta Bilgileri
+export interface PlanMeta {
+    difficulty?: 'easy' | 'medium' | 'hard';
+    duration?: string;
+    calories?: string;
+    score_reward?: string;
+    diet_category?: string;
+    is_verified?: boolean;
+    rank_math_title?: string;
+    rank_math_description?: string;
+    rank_math_focus_keyword?: string;
+}
+
+// Diyet Planı (Liste için)
+export interface PlanListItem {
+    id: number;
+    title: string;
+    slug: string;
+    excerpt?: string;
+    image?: string;
+    meta?: PlanMeta;
+    author?: {
+        name: string;
+        slug: string;
+        avatar?: string;
+        is_expert?: boolean;
+    };
+    completed_count?: number;
+}
+
+// Diyet Planı (Detay için)
+export interface PlanDetail extends PlanListItem {
+    content: string;
+    plan_data: PlanDay[];
+    shopping_list: string[];
+    approved_by?: {
+        name: string;
+        slug: string;
+        avatar?: string;
+    };
+    completed_users?: Array<{
+        name: string;
+        slug: string;
+        avatar?: string;
+    }>;
+}
+
+// Diyet Planı (Düzenleme için)
+export interface PlanEditData {
+    id: number;
+    title: string;
+    content: string;
+    status: string;
+    plan_data: PlanDay[];
+    shopping_list: string[];
+    tags: string[]; // Changed from number[] to string[] for consistency
+    meta: PlanMeta;
+    featured_media_id: number;
+    featured_media_url: string;
 }

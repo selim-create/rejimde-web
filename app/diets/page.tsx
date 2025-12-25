@@ -39,17 +39,7 @@ export default function DietsPage() {
     async function fetchData() {
       try {
         setLoading(true);
-        const data = await getPlans(); 
-        
-        let plansData = [];
-        if (Array.isArray(data)) {
-            plansData = data;
-        } else if (data && data.data && Array.isArray(data.data)) {
-            plansData = data.data;
-        } else if (data && typeof data === 'object') {
-             plansData = Object.values(data);
-        }
-
+        const plansData = await getPlans(); 
         setPlans(plansData);
       } catch (error) {
         console.error("Planlar yüklenirken hata:", error);

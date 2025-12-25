@@ -20,6 +20,52 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Backend Integration
+
+This project integrates with the `rejimde-core` WordPress plugin for backend API. See the documentation:
+
+- **[API Integration Guide](docs/API_INTEGRATION.md)** - Complete API documentation
+- **[Backend Configuration Checklist](docs/BACKEND_CHECKLIST.md)** - Backend setup requirements
+- **[Quick Reference](docs/QUICK_REFERENCE.md)** - Common usage examples
+
+### Environment Variables
+
+Create a `.env.local` file in the project root:
+
+```bash
+NEXT_PUBLIC_WP_API_URL=http://api.rejimde.com/wp-json
+```
+
+## Project Structure
+
+```
+rejimde-web/
+├── app/              # Next.js app directory (pages & routes)
+├── components/       # Reusable React components
+├── lib/              # Utility functions and API client
+├── types/            # TypeScript type definitions
+├── hooks/            # Custom React hooks
+├── public/           # Static assets
+└── docs/             # Documentation
+```
+
+## API Usage
+
+```typescript
+import { getPlans, getPlanBySlug, createPlan } from '@/lib/api';
+
+// List all plans
+const plans = await getPlans();
+
+// Get single plan
+const plan = await getPlanBySlug('plan-slug');
+
+// Create new plan (requires authentication)
+const result = await createPlan(planData);
+```
+
+See [Quick Reference](docs/QUICK_REFERENCE.md) for more examples.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
