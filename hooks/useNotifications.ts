@@ -11,7 +11,7 @@ export function useNotifications() {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    // Token yoksa API çağrısı yapma
+    // Don't make API call if no token
     const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
     if (!token) {
       setIsLoading(false);
@@ -23,7 +23,7 @@ export function useNotifications() {
       setNotifications(result.notifications || []);
       setUnreadCount(result.unread_count || 0);
     } catch (error) {
-      // API mevcut değilse veya hata varsa sessizce devam et
+      // Continue silently if API is unavailable or error occurs
       console.warn('Notifications API not available:', error);
       setNotifications([]);
       setUnreadCount(0);

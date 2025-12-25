@@ -2222,7 +2222,7 @@ export async function getNotifications(options?: {
       headers: getAuthHeaders(),
     });
 
-    // 404 veya 403 - API henüz mevcut değil
+    // 404 or 403 - API not available yet
     if (!res.ok) {
       console.warn(`Notifications API returned ${res.status}`);
       return { notifications: [], unread_count: 0 };
@@ -2230,7 +2230,7 @@ export async function getNotifications(options?: {
 
     const text = await res.text();
     
-    // HTML response kontrolü (API mevcut değilse WordPress 404 sayfası döner)
+    // HTML response check (WordPress 404 page returned if API not available)
     if (text.startsWith('<') || text.startsWith('<!DOCTYPE')) {
       console.warn('Notifications API returned HTML instead of JSON');
       return { notifications: [], unread_count: 0 };
@@ -2377,7 +2377,7 @@ export async function getExpertNotifications(options?: {
     const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
     const role = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
     
-    // Pro değilse API çağrısı yapma
+    // Don't make API call if user is not pro
     if (!token || role !== 'rejimde_pro') {
       return { notifications: [], unread_count: 0 };
     }
@@ -2391,7 +2391,7 @@ export async function getExpertNotifications(options?: {
       headers: getAuthHeaders(),
     });
 
-    // 404 veya 403 - API henüz mevcut değil
+    // 404 or 403 - API not available yet
     if (!res.ok) {
       console.warn(`Expert notifications API returned ${res.status}`);
       return { notifications: [], unread_count: 0 };
@@ -2399,7 +2399,7 @@ export async function getExpertNotifications(options?: {
 
     const text = await res.text();
     
-    // HTML response kontrolü (API mevcut değilse WordPress 404 sayfası döner)
+    // HTML response check (WordPress 404 page returned if API not available)
     if (text.startsWith('<') || text.startsWith('<!DOCTYPE')) {
       console.warn('Expert notifications API returned HTML instead of JSON');
       return { notifications: [], unread_count: 0 };

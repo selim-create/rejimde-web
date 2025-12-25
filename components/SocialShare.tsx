@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 interface SocialShareProps {
   url: string;
@@ -8,29 +8,33 @@ interface SocialShareProps {
   description?: string;
 }
 
-export default function SocialShare({ url, title, description = '' }: SocialShareProps) {
+export default function SocialShare({ url, title }: SocialShareProps) {
   const [copied, setCopied] = useState(false);
-  const [shareLinks, setShareLinks] = useState<{
-    whatsapp: string;
-    twitter: string;
-    facebook: string;
-    copy: string;
-  } | null>(null);
+  const [mounted, setMounted] = useState(false);
 
+  // Ensure component is mounted on client
   useEffect(() => {
-    // Client-side'da URL oluştur
+    // This is needed to prevent hydration mismatch
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
+  // Generate share links only on client side
+  const shareLinks = useMemo(() => {
+    if (!mounted) return null;
+
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
     const encodedUrl = encodeURIComponent(fullUrl);
     const encodedTitle = encodeURIComponent(title);
 
-    setShareLinks({
+    return {
       whatsapp: `https://wa.me/?text=${encodedTitle}%20-%20${encodedUrl}`,
       twitter: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
       copy: fullUrl
-    });
-  }, [url, title]);
+    };
+  }, [mounted, url, title]);
 
   const handleCopyLink = async () => {
     if (!shareLinks) return;
@@ -43,7 +47,7 @@ export default function SocialShare({ url, title, description = '' }: SocialShar
     }
   };
 
-  // Links hazır olana kadar skeleton göster
+  // Show skeleton until links are ready
   if (!shareLinks) {
     return (
       <div className="flex items-center gap-3">

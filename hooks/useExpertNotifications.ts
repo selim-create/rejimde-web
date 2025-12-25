@@ -11,11 +11,11 @@ export function useExpertNotifications() {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    // Token ve rol kontrolü
+    // Token and role validation
     const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
     const role = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
     
-    // Pro değilse API çağrısı yapma
+    // Don't make API call if user is not pro
     if (!token || role !== 'rejimde_pro') {
       setIsLoading(false);
       return;
@@ -26,7 +26,7 @@ export function useExpertNotifications() {
       setNotifications(result.notifications || []);
       setUnreadCount(result.unread_count || 0);
     } catch (error) {
-      // API mevcut değilse veya hata varsa sessizce devam et
+      // Continue silently if API is unavailable or error occurs
       console.warn('Expert notifications API not available:', error);
       setNotifications([]);
       setUnreadCount(0);
