@@ -316,6 +316,16 @@ export default function CommentsSection({
             )}
         </div>
 
+        {/* Points Toast Notification */}
+        {showToast && lastResult && (
+          <PointsToast
+            points={lastResult.points_earned}
+            message={lastResult.message}
+            streak={lastResult.streak}
+            milestone={lastResult.milestone}
+            onClose={closeToast}
+          />
+        )}
     </div>
   );
 }
@@ -686,17 +696,6 @@ const CommentItem = ({
               </div>
             )}
           </div>
-          
-          {/* Points Toast Notification */}
-          {showToast && lastResult && (
-            <PointsToast
-              points={lastResult.points_earned}
-              message={lastResult.message}
-              streak={lastResult.streak}
-              milestone={lastResult.milestone}
-              onClose={closeToast}
-            />
-          )}
       </div>
     );
 };
