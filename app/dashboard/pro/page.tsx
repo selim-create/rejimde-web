@@ -107,6 +107,12 @@ export default function ProDashboardPage() {
             </Link>
             
             <p className="text-[10px] font-bold text-slate-500 uppercase px-4 pt-2">Yönetim</p>
+            <Link href="/dashboard/pro/notifications" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+                <i className="fa-solid fa-bell w-6 text-center group-hover:text-blue-400"></i> Bildirimler
+            </Link>
+            <Link href="/dashboard/pro/activity" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+                <i className="fa-solid fa-chart-line w-6 text-center group-hover:text-purple-400"></i> Aktiviteler
+            </Link>
             <Link href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-users w-6 text-center group-hover:text-blue-400"></i> Danışanlar
             </Link>

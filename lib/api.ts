@@ -2146,3 +2146,322 @@ export async function saveCalculatorResult(calculatorType: string, result: any) 
         return { success: false, message: 'Sunucu hatası.' };
     }
 }
+
+/**
+ * ==========================================
+ * NOTIFICATIONS & ACTIVITY LOG
+ * ==========================================
+ */
+
+// ===== NOTIFICATION TYPES =====
+export interface Notification {
+  id: number;
+  type: string;
+  category: 'social' | 'system' | 'level' | 'circle' | 'points' | 'expert';
+  title: string;
+  body: string | null;
+  icon: string;
+  color: string;
+  action_url: string | null;
+  actor_id: number | null;
+  entity_type: string | null;
+  entity_id: number | null;
+  meta: Record<string, any>;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationPreferences {
+  category: string;
+  channel_in_app: boolean;
+  channel_push: boolean;
+  channel_email: boolean;
+}
+
+export interface ActivityItem {
+  id: number;
+  event_type: string;
+  entity_type: string | null;
+  entity_id: number | null;
+  points: number;
+  context: Record<string, any>;
+  created_at: string;
+  label?: string;
+}
+
+export interface ExpertMetrics {
+  profile_views: number;
+  unique_viewers: number;
+  rating_count: number;
+  rating_average: number;
+  content_views: number;
+  client_completions: number;
+}
+
+// ===== NOTIFICATION FUNCTIONS =====
+export async function getNotifications(options?: {
+  limit?: number;
+  offset?: number;
+  unread_only?: boolean;
+  category?: string;
+}): Promise<{ notifications: Notification[]; unread_count: number }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.unread_only) params.append('unread_only', 'true');
+    if (options?.category) params.append('category', options.category);
+
+    const res = await fetch(`${API_URL}/rejimde/v1/notifications?${params.toString()}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      return {
+        notifications: json.data.notifications || [],
+        unread_count: json.data.unread_count || 0,
+      };
+    }
+    return { notifications: [], unread_count: 0 };
+  } catch (error) {
+    console.error('getNotifications error:', error);
+    return { notifications: [], unread_count: 0 };
+  }
+}
+
+export async function getUnreadNotificationCount(): Promise<number> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/notifications/unread-count`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      return json.data.unread_count || 0;
+    }
+    return 0;
+  } catch (error) {
+    console.error('getUnreadNotificationCount error:', error);
+    return 0;
+  }
+}
+
+export async function markNotificationsAsRead(ids?: number[]): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/notifications/mark-read`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ notification_ids: ids }),
+    });
+    const json = await res.json();
+
+    return json.status === 'success';
+  } catch (error) {
+    console.error('markNotificationsAsRead error:', error);
+    return false;
+  }
+}
+
+export async function getNotificationPreferences(): Promise<NotificationPreferences[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/notifications/preferences`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      return json.data.preferences || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getNotificationPreferences error:', error);
+    return [];
+  }
+}
+
+export async function updateNotificationPreferences(prefs: NotificationPreferences[]): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/notifications/preferences`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ preferences: prefs }),
+    });
+    const json = await res.json();
+
+    return json.status === 'success';
+  } catch (error) {
+    console.error('updateNotificationPreferences error:', error);
+    return false;
+  }
+}
+
+// ===== ACTIVITY FUNCTIONS =====
+export async function getUserActivity(options?: {
+  limit?: number;
+  offset?: number;
+  filter?: string;
+}): Promise<ActivityItem[]> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.filter) params.append('filter', options.filter);
+
+    const res = await fetch(`${API_URL}/rejimde/v1/activity?${params.toString()}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      return json.data.activities || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getUserActivity error:', error);
+    return [];
+  }
+}
+
+export async function getUserPointsHistory(limit?: number): Promise<ActivityItem[]> {
+  try {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+
+    const res = await fetch(`${API_URL}/rejimde/v1/activity/points?${params.toString()}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      return json.data.activities || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getUserPointsHistory error:', error);
+    return [];
+  }
+}
+
+// ===== EXPERT FUNCTIONS =====
+export async function getExpertNotifications(options?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{ notifications: Notification[]; unread_count: number }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+
+    const res = await fetch(`${API_URL}/rejimde/v1/expert/notifications?${params.toString()}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      return {
+        notifications: json.data.notifications || [],
+        unread_count: json.data.unread_count || 0,
+      };
+    }
+    return { notifications: [], unread_count: 0 };
+  } catch (error) {
+    console.error('getExpertNotifications error:', error);
+    return { notifications: [], unread_count: 0 };
+  }
+}
+
+export async function getExpertActivity(limit?: number): Promise<ActivityItem[]> {
+  try {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+
+    const res = await fetch(`${API_URL}/rejimde/v1/expert/activity?${params.toString()}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      return json.data.activities || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getExpertActivity error:', error);
+    return [];
+  }
+}
+
+export async function getExpertMetrics(days?: number): Promise<ExpertMetrics> {
+  try {
+    const params = new URLSearchParams();
+    if (days) params.append('days', days.toString());
+
+    const res = await fetch(`${API_URL}/rejimde/v1/expert/metrics?${params.toString()}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      return json.data.metrics || {
+        profile_views: 0,
+        unique_viewers: 0,
+        rating_count: 0,
+        rating_average: 0,
+        content_views: 0,
+        client_completions: 0,
+      };
+    }
+    return {
+      profile_views: 0,
+      unique_viewers: 0,
+      rating_count: 0,
+      rating_average: 0,
+      content_views: 0,
+      client_completions: 0,
+    };
+  } catch (error) {
+    console.error('getExpertMetrics error:', error);
+    return {
+      profile_views: 0,
+      unique_viewers: 0,
+      rating_count: 0,
+      rating_average: 0,
+      content_views: 0,
+      client_completions: 0,
+    };
+  }
+}
+
+export async function getExpertProfileViewers(limit?: number): Promise<Array<{
+  id: number;
+  name: string;
+  avatar: string;
+  viewed_at: string;
+}>> {
+  try {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+
+    const res = await fetch(`${API_URL}/rejimde/v1/expert/profile-viewers?${params.toString()}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      return json.data.viewers || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getExpertProfileViewers error:', error);
+    return [];
+  }
+}

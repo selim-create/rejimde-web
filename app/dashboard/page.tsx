@@ -125,6 +125,14 @@ export default function DashboardPage() {
                           <i className="fa-solid fa-chart-pie text-xl w-8 text-center group-hover:text-orange-500"></i>
                           <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Skor & Analiz</span>
                       </Link>
+                      <Link href="/dashboard/notifications" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-bell text-xl w-8 text-center group-hover:text-blue-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Bildirimler</span>
+                      </Link>
+                      <Link href="/dashboard/activity" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-clock-rotate-left text-xl w-8 text-center group-hover:text-purple-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Aktiviteler</span>
+                      </Link>
                       <Link href="/diets" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
                           <i className="fa-solid fa-utensils text-xl w-8 text-center group-hover:text-green-500"></i>
                           <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Diyetler</span>
