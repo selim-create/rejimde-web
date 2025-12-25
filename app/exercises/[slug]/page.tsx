@@ -4,6 +4,9 @@ import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
+import { startExercise, completeExercise } from "@/lib/events";
+import { usePoints } from "@/hooks/usePoints";
+import PointsToast from "@/components/PointsToast";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; // Import AuthorCard
@@ -225,6 +228,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   const [progress, setProgress] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
+  const { lastEarned, lastMessage, showToast, handleEventResponse, hideToast } = usePoints();
   
   // Modals
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm' | 'warning', onConfirm?: () => void, onCancel?: () => void }>({ isOpen: false, title: '', message: '', type: 'success' });
@@ -410,6 +414,10 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
       if (!currentUser) return showAlert("Giriş Yapmalısın", "Antrenman takibi yapmak için lütfen giriş yap.", "error");
       
       try {
+          // Send gamification v2 event
+          const eventResponse = await startExercise(plan?.id);
+          handleEventResponse(eventResponse);
+          
           // Use new Progress API
           const result = await startProgress('exercise', plan?.id);
           if (result.success) {
@@ -436,18 +444,20 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           try {
             const reward = parseInt(plan?.meta?.score_reward || "0");
             
+            // Send gamification v2 event
+            const eventResponse = await completeExercise(plan?.id, reward);
+            handleEventResponse(eventResponse);
+            
             // Use new Progress API
             const result = await completeProgress('exercise', plan?.id);
             if (result.success) {
-                await earnPoints('complete_exercise_plan', plan?.id);
                 showAlert(
                     "Tebrikler Şampiyon! 🏆", 
                     `Bu antrenman programını başarıyla tamamladın ve ${reward} puan kazandın! Gücüne güç kattın.`, 
                     "success"
                 );
             } else {
-                // Fallback - still award points
-                await earnPoints('complete_exercise_plan', plan?.id);
+                // Fallback - still show success message
                 showAlert(
                     "Tebrikler Şampiyon! 🏆", 
                     `Bu antrenman programını başarıyla tamamladın ve ${reward} puan kazandın! Gücüne güç kattın.`, 
@@ -522,6 +532,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
     <div className="min-h-screen pb-20 font-sans text-gray-800">
       
       <AlertModal {...alertModal} />
+      {showToast && <PointsToast points={lastEarned} message={lastMessage} onClose={hideToast} />}
       <ExerciseDetailModal 
         isOpen={detailModalOpen} 
         exercise={selectedExercise} 
