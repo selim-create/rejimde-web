@@ -333,7 +333,7 @@ export default function ExpertReviews({ expertId, expertSlug }: ExpertReviewsPro
                                         <div>
                                             <span className="font-extrabold text-gray-800 text-sm hover:text-green-600 transition block">{comment.author.name}</span>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                                {comment.author.level && <span className="bg-yellow-100 text-yellow-700 text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1 border border-yellow-200"><i className="fa-solid fa-bolt"></i> {comment.author.level}</span>}
+                                                {comment.author.rank && <span className="bg-yellow-100 text-yellow-700 text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1 border border-yellow-200"><i className="fa-solid fa-bolt"></i> RANK {comment.author.rank}</span>}
                                                 {comment.author.is_verified && <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100"><i className="fa-solid fa-check-circle"></i> Onaylı Danışan</span>}
                                             </div>
                                         </div>

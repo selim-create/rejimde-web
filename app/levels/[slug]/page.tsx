@@ -26,7 +26,13 @@ export default function LevelDetailPage() {
       try {
         const user = await auth.me();
         if (user) {
-          setUserScore(user.total_score || 0);
+          // Try to get score from gamification stats first
+          if (auth.getGamificationStats) {
+            const stats = await auth.getGamificationStats();
+            if (stats && stats.total_score !== undefined) {
+              setUserScore(stats.total_score);
+            }
+          }
         }
       } catch (error) {
         console.error('Veri hatası:', error);
