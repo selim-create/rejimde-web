@@ -50,6 +50,7 @@ export default function PageLoader() {
           src={scenario.image}
           alt="Loading..."
           fill
+          sizes="160px"
           className="object-contain drop-shadow-xl"
           priority
           onError={(e) => {

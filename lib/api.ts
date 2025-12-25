@@ -858,20 +858,6 @@ export async function dispatchEvent(
       }),
     });
     
-    if (!res.ok) {
-      return {
-        success: false,
-        event_type: eventType,
-        points_earned: 0,
-        total_score: 0,
-        daily_score: 0,
-        streak: null,
-        milestone: null,
-        message: `HTTP error: ${res.status}`,
-        already_earned: false
-      };
-    }
-    
     const json = await res.json();
     
     // Backend response format: { status: 'success', data: {...} }
@@ -886,6 +872,21 @@ export async function dispatchEvent(
         milestone: json.data?.milestone || null,
         message: json.data?.message || 'Başarılı!',
         already_earned: json.data?.already_earned || false
+      };
+    }
+    
+    // 400 hatası ama already earned durumu
+    if (res.status === 400 && json.message?.includes('already')) {
+      return {
+        success: true, // Hata değil, zaten kazanılmış
+        event_type: eventType,
+        points_earned: 0,
+        total_score: 0,
+        daily_score: 0,
+        streak: null,
+        milestone: null,
+        message: json.message || 'Zaten kazanıldı',
+        already_earned: true
       };
     }
     
@@ -1949,7 +1950,16 @@ export async function startProgress(contentType: string, contentId: number | str
         });
         
         const json = await res.json();
-        if (json.status === 'success') return { success: true, data: json.data };
+        
+        // 200 OK veya 409 Conflict (already started) - her ikisi de başarılı sayılır
+        if (res.ok || res.status === 409) {
+            return { 
+                success: true, 
+                data: json.data || json,
+                already_started: json.data?.already_started || json.already_started || false
+            };
+        }
+        
         return { success: false, message: json.message };
     } catch (error) {
         return { success: false, message: 'Başlatma kaydedilemedi.' };
@@ -1993,6 +2003,37 @@ export async function claimReward(contentType: string, contentId: number | strin
         return { success: false, message: json.message };
     } catch (error) {
         return { success: false, message: 'Ödül talep edilemedi.' };
+    }
+}
+
+/**
+ * Tek bir öğeyi toggle et (meal, exercise move) - ekle veya çıkar
+ * @param contentType - 'diet' or 'exercise'
+ * @param contentId - İçeriğin ID'si
+ * @param itemId - Toggle edilecek öğenin ID'si (meal id, exercise move id)
+ */
+export async function toggleProgressItem(contentType: string, contentId: number | string, itemId: string) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}/complete-item`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ item_id: itemId })
+        });
+        
+        const json = await res.json();
+        
+        // 200 veya 409 durumlarını handle et
+        if (json.status === 'success' || json.data) {
+            return { 
+                success: true, 
+                data: json.data || json,
+                is_completed: json.data?.is_completed || json.is_completed || false,
+                completed_items: json.data?.completed_items || json.completed_items || []
+            };
+        }
+        return { success: false, message: json.message };
+    } catch (error) {
+        return { success: false, message: 'İşlem başarısız.' };
     }
 }
 

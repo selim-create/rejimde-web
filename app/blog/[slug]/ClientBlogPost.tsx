@@ -79,18 +79,17 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
   const [canEdit, setCanEdit] = useState(false);
 
   const checkRewardStatus = useCallback(async () => {
+      if (!currentUser) return;
+      
       try {
           const progressData = await getProgress('blog', post.id);
           if (progressData && progressData.reward_claimed) {
               setHasClaimed(true);
           }
       } catch (e) {
-          const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-          if (claimedPosts.includes(post.id)) {
-              setHasClaimed(true);
-          }
+          console.error('Error checking reward status:', e);
       }
-  }, [post.id]);
+  }, [post.id, currentUser]);
 
   useEffect(() => {
       if (typeof window !== 'undefined') {
@@ -101,12 +100,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
           
           if (role) {
               setCurrentUser({ role, name, id, avatar });
-              checkRewardStatus();
-          } else {
-              const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-              if (claimedPosts.includes(post.id)) {
-                  setHasClaimed(true);
-              }
           }
 
           const verifyAuthor = async () => {
@@ -155,7 +148,14 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               verifyAuthor();
           }
       }
-  }, [post.id, post.author_name, checkRewardStatus]);
+  }, [post.id, post.author_name]);
+  
+  // Check reward status after currentUser is set
+  useEffect(() => {
+      if (currentUser) {
+          checkRewardStatus();
+      }
+  }, [currentUser, checkRewardStatus]);
 
   useEffect(() => {
     const updateScroll = () => {
@@ -221,15 +221,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       } catch (e) { 
           console.error('Claim reward error:', e);
           setInfoModal({ show: true, title: "Hata", message: "İşlem sırasında bir hata oluştu.", type: "error" });
-      }
-      
-      // Keep localStorage as cache for faster loading
-      if (hasClaimed) {
-          const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-          if (!claimedPosts.includes(post.id)) {
-              claimedPosts.push(post.id);
-              localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
-          }
       }
       
       setClaiming(false);
