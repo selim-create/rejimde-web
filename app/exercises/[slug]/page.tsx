@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
+import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, getProgress, updateProgress, startProgress, completeProgress, completeProgressItem } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; // Import AuthorCard
@@ -376,22 +376,49 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   };
 
   const toggleExerciseCompletion = async (exerciseId: string) => {
-      const newCompleted = completedExercises.includes(exerciseId)
-          ? completedExercises.filter(id => id !== exerciseId)
-          : [...completedExercises, exerciseId];
-      setCompletedExercises(newCompleted);
-      
-      // Update progress in both API and localStorage
-      if (plan) {
-          if (currentUser) {
-              // Logged in - update via API
-              await updateProgress('exercise', plan.id, {
-                  completed_items: newCompleted,
-                  progress_percentage: Math.round((newCompleted.length / getTotalExercises()) * 100)
-              });
+      if (!currentUser) {
+          // Guest user - use localStorage only
+          const newCompleted = completedExercises.includes(exerciseId)
+              ? completedExercises.filter(id => id !== exerciseId)
+              : [...completedExercises, exerciseId];
+          setCompletedExercises(newCompleted);
+          if (plan) {
+              localStorage.setItem(`exercise_progress_${plan.id}`, JSON.stringify(newCompleted));
           }
-          // Always update localStorage as fallback
-          localStorage.setItem(`exercise_progress_${plan.id}`, JSON.stringify(newCompleted));
+          return;
+      }
+
+      // Logged in user - use API
+      try {
+          const result = await completeProgressItem('exercise', plan.id, exerciseId);
+          
+          if (result.success && result.data) {
+              setCompletedExercises(result.data.completed_items || []);
+              
+              // Check if all exercises completed
+              if (result.data.is_completed) {
+                  setIsCompleted(true);
+                  handleCompletePlan();
+              }
+          } else {
+              // Fallback to local state update on error
+              const newCompleted = completedExercises.includes(exerciseId)
+                  ? completedExercises.filter(id => id !== exerciseId)
+                  : [...completedExercises, exerciseId];
+              setCompletedExercises(newCompleted);
+          }
+      } catch (e) {
+          console.error('Exercise completion error:', e);
+          // Fallback to local state update
+          const newCompleted = completedExercises.includes(exerciseId)
+              ? completedExercises.filter(id => id !== exerciseId)
+              : [...completedExercises, exerciseId];
+          setCompletedExercises(newCompleted);
+      }
+      
+      // Keep localStorage as cache for faster loading
+      if (plan) {
+          localStorage.setItem(`exercise_progress_${plan.id}`, JSON.stringify(completedExercises));
       }
   };
 
@@ -414,28 +441,42 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   const startPlanLogic = async () => {
       if (!currentUser) return showAlert("Giriş Yapmalısın", "Antrenman takibi yapmak için lütfen giriş yap.", "error");
       
+      if (isStarted) {
+          showAlert("Zaten Başladın", "Bu antrenman programını zaten takip ediyorsun.", "info");
+          return;
+      }
+      
       try {
-          // Dispatch exercise_started event
-          const result = await dispatchAction('exercise_started', 'exercise', plan?.id);
+          // Call startProgress to mark as started
+          const startResult = await startProgress('exercise', plan?.id);
           
-          if (result.success) {
+          if (startResult.success) {
               setIsStarted(true);
-              localStorage.setItem(`exercise_started_${plan?.id}`, 'true');
-              showAlert("Başarılar!", "Antrenman programına başladın. Hedefine ulaşman dileğiyle!", "success");
               
-              // Also call startProgress for tracking
-              await startProgress('exercise', plan?.id);
+              // Dispatch gamification event
+              const eventResult = await dispatchAction('exercise_started', 'exercise', plan?.id);
+              
+              if (eventResult.success && !eventResult.already_earned) {
+                  showAlert("Başarılar!", `Antrenman programına başladın! +${eventResult.points_earned} puan kazandın.`, "success");
+              } else {
+                  showAlert("Başarılar!", "Antrenman programına başladın. Hedefine ulaşman dileğiyle!", "success");
+              }
           } else {
-              // Fallback - still mark as started locally
-              setIsStarted(true);
-              localStorage.setItem(`exercise_started_${plan?.id}`, 'true');
-              showAlert("Başarılar!", "Antrenman programına başladın. Hedefine ulaşman dileğiyle!", "success");
+              // Check if already started
+              if (startResult.message?.includes('already') || startResult.message?.includes('zaten')) {
+                  setIsStarted(true);
+                  showAlert("Bilgi", "Bu antrenman programını zaten takip ediyorsun.", "info");
+              } else {
+                  showAlert("Hata", startResult.message || "Bir hata oluştu.", "error");
+              }
           }
       } catch (e) {
-          // Fallback - still mark as started locally
-          setIsStarted(true);
-          localStorage.setItem(`exercise_started_${plan?.id}`, 'true');
-          showAlert("Başarılar!", "Antrenman programına başladın. Hedefine ulaşman dileğiyle!", "success");
+          showAlert("Hata", "İşlem sırasında bir hata oluştu.", "error");
+      }
+      
+      // Keep localStorage as cache for faster loading
+      if (isStarted && plan) {
+          localStorage.setItem(`exercise_started_${plan.id}`, 'true');
       }
   };
 

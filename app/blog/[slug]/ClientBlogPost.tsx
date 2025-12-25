@@ -171,56 +171,67 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       if (hasClaimed) return;
       setClaiming(true);
       
-      if (currentUser) {
-          try {
-              // Use new event-driven system
-              const result = await dispatchAction(
+      if (!currentUser) {
+          setInfoModal({ show: true, title: "Giriş Yapmalısın", message: "Puan kazanmak için lütfen giriş yap.", type: "error" });
+          setClaiming(false);
+          return;
+      }
+      
+      try {
+          // Use claimReward API to mark as claimed
+          const claimResult = await claimReward('blog', post.id);
+          
+          if (claimResult.success) {
+              setHasClaimed(true);
+              
+              // Dispatch gamification event
+              const eventResult = await dispatchAction(
                 'blog_points_claimed',
                 'blog',
                 post.id,
-                { is_sticky: false } // You can determine if post is sticky
+                { is_sticky: false }
               );
               
-              if (result.success && result.points_earned > 0) {
-                  setHasClaimed(true);
-                  const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-                  claimedPosts.push(post.id);
-                  localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
-                  // Toast will be shown automatically by useGamification hook
+              if (eventResult.success && !eventResult.already_earned) {
+                  // Points earned - toast will be shown automatically by useGamification hook
                   setClaiming(false);
                   return;
+              } else if (eventResult.already_earned) {
+                  setRewardMessage({
+                      title: "Daha Önce Aldın 😎",
+                      desc: "Bu yazının puanını zaten kapmışsın. Başka yazılara göz at!",
+                      points: 0
+                  });
+                  setShowRewardModal(true);
               }
-          } catch (e) { 
-              console.error(e); 
+          } else {
+              // Check if already claimed
+              if (claimResult.message?.includes('already') || claimResult.message?.includes('zaten')) {
+                  setHasClaimed(true);
+                  setRewardMessage({
+                      title: "Daha Önce Aldın 😎",
+                      desc: "Bu yazının puanını zaten kapmışsın.",
+                      points: 0
+                  });
+                  setShowRewardModal(true);
+              } else {
+                  setInfoModal({ show: true, title: "Hata", message: claimResult.message || "Bir hata oluştu.", type: "error" });
+              }
+          }
+      } catch (e) { 
+          console.error('Claim reward error:', e);
+          setInfoModal({ show: true, title: "Hata", message: "İşlem sırasında bir hata oluştu.", type: "error" });
+      }
+      
+      // Keep localStorage as cache for faster loading
+      if (hasClaimed) {
+          const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
+          if (!claimedPosts.includes(post.id)) {
+              claimedPosts.push(post.id);
+              localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
           }
       }
       
-      // Fallback to old system if not logged in
-      const res = await earnPoints('read_blog', post.id);
-      if (res.success) {
-          setHasClaimed(true);
-          const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-          claimedPosts.push(post.id);
-          localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
-          setRewardMessage({
-              title: "Harikasın! 🎉",
-              desc: `Bu yazıyı tamamladın ve ${res.data.earned} Puan kazandın!`,
-              points: res.data.earned
-          });
-          setShowRewardModal(true);
-      } else {
-          if (res.message?.includes('zaten')) {
-              setHasClaimed(true);
-              setRewardMessage({
-                  title: "Daha Önce Aldın 😎",
-                  desc: "Bu yazının puanını zaten kapmışsın. Başka yazılara göz at!",
-                  points: 0
-              });
-              setShowRewardModal(true);
-          } else {
-              setInfoModal({ show: true, title: "Hata", message: res.message || "Bir hata oluştu.", type: "error" });
-          }
-      }
       setClaiming(false);
   };
 
