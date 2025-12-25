@@ -54,8 +54,40 @@ export async function sendEvent(params: SendEventParams): Promise<EventResponse>
       })
     });
 
-    const json = await res.json();
-    return json;
+    // Content-Type kontrolü
+    const contentType = res.headers.get('content-type');
+    
+    if (!contentType || !contentType.includes('application/json')) {
+      // HTML veya başka format döndü - muhtemelen WordPress hatası
+      const text = await res.text();
+      console.error('Non-JSON response from API:', text.substring(0, 500));
+      
+      // WordPress error pattern detection
+      if (text.includes('ciddi bir sorun') || text.includes('fatal error') || text.includes('Fatal error')) {
+        return { 
+          status: 'error', 
+          message: 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.' 
+        };
+      }
+      
+      return { 
+        status: 'error', 
+        message: 'Beklenmeyen sunucu yanıtı.' 
+      };
+    }
+
+    // JSON parse with error handling
+    try {
+      const json = await res.json();
+      return json;
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return { 
+        status: 'error', 
+        message: 'Yanıt işlenemedi.' 
+      };
+    }
+
   } catch (error) {
     console.error('sendEvent error:', error);
     return { status: 'error', message: 'Bağlantı hatası.' };
