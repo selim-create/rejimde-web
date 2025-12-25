@@ -534,7 +534,7 @@ const CommentItem = ({
                     <div className="flex flex-col items-center mt-1 w-full gap-1">
                         {author.rank && (
                             <div className="bg-gradient-to-r from-gray-900 to-gray-700 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-md flex items-center gap-1">
-                                <i className="fa-solid fa-bolt text-yellow-400 text-[8px]"></i> RANK {typeof author.rank === 'number' ? author.rank : author.rank}
+                                <i className="fa-solid fa-bolt text-yellow-400 text-[8px]"></i> RANK {author.rank}
                             </div>
                         )}
                         {(author.score || author.rank) && (
