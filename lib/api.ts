@@ -868,7 +868,16 @@ export async function getUserEvents(limit: number = 50): Promise<UserEvent[]> {
 /**
  * Get User Milestones
  */
-export async function getUserMilestones(): Promise<any[]> {
+export interface MilestoneRecord {
+  id: number;
+  type: string;
+  value: number;
+  points: number;
+  awarded_to: number;
+  created_at: string;
+}
+
+export async function getUserMilestones(): Promise<MilestoneRecord[]> {
   try {
     const res = await fetch(`${API_URL}/rejimde/v1/gamification/milestones`, {
       method: 'GET',

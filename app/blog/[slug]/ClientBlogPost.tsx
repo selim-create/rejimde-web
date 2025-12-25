@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { use, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { earnPoints, getProgress, claimReward, dispatchEvent } from "@/lib/api";
+import { earnPoints, getProgress, claimReward } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 

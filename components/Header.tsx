@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation"; 
-import { getMe, getGamificationStats, logoutUser, getUserStreak } from "@/lib/api";
+import { getMe, getGamificationStats, logoutUser } from "@/lib/api";
 import { getSafeAvatarUrl } from "@/lib/helpers"; 
 import StreakDisplay from "@/components/StreakDisplay"; 
 

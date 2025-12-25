@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getUserStreak } from '@/lib/api';
+import { getUserStreak, UserStreak } from '@/lib/api';
 
 interface StreakDisplayProps {
   compact?: boolean;
@@ -9,7 +9,7 @@ interface StreakDisplayProps {
 }
 
 export default function StreakDisplay({ compact = false, className = '' }: StreakDisplayProps) {
-  const [streak, setStreak] = useState<any>(null);
+  const [streak, setStreak] = useState<UserStreak | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
