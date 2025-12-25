@@ -1128,7 +1128,7 @@ export async function approveExercisePlan(id: number) {
 
 export async function getCircles(search?: string) {
     try {
-        let endpoint = '/rejimde/v1/clans';
+        let endpoint = '/rejimde/v1/circles';
         if (search) endpoint += `?search=${encodeURIComponent(search)}`;
         
         const data = await fetchAPI(endpoint);
@@ -1141,7 +1141,7 @@ export async function getCircles(search?: string) {
 
 export async function getCircleBySlug(slug: string) {
     try {
-        const data = await fetchAPI(`/rejimde/v1/clans/${slug}`);
+        const data = await fetchAPI(`/rejimde/v1/circles/${slug}`);
         return data;
     } catch (error) {
         console.error("Circle detayı çekilemedi", error);
@@ -1158,21 +1158,26 @@ export async function createCircle(data: {
     logo?: string 
 }) {
     try {
-        // Backend'de /clans endpoint'i var, /circles yok
-        // Frontend field mappings: motto/description -> description, chat_status -> comment_status
-        const res = await fetch(`${API_URL}/rejimde/v1/clans`, {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({
                 name: data.name,
                 description: data.description || data.motto || '',
+                motto: data.motto || '',
                 privacy: data.privacy,
                 logo: data.logo,
-                comment_status: data.chat_status || 'open'
+                chat_status: data.chat_status || 'open'
             })
         });
         
-        const json = await res.json();
+        const text = await res.text();
+        let json;
+        try {
+            json = JSON.parse(text);
+        } catch (e) {
+            throw new Error('Sunucu hatası');
+        }
         
         if (res.ok && !json.code) {
             return { success: true, data: json };
@@ -1186,7 +1191,7 @@ export async function createCircle(data: {
 
 export async function updateCircle(id: number, data: any) {
     try {
-        const res = await fetch(`${API_URL}/rejimde/v1/clans/${id}`, {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${id}`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify(data)
@@ -1201,7 +1206,7 @@ export async function updateCircle(id: number, data: any) {
 
 export async function joinCircle(circleId: number) {
     try {
-        const res = await fetch(`${API_URL}/rejimde/v1/clans/${circleId}/join`, {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/join`, {
             method: 'POST',
             headers: getAuthHeaders()
         });
@@ -1215,7 +1220,7 @@ export async function joinCircle(circleId: number) {
 
 export async function leaveCircle() {
     try {
-        const res = await fetch(`${API_URL}/rejimde/v1/clans/leave`, {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/leave`, {
             method: 'POST',
             headers: getAuthHeaders()
         });
