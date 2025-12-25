@@ -57,7 +57,7 @@ export async function sendEvent(params: SendEventParams): Promise<EventResponse>
     // Content-Type kontrolü
     const contentType = res.headers.get('content-type');
     
-    if (!contentType || !contentType.includes('application/json')) {
+    if (!contentType || !contentType.toLowerCase().includes('application/json')) {
       // HTML veya başka format döndü - muhtemelen WordPress hatası
       const text = await res.text();
       console.error('Non-JSON response from API:', text.substring(0, 500));
