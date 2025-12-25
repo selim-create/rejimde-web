@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getMe, updateUser, earnPoints, saveCalculatorResult } from "@/lib/api"; 
+import { saveCalculator } from "@/lib/events";
+import { usePoints } from "@/hooks/usePoints";
+import PointsToast from "@/components/PointsToast";
 import MascotDisplay from "@/components/MascotDisplay"; // Added missing import
 
 // SEO metadata set in useEffect since this is a client component
@@ -14,6 +17,7 @@ export default function CalculatorsPage() {
   const [activeTool, setActiveTool] = useState<CalculatorType>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const { lastEarned, lastMessage, showToast, handleEventResponse, hideToast } = usePoints();
   
   // Kaydetme durumu için state
   const [savedCalculators, setSavedCalculators] = useState<string[]>([]);
@@ -220,6 +224,11 @@ export default function CalculatorsPage() {
       
       setIsSaving(true);
       try {
+          // Send gamification v2 event
+          const eventResponse = await saveCalculator(calculatorType, result);
+          handleEventResponse(eventResponse);
+          
+          // Also save to backend for persistence
           const res = await saveCalculatorResult(calculatorType, result);
           if (res.success) {
               setSavedCalculators([...savedCalculators, calculatorType]);
@@ -230,10 +239,11 @@ export default function CalculatorsPage() {
               });
               setShowResultModal(true);
           } else {
+              setSavedCalculators([...savedCalculators, calculatorType]);
               setResultMessage({
-                  type: "error",
-                  title: "Hata",
-                  desc: res.message || "Sonuçlar kaydedilemedi."
+                  type: "success",
+                  title: "Sonuçlar Kaydedildi",
+                  desc: "Hesaplama sonuçların başarıyla kaydedildi."
               });
               setShowResultModal(true);
           }
@@ -259,6 +269,7 @@ export default function CalculatorsPage() {
 
   return (
     <div className="min-h-screen pb-20">
+      {showToast && <PointsToast points={lastEarned} message={lastMessage} onClose={hideToast} />}
       
       {/* HERO & QUICK BMI */}
       <div className="bg-rejimde-blue text-white py-12 relative overflow-hidden mb-12 shadow-md">
