@@ -735,24 +735,182 @@ export async function getExpertBySlug(slug: string) {
 }
 
 /**
- * PUAN KAZANMA
+ * ==========================================
+ * EVENT-DRIVEN GAMIFICATION SYSTEM
+ * ==========================================
  */
-export async function earnPoints(action: string, ref_id?: string | number) {
+
+// Event Response Types
+export interface StreakData {
+  current: number;
+  is_milestone: boolean;
+  bonus: number;
+}
+
+export interface MilestoneData {
+  type: string;
+  value: number;
+  points: number;
+  awarded_to?: number;
+}
+
+export interface EventResponse {
+  success: boolean;
+  event_type: string;
+  points_earned: number;
+  total_score: number;
+  daily_score: number;
+  streak: StreakData | null;
+  milestone: MilestoneData | null;
+  message: string;
+}
+
+export interface UserStreak {
+  current_count: number;
+  longest_count: number;
+  last_activity_date: string | null;
+  grace_remaining: number;
+}
+
+export interface UserEvent {
+  id: number;
+  event_type: string;
+  points: number;
+  entity_type: string | null;
+  entity_id: number | null;
+  created_at: string;
+}
+
+/**
+ * Dispatch Event (New Event-Driven System)
+ */
+export async function dispatchEvent(
+  eventType: string, 
+  entityType?: string | null,
+  entityId?: number,
+  context?: Record<string, any>
+): Promise<EventResponse> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/gamification/earn`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/events/dispatch`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({
-        action: action, 
-        ref_id: ref_id
+        event_type: eventType,
+        entity_type: entityType,
+        entity_id: entityId,
+        context: context
       }),
     });
     const json = await res.json();
-    if (json.status === 'success') return { success: true, data: json.data };
-    return { success: false, message: json.message || 'Puan kazanılamadı.' };
+    
+    if (json.success) {
+      return json;
+    }
+    
+    return {
+      success: false,
+      event_type: eventType,
+      points_earned: 0,
+      total_score: 0,
+      daily_score: 0,
+      streak: null,
+      milestone: null,
+      message: json.message || 'Event dispatch failed'
+    };
   } catch (error) {
-    return { success: false, message: 'Sunucu hatası.' };
+    return {
+      success: false,
+      event_type: eventType,
+      points_earned: 0,
+      total_score: 0,
+      daily_score: 0,
+      streak: null,
+      milestone: null,
+      message: 'Server error'
+    };
   }
+}
+
+/**
+ * Get User Streak Information
+ */
+export async function getUserStreak(streakType: string = 'daily_login'): Promise<UserStreak | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/gamification/streak?type=${streakType}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Get User Event History
+ */
+export async function getUserEvents(limit: number = 50): Promise<UserEvent[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/gamification/events?limit=${limit}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
+ * Get User Milestones
+ */
+export async function getUserMilestones(): Promise<any[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/gamification/milestones`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
+ * PUAN KAZANMA (Backward Compatible Wrapper)
+ */
+export async function earnPoints(action: string, ref_id?: string | number) {
+  // Map old action names to new event types
+  const actionToEventMap: Record<string, string> = {
+    'daily_login': 'login_success',
+    'log_water': 'water_added',
+    'log_meal': 'meal_photo_uploaded',
+    'read_blog': 'blog_points_claimed',
+    'complete_workout': 'exercise_completed',
+    'update_weight': 'profile_weight_updated',
+    'join_circle': 'circle_joined'
+  };
+  
+  const eventType = actionToEventMap[action] || action;
+  
+  const result = await dispatchEvent(eventType, null, ref_id ? Number(ref_id) : undefined);
+  
+  // Convert to old format for backward compatibility
+  return {
+    success: result.success,
+    data: {
+      daily_score: result.daily_score,
+      total_score: result.total_score,
+      earned: result.points_earned
+    },
+    message: result.message
+  };
 }
 
 /**
