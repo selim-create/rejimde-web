@@ -801,6 +801,20 @@ export async function dispatchEvent(
         context: context
       }),
     });
+    
+    if (!res.ok) {
+      return {
+        success: false,
+        event_type: eventType,
+        points_earned: 0,
+        total_score: 0,
+        daily_score: 0,
+        streak: null,
+        milestone: null,
+        message: `HTTP error: ${res.status}`
+      };
+    }
+    
     const json = await res.json();
     
     // Backend response format: { status: 'success', data: {...} }
