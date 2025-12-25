@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { auth } from '@/lib/api';
+import { createdCircle } from '@/lib/events';
+import { usePoints } from '@/hooks/usePoints';
+import PointsToast from '@/components/PointsToast';
 
 // Hazır Circle Avatarları - Genişletilmiş Kütüphane
 const CIRCLE_AVATARS = [
@@ -33,6 +36,7 @@ const CIRCLE_AVATARS = [
 export default function CreateCirclePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const { lastEarned, lastMessage, showToast, handleEventResponse, hideToast } = usePoints();
   const [formData, setFormData] = useState<{
     name: string;
     motto: string;
@@ -56,6 +60,13 @@ export default function CreateCirclePage() {
     try {
       // API'ye gönder (logo verisiyle birlikte)
       const res = await auth.createCircle(formData);
+      
+      // Send gamification v2 event if we have circle ID
+      if (res && typeof res === 'object' && 'id' in res) {
+        const eventResponse = await createdCircle(res.id as number);
+        handleEventResponse(eventResponse);
+      }
+      
       alert('Circle başarıyla kuruldu! Circle Mentor sensin.');
       router.push('/circles'); 
     } catch (error: any) {
@@ -68,6 +79,7 @@ export default function CreateCirclePage() {
 
   return (
     <LayoutWrapper>
+      {showToast && <PointsToast points={lastEarned} message={lastMessage} onClose={hideToast} />}
       <div className="min-h-screen pb-20 font-sans text-gray-800 flex flex-col items-center bg-gray-50/50">
         
         {/* Header */}

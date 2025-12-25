@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { earnPoints, getProgress, claimReward } from "@/lib/api";
+import { claimBlogPoints } from "@/lib/events";
+import { usePoints } from "@/hooks/usePoints";
+import PointsToast from "@/components/PointsToast";
 import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 
@@ -52,6 +55,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
   const [isFavorited, setIsFavorited] = useState(false);
   const [infoModal, setInfoModal] = useState<{show: boolean, title: string, message: string, type: 'error' | 'success' | 'info'}>({ show: false, title: "", message: "", type: "info" });
   const [currentUser, setCurrentUser] = useState<{ role: string, name: string, id: number, avatar: string } | null>(null);
+  const { lastEarned, lastMessage, showToast, handleEventResponse, hideToast } = usePoints();
 
   // Yazar Detayları
   const [authorDetail, setAuthorDetail] = useState<any>({
@@ -166,51 +170,53 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       if (hasClaimed) return;
       setClaiming(true);
       
-      if (currentUser) {
-          try {
-              const result = await claimReward('blog', post.id);
-              if (result.success) {
-                  setHasClaimed(true);
-                  const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-                  claimedPosts.push(post.id);
-                  localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
-                  setRewardMessage({
-                      title: "Harikasın! 🎉",
-                      desc: `Bu yazıyı tamamladın ve ${result.data?.earned || 10} Puan kazandın!`,
-                      points: result.data?.earned || 10
-                  });
-                  setShowRewardModal(true);
-                  setClaiming(false);
-                  return;
-              }
-          } catch (e) { console.error(e); }
+      if (!currentUser) {
+          setInfoModal({ show: true, title: "Hata", message: "Giriş yapmalısınız.", type: "error" });
+          setClaiming(false);
+          return;
       }
       
-      const res = await earnPoints('read_blog', post.id);
-      if (res.success) {
-          setHasClaimed(true);
-          const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
-          claimedPosts.push(post.id);
-          localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
-          setRewardMessage({
-              title: "Harikasın! 🎉",
-              desc: `Bu yazıyı tamamladın ve ${res.data.earned} Puan kazandın!`,
-              points: res.data.earned
-          });
-          setShowRewardModal(true);
-      } else {
-          if (res.message?.includes('zaten')) {
+      try {
+          // Use new gamification v2 API
+          const isSticky = post.sticky || false;
+          const response = await claimBlogPoints(post.id, isSticky);
+          
+          if (response.status === 'success' && response.data) {
               setHasClaimed(true);
+              const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
+              claimedPosts.push(post.id);
+              localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
+              
+              // Handle event response with toast
+              handleEventResponse(response);
+              
+              // Also show reward modal
               setRewardMessage({
-                  title: "Daha Önce Aldın 😎",
-                  desc: "Bu yazının puanını zaten kapmışsın. Başka yazılara göz at!",
-                  points: 0
+                  title: "Harikasın! 🎉",
+                  desc: response.data.messages?.[0] || `Bu yazıyı tamamladın ve ${response.data.awarded_points_total} Puan kazandın!`,
+                  points: response.data.awarded_points_total
               });
               setShowRewardModal(true);
           } else {
-              setInfoModal({ show: true, title: "Hata", message: res.message || "Bir hata oluştu.", type: "error" });
+              // Check error message
+              const errorMsg = response.message || 'Bir hata oluştu.';
+              if (errorMsg.includes('zaten') || errorMsg.includes('aldın')) {
+                  setHasClaimed(true);
+                  setRewardMessage({
+                      title: "Daha Önce Aldın 😎",
+                      desc: "Bu yazının puanını zaten kapmışsın. Başka yazılara göz at!",
+                      points: 0
+                  });
+                  setShowRewardModal(true);
+              } else {
+                  setInfoModal({ show: true, title: "Bilgi", message: errorMsg, type: "info" });
+              }
           }
+      } catch (error) {
+          console.error('Blog claim error:', error);
+          setInfoModal({ show: true, title: "Hata", message: "Bir hata oluştu.", type: "error" });
       }
+      
       setClaiming(false);
   };
 
@@ -418,6 +424,8 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               </div>
           </div>
       )}
+      
+      {showToast && <PointsToast points={lastEarned} message={lastMessage} onClose={hideToast} />}
     </>
   );
 }

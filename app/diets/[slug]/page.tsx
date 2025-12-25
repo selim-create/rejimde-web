@@ -4,6 +4,9 @@ import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getPlanBySlug, getMe, earnPoints, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
+import { startDiet, completeDiet } from "@/lib/events";
+import { usePoints } from "@/hooks/usePoints";
+import PointsToast from "@/components/PointsToast";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 
@@ -94,6 +97,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   const [isCompleted, setIsCompleted] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
   const [modal, setModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void, onCancel?: () => void }>({ isOpen: false, title: '', message: '', type: 'success' });
+  const { lastEarned, lastMessage, showToast, handleEventResponse, hideToast } = usePoints();
 
   const showModal = (title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void) => {
       setModal({ 
@@ -246,6 +250,10 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       if (!currentUser) return showModal("Giriş Yapmalısın", "Diyet takibi yapmak için lütfen giriş yap.", "error");
       
       try {
+          // Send gamification v2 event
+          const eventResponse = await startDiet(plan.id);
+          handleEventResponse(eventResponse);
+          
           // Use new Progress API
           const result = await startProgress('diet', plan.id);
           if (result.success) {
@@ -289,11 +297,14 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
           try {
             const reward = parseInt(plan?.meta?.score_reward || "0");
             const result = await completeProgress('diet', plan.id);
+            
+            // Send gamification v2 event
+            const eventResponse = await completeDiet(plan.id, reward);
+            handleEventResponse(eventResponse);
+            
             if (result.success) {
-                await earnPoints('complete_plan', plan?.id);
                 showModal("Tebrikler Şampiyon! 🏆", `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, "success");
             } else {
-                await earnPoints('complete_plan', plan?.id);
                 await completePlanAPI(plan.id);
                 showModal("Tebrikler Şampiyon! 🏆", `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, "success");
             }
@@ -353,6 +364,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   return (
     <div className="min-h-screen pb-20 font-sans text-rejimde-text">
       <Modal {...modal} />
+      {showToast && <PointsToast points={lastEarned} message={lastMessage} onClose={hideToast} />}
       
       {/* HERO SECTION (Mevcut kodun aynısı) */}
       <div className="bg-white border-b-2 border-gray-200 pb-8 pt-8">
