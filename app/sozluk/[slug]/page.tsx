@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
-import { auth } from '@/lib/api';
+import { auth, getProgress, startProgress } from '@/lib/api';
 import Link from 'next/link';
 import MascotDisplay from '@/components/MascotDisplay';
 
@@ -64,6 +64,9 @@ export default function DictionaryDetailPage() {
   const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [learned, setLearned] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -71,6 +74,21 @@ export default function DictionaryDetailPage() {
             const data = await auth.getDictionaryItem(slug);
             if (data) {
                 setItem(data);
+                
+                // Check if user is logged in
+                const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+                if (token) {
+                    const userData = await auth.me();
+                    setCurrentUser(userData);
+                    
+                    // Check if already read
+                    if (userData && data.id) {
+                        const progressData = await getProgress('dictionary', data.id);
+                        if (progressData && (progressData.is_started || progressData.started)) {
+                            setLearned(true);
+                        }
+                    }
+                }
             } else {
                 // Bulunamadıysa listeye yönlendirilebilir veya hata gösterilebilir
                 // router.push('/sozluk');
@@ -84,10 +102,27 @@ export default function DictionaryDetailPage() {
     fetchData();
   }, [slug]);
 
-  const handleLearn = () => {
-      // Puan kazanma (Simülasyon)
-      setLearned(true);
-      // auth.earnPoints('read_blog') gibi bir aksiyon tetiklenebilir
+  const handleLearn = async () => {
+      if (!currentUser) {
+          setShowLoginModal(true);
+          return;
+      }
+      
+      if (learned) return;
+      
+      try {
+          // Mark as read/learned via API
+          const result = await startProgress('dictionary', item.id);
+          
+          if (result.success || result.already_started) {
+              setLearned(true);
+          } else {
+              setShowErrorModal(true);
+          }
+      } catch (e) {
+          console.error('Dictionary learn error:', e);
+          setShowErrorModal(true);
+      }
   };
 
   if (loading) return (
@@ -273,6 +308,45 @@ export default function DictionaryDetailPage() {
 
             </div>
         </LayoutWrapper>
+        
+        {/* Login Required Modal */}
+        {showLoginModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowLoginModal(false)}>
+                <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-6 text-center bg-blue-50">
+                        <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl mb-3 shadow-sm border-4 border-white bg-blue-500 text-white">
+                            <i className="fa-solid fa-info"></i>
+                        </div>
+                        <h3 className="font-black text-xl text-gray-800 mb-1">Giriş Yapmalısın</h3>
+                    </div>
+                    <div className="p-6 text-center">
+                        <p className="text-gray-600 font-bold mb-6 text-sm leading-relaxed">Puan kazanmak için lütfen giriş yapmalısın.</p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowLoginModal(false)} className="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold">İptal</button>
+                            <Link href="/login" className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-extrabold shadow-lg hover:bg-blue-700 transition text-center">Giriş Yap</Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+        
+        {/* Error Modal */}
+        {showErrorModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowErrorModal(false)}>
+                <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-6 text-center bg-red-50">
+                        <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl mb-3 shadow-sm border-4 border-white bg-red-500 text-white">
+                            <i className="fa-solid fa-xmark"></i>
+                        </div>
+                        <h3 className="font-black text-xl text-gray-800 mb-1">Hata</h3>
+                    </div>
+                    <div className="p-6 text-center">
+                        <p className="text-gray-600 font-bold mb-6 text-sm leading-relaxed">İşlem sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.</p>
+                        <button onClick={() => setShowErrorModal(false)} className="w-full bg-gray-900 text-white py-3 rounded-xl font-extrabold uppercase shadow-lg hover:bg-gray-800 hover:scale-[1.02] active:scale-95 transition-all">Tamam</button>
+                    </div>
+                </div>
+            </div>
+        )}
 
     </div>
   );

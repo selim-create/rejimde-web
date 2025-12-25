@@ -201,18 +201,19 @@ export default function PublicProfilePage() {
           showModal("Giriş Yapmalısın", "Beşlik çakmak için giriş yapmalısın.", "error");
           return;
       }
-
-      // Optimistik UI
-      setProfile({...profile, high_fives: profile.high_fives + 1});
+      
+      setActionLoading(true);
       
       const res = await auth.sendHighFive(profile.id);
       if (res && res.success) {
-          // Başarılı, ses efekti veya konfeti eklenebilir
+          // Update profile with new count
+          setProfile({...profile, high_fives: res.count || (profile.high_fives + 1)});
+          showModal("Beşlik Çakıldı! 🙏", "Enerjin ona ulaştı!", "success");
       } else {
-          // Geri al ve hata göster
-          setProfile({...profile, high_fives: profile.high_fives}); 
           showModal("Hata", res?.message || "Hata oluştu", "error");
       }
+      
+      setActionLoading(false);
   };
 
   if (loading) {

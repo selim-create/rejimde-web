@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPlanBySlug, getMe, earnPoints, getProgress, updateProgress, startProgress, completeProgress, completeProgressItem } from "@/lib/api";
+import { getPlanBySlug, getMe, earnPoints, getProgress, updateProgress, startProgress, completeProgress, toggleProgressItem } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 
@@ -178,16 +178,9 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
               const progressData = await getProgress('diet', planData.id);
               if (progressData) {
                   setCompletedMeals(progressData.completed_items || []);
-                  setIsStarted(progressData.started || false);
-                  setIsCompleted(progressData.completed || false);
+                  setIsStarted(progressData.is_started || progressData.started || false);
+                  setIsCompleted(progressData.is_completed || progressData.completed || false);
               }
-          } else {
-              const storedProgress = localStorage.getItem(`diet_progress_${planData.id}`);
-              if (storedProgress) {
-                  setCompletedMeals(JSON.parse(storedProgress));
-              }
-              const storedStarted = localStorage.getItem(`diet_started_${planData.id}`);
-              if (storedStarted) setIsStarted(true);
           }
 
         } else {
@@ -232,42 +225,28 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
 
   const toggleMealCompletion = async (mealId: string) => {
       if (!currentUser) {
-          // Guest user - use localStorage only
-          const newCompleted = completedMeals.includes(mealId) ? completedMeals.filter(id => id !== mealId) : [...completedMeals, mealId];
-          setCompletedMeals(newCompleted);
-          if (plan) {
-              localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
-          }
+          showModal("Giriş Yapmalısın", "Öğün takibi yapmak için lütfen giriş yap.", "error");
           return;
       }
 
       // Logged in user - use API
       try {
-          const result = await completeProgressItem('diet', plan.id, mealId);
+          const result = await toggleProgressItem('diet', plan.id, mealId);
           
-          if (result.success && result.data) {
-              setCompletedMeals(result.data.completed_items || []);
+          if (result.success) {
+              setCompletedMeals(result.completed_items || []);
               
               // Check if all meals completed
-              if (result.data.is_completed) {
+              if (result.is_completed) {
                   setIsCompleted(true);
                   handleCompleteDiet();
               }
           } else {
-              // Fallback to local state update on error
-              const newCompleted = completedMeals.includes(mealId) ? completedMeals.filter(id => id !== mealId) : [...completedMeals, mealId];
-              setCompletedMeals(newCompleted);
+              showModal("Hata", result.message || "Öğün işaretlenemedi.", "error");
           }
       } catch (e) {
           console.error('Meal completion error:', e);
-          // Fallback to local state update
-          const newCompleted = completedMeals.includes(mealId) ? completedMeals.filter(id => id !== mealId) : [...completedMeals, mealId];
-          setCompletedMeals(newCompleted);
-      }
-      
-      // Keep localStorage as cache for faster loading
-      if (plan) {
-          localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(completedMeals));
+          showModal("Hata", "İşlem sırasında bir hata oluştu.", "error");
       }
   };
 
@@ -283,7 +262,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
           // Call startProgress to mark as started
           const startResult = await startProgress('diet', plan.id);
           
-          if (startResult.success) {
+          if (startResult.success || startResult.already_started) {
               setIsStarted(true);
               
               // Dispatch gamification event
@@ -295,21 +274,10 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                   showModal("Başarılar!", "Bu diyete başladın.", "success");
               }
           } else {
-              // Check if already started
-              if (startResult.message?.includes('already') || startResult.message?.includes('zaten')) {
-                  setIsStarted(true);
-                  showModal("Bilgi", "Bu diyeti zaten takip ediyorsun.", "info");
-              } else {
-                  showModal("Hata", startResult.message || "Bir hata oluştu.", "error");
-              }
+              showModal("Hata", startResult.message || "Bir hata oluştu.", "error");
           }
       } catch (e) {
           showModal("Hata", "İşlem sırasında bir hata oluştu.", "error");
-      }
-      
-      // Keep localStorage as cache for faster loading
-      if (isStarted && plan) {
-          localStorage.setItem(`diet_started_${plan.id}`, 'true');
       }
   };
 
@@ -319,13 +287,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       const mealIds = currentDay.meals.map((m: any) => m.id);
       
       if (!currentUser) {
-          // Guest user - use localStorage
-          const newCompleted = [...completedMeals];
-          mealIds.forEach((id: string) => { if (!newCompleted.includes(id)) newCompleted.push(id); });
-          setCompletedMeals(newCompleted);
-          if (plan) {
-              localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
-          }
+          showModal("Giriş Yapmalısın", "Öğün takibi yapmak için lütfen giriş yap.", "error");
           return;
       }
       

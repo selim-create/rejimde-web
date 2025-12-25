@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, getProgress, updateProgress, startProgress, completeProgress, completeProgressItem } from "@/lib/api";
+import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, getProgress, updateProgress, startProgress, completeProgress, toggleProgressItem } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; // Import AuthorCard
@@ -311,22 +311,14 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           }
           setAuthorDetail(authorInfo);
 
-          // Progress: API'den çek (logged in user) veya localStorage'dan (guest)
+          // Progress: API'den çek (logged in user)
           if (userData) {
-              // Logged in user - API'den çek
               const progressData = await getProgress('exercise', planData.id);
               if (progressData) {
                   setCompletedExercises(progressData.completed_items || []);
-                  setIsStarted(progressData.started || false);
-                  setIsCompleted(progressData.completed || false);
+                  setIsStarted(progressData.is_started || progressData.started || false);
+                  setIsCompleted(progressData.is_completed || progressData.completed || false);
               }
-          } else {
-              // Guest user - localStorage fallback
-              const storedProgress = localStorage.getItem(`exercise_progress_${planData.id}`);
-              if (storedProgress) setCompletedExercises(JSON.parse(storedProgress));
-              
-              const storedStarted = localStorage.getItem(`exercise_started_${planData.id}`);
-              if (storedStarted) setIsStarted(true);
           }
 
         } else {
@@ -377,48 +369,28 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
 
   const toggleExerciseCompletion = async (exerciseId: string) => {
       if (!currentUser) {
-          // Guest user - use localStorage only
-          const newCompleted = completedExercises.includes(exerciseId)
-              ? completedExercises.filter(id => id !== exerciseId)
-              : [...completedExercises, exerciseId];
-          setCompletedExercises(newCompleted);
-          if (plan) {
-              localStorage.setItem(`exercise_progress_${plan.id}`, JSON.stringify(newCompleted));
-          }
+          showAlert("Giriş Yapmalısın", "Hareket takibi yapmak için lütfen giriş yap.", "error");
           return;
       }
 
       // Logged in user - use API
       try {
-          const result = await completeProgressItem('exercise', plan.id, exerciseId);
+          const result = await toggleProgressItem('exercise', plan.id, exerciseId);
           
-          if (result.success && result.data) {
-              setCompletedExercises(result.data.completed_items || []);
+          if (result.success) {
+              setCompletedExercises(result.completed_items || []);
               
               // Check if all exercises completed
-              if (result.data.is_completed) {
+              if (result.is_completed) {
                   setIsCompleted(true);
                   handleCompletePlan();
               }
           } else {
-              // Fallback to local state update on error
-              const newCompleted = completedExercises.includes(exerciseId)
-                  ? completedExercises.filter(id => id !== exerciseId)
-                  : [...completedExercises, exerciseId];
-              setCompletedExercises(newCompleted);
+              showAlert("Hata", result.message || "Hareket işaretlenemedi.", "error");
           }
       } catch (e) {
           console.error('Exercise completion error:', e);
-          // Fallback to local state update
-          const newCompleted = completedExercises.includes(exerciseId)
-              ? completedExercises.filter(id => id !== exerciseId)
-              : [...completedExercises, exerciseId];
-          setCompletedExercises(newCompleted);
-      }
-      
-      // Keep localStorage as cache for faster loading
-      if (plan) {
-          localStorage.setItem(`exercise_progress_${plan.id}`, JSON.stringify(completedExercises));
+          showAlert("Hata", "İşlem sırasında bir hata oluştu.", "error");
       }
   };
 
@@ -450,7 +422,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           // Call startProgress to mark as started
           const startResult = await startProgress('exercise', plan?.id);
           
-          if (startResult.success) {
+          if (startResult.success || startResult.already_started) {
               setIsStarted(true);
               
               // Dispatch gamification event
@@ -462,21 +434,10 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
                   showAlert("Başarılar!", "Antrenman programına başladın. Hedefine ulaşman dileğiyle!", "success");
               }
           } else {
-              // Check if already started
-              if (startResult.message?.includes('already') || startResult.message?.includes('zaten')) {
-                  setIsStarted(true);
-                  showAlert("Bilgi", "Bu antrenman programını zaten takip ediyorsun.", "info");
-              } else {
-                  showAlert("Hata", startResult.message || "Bir hata oluştu.", "error");
-              }
+              showAlert("Hata", startResult.message || "Bir hata oluştu.", "error");
           }
       } catch (e) {
           showAlert("Hata", "İşlem sırasında bir hata oluştu.", "error");
-      }
-      
-      // Keep localStorage as cache for faster loading
-      if (isStarted && plan) {
-          localStorage.setItem(`exercise_started_${plan.id}`, 'true');
       }
   };
 
