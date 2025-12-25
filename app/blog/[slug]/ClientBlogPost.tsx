@@ -442,4 +442,3 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
     </>
   );
 }
-}

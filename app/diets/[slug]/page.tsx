@@ -784,4 +784,3 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
     </div>
   );
 }
-}

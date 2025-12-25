@@ -831,4 +831,3 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
     </div>
   );
 }
-}
