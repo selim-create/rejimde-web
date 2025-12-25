@@ -791,20 +791,44 @@ export async function dispatchEvent(
   context?: Record<string, any>
 ): Promise<EventResponse> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/events/dispatch`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/gamification/earn`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({
-        event_type: eventType,
+        action: eventType,
+        ref_id: entityId,
         entity_type: entityType,
-        entity_id: entityId,
         context: context
       }),
     });
+    
+    if (!res.ok) {
+      return {
+        success: false,
+        event_type: eventType,
+        points_earned: 0,
+        total_score: 0,
+        daily_score: 0,
+        streak: null,
+        milestone: null,
+        message: `HTTP error: ${res.status}`
+      };
+    }
+    
     const json = await res.json();
     
-    if (json.success) {
-      return json;
+    // Backend response format: { status: 'success', data: {...} }
+    if (json.status === 'success') {
+      return {
+        success: true,
+        event_type: eventType,
+        points_earned: json.data?.points_earned || 0,
+        total_score: json.data?.total_score || 0,
+        daily_score: json.data?.daily_score || 0,
+        streak: json.data?.streak || null,
+        milestone: json.data?.milestone || null,
+        message: json.data?.message || 'Başarılı!'
+      };
     }
     
     return {
