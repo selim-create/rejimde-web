@@ -818,6 +818,7 @@ export interface EventResponse {
   streak: StreakData | null;
   milestone: MilestoneData | null;
   message: string;
+  already_earned?: boolean;
 }
 
 export interface UserStreak {
@@ -866,7 +867,8 @@ export async function dispatchEvent(
         daily_score: 0,
         streak: null,
         milestone: null,
-        message: `HTTP error: ${res.status}`
+        message: `HTTP error: ${res.status}`,
+        already_earned: false
       };
     }
     
@@ -882,7 +884,8 @@ export async function dispatchEvent(
         daily_score: json.data?.daily_score || 0,
         streak: json.data?.streak || null,
         milestone: json.data?.milestone || null,
-        message: json.data?.message || 'Başarılı!'
+        message: json.data?.message || 'Başarılı!',
+        already_earned: json.data?.already_earned || false
       };
     }
     
@@ -894,7 +897,8 @@ export async function dispatchEvent(
       daily_score: 0,
       streak: null,
       milestone: null,
-      message: json.message || 'Event dispatch failed'
+      message: json.message || 'Event dispatch failed',
+      already_earned: false
     };
   } catch (error) {
     return {
@@ -905,7 +909,8 @@ export async function dispatchEvent(
       daily_score: 0,
       streak: null,
       milestone: null,
-      message: 'Server error'
+      message: 'Server error',
+      already_earned: false
     };
   }
 }
@@ -1988,6 +1993,30 @@ export async function claimReward(contentType: string, contentId: number | strin
         return { success: false, message: json.message };
     } catch (error) {
         return { success: false, message: 'Ödül talep edilemedi.' };
+    }
+}
+
+/**
+ * Tek bir öğeyi tamamla (meal, exercise move)
+ * @param contentType - 'diet' or 'exercise'
+ * @param contentId - İçeriğin ID'si
+ * @param itemId - Tamamlanacak öğenin ID'si (meal id, exercise move id)
+ */
+export async function completeProgressItem(contentType: string, contentId: number | string, itemId: string) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/progress/${contentType}/${contentId}/complete-item`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ item_id: itemId })
+        });
+        
+        const json = await res.json();
+        if (json.status === 'success') {
+            return { success: true, data: json.data };
+        }
+        return { success: false, message: json.message };
+    } catch (error) {
+        return { success: false, message: 'İşlem başarısız.' };
     }
 }
 

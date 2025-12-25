@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPlanBySlug, getMe, earnPoints, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
+import { getPlanBySlug, getMe, earnPoints, getProgress, updateProgress, startProgress, completeProgress, completeProgressItem } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 
@@ -37,14 +37,14 @@ const completePlanAPI = async (id: number) => {
 };
 
 // --- MODAL ---
-const Modal = ({ isOpen, title, message, type, onConfirm, onCancel }: { isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void, onCancel?: () => void }) => {
+const Modal = ({ isOpen, title, message, type, onConfirm, onCancel }: { isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm' | 'info', onConfirm?: () => void, onCancel?: () => void }) => {
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 transform transition-all scale-100 animate-in zoom-in-95 duration-300 relative overflow-hidden">
-                <div className={`absolute top-0 left-0 w-full h-2 ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto ${type === 'success' ? 'bg-green-100 text-green-600' : type === 'error' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                    <i className={`fa-solid ${type === 'success' ? 'fa-trophy' : type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-question'} text-2xl`}></i>
+                <div className={`absolute top-0 left-0 w-full h-2 ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : type === 'info' ? 'bg-blue-500' : 'bg-blue-500'}`}></div>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto ${type === 'success' ? 'bg-green-100 text-green-600' : type === 'error' ? 'bg-red-100 text-red-600' : type === 'info' ? 'bg-blue-100 text-blue-600' : 'bg-blue-100 text-blue-600'}`}>
+                    <i className={`fa-solid ${type === 'success' ? 'fa-trophy' : type === 'error' ? 'fa-circle-exclamation' : type === 'info' ? 'fa-circle-info' : 'fa-circle-question'} text-2xl`}></i>
                 </div>
                 <h3 className="text-xl font-black text-gray-900 text-center mb-2">{title}</h3>
                 <p className="text-gray-500 text-center text-sm mb-8 leading-relaxed">{message}</p>
@@ -95,12 +95,12 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   const [progress, setProgress] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
-  const [modal, setModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void, onCancel?: () => void }>({ isOpen: false, title: '', message: '', type: 'success' });
+  const [modal, setModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm' | 'info', onConfirm?: () => void, onCancel?: () => void }>({ isOpen: false, title: '', message: '', type: 'success' });
   
   // Gamification Hook
   const { dispatchAction, lastResult, showToast, closeToast } = useGamification();
 
-  const showModal = (title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void) => {
+  const showModal = (title: string, message: string, type: 'success' | 'error' | 'confirm' | 'info', onConfirm?: () => void) => {
       setModal({ 
           isOpen: true, title, message, type, 
           onConfirm: () => { if(onConfirm) onConfirm(); setModal(prev => ({...prev, isOpen: false})); },
@@ -231,47 +231,85 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   const getTotalMeals = () => planData.reduce((acc, day) => acc + (Array.isArray(day.meals) ? day.meals.length : 0), 0);
 
   const toggleMealCompletion = async (mealId: string) => {
-      const newCompleted = completedMeals.includes(mealId) ? completedMeals.filter(id => id !== mealId) : [...completedMeals, mealId];
-      setCompletedMeals(newCompleted);
-      if (plan) {
-          if (currentUser) {
-              await updateProgress('diet', plan.id, { completed_items: newCompleted, progress_percentage: Math.round((newCompleted.length / getTotalMeals()) * 100) });
+      if (!currentUser) {
+          // Guest user - use localStorage only
+          const newCompleted = completedMeals.includes(mealId) ? completedMeals.filter(id => id !== mealId) : [...completedMeals, mealId];
+          setCompletedMeals(newCompleted);
+          if (plan) {
+              localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
           }
-          localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
+          return;
+      }
+
+      // Logged in user - use API
+      try {
+          const result = await completeProgressItem('diet', plan.id, mealId);
+          
+          if (result.success && result.data) {
+              setCompletedMeals(result.data.completed_items || []);
+              
+              // Check if all meals completed
+              if (result.data.is_completed) {
+                  setIsCompleted(true);
+                  handleCompleteDiet();
+              }
+          } else {
+              // Fallback to local state update on error
+              const newCompleted = completedMeals.includes(mealId) ? completedMeals.filter(id => id !== mealId) : [...completedMeals, mealId];
+              setCompletedMeals(newCompleted);
+          }
+      } catch (e) {
+          console.error('Meal completion error:', e);
+          // Fallback to local state update
+          const newCompleted = completedMeals.includes(mealId) ? completedMeals.filter(id => id !== mealId) : [...completedMeals, mealId];
+          setCompletedMeals(newCompleted);
+      }
+      
+      // Keep localStorage as cache for faster loading
+      if (plan) {
+          localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(completedMeals));
       }
   };
 
   const handleStartDiet = async () => {
-      // Eğer zaten başlamışsa, hata mesajı vermek yerine bilgilendir
-      if (isStarted) {
-          showModal("Zaten Başladın", "Bu diyeti zaten takip ediyorsun. Öğünleri işaretleyerek ilerleyebilirsin.", "success");
-          return;
-      }
-
       if (!currentUser) return showModal("Giriş Yapmalısın", "Diyet takibi yapmak için lütfen giriş yap.", "error");
       
+      if (isStarted) {
+          showModal("Zaten Başladın", "Bu diyeti zaten takip ediyorsun. Öğünleri işaretleyerek ilerleyebilirsin.", "info");
+          return;
+      }
+      
       try {
-          // Dispatch diet_started event
-          const result = await dispatchAction('diet_started', 'diet', plan.id);
+          // Call startProgress to mark as started
+          const startResult = await startProgress('diet', plan.id);
           
-          if (result.success) {
+          if (startResult.success) {
               setIsStarted(true);
-              localStorage.setItem(`diet_started_${plan.id}`, 'true');
-              showModal("Başarılar!", "Bu diyete başladın. İlerlemeni kaydetmek için öğünleri işaretlemeyi unutma.", "success");
               
-              // Also call startProgress for tracking
-              await startProgress('diet', plan.id);
+              // Dispatch gamification event
+              const eventResult = await dispatchAction('diet_started', 'diet', plan.id);
+              
+              if (eventResult.success && !eventResult.already_earned) {
+                  showModal("Başarılar!", `Bu diyete başladın! +${eventResult.points_earned} puan kazandın.`, "success");
+              } else {
+                  showModal("Başarılar!", "Bu diyete başladın.", "success");
+              }
           } else {
-              // Fallback
-              setIsStarted(true);
-              localStorage.setItem(`diet_started_${plan.id}`, 'true');
-              showModal("Başarılar!", "Bu diyete başladın.", "success");
+              // Check if already started
+              if (startResult.message?.includes('already') || startResult.message?.includes('zaten')) {
+                  setIsStarted(true);
+                  showModal("Bilgi", "Bu diyeti zaten takip ediyorsun.", "info");
+              } else {
+                  showModal("Hata", startResult.message || "Bir hata oluştu.", "error");
+              }
           }
       } catch (e) {
-          // Fallback
-          setIsStarted(true);
+          showModal("Hata", "İşlem sırasında bir hata oluştu.", "error");
+      }
+      
+      // Keep localStorage as cache for faster loading
+      if (isStarted && plan) {
           localStorage.setItem(`diet_started_${plan.id}`, 'true');
-          showModal("Başarılar!", "Bu diyete başladın.", "success");
       }
   };
 
@@ -279,14 +317,23 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       const currentDay = planData.find((d: any) => d.dayNumber == activeDay);
       if (!currentDay || !currentDay.meals) return;
       const mealIds = currentDay.meals.map((m: any) => m.id);
-      const newCompleted = [...completedMeals];
-      mealIds.forEach((id: string) => { if (!newCompleted.includes(id)) newCompleted.push(id); });
-      setCompletedMeals(newCompleted);
-      if (plan) {
-          if (currentUser) {
-              await updateProgress('diet', plan.id, { completed_items: newCompleted, progress_percentage: Math.round((newCompleted.length / getTotalMeals()) * 100) });
+      
+      if (!currentUser) {
+          // Guest user - use localStorage
+          const newCompleted = [...completedMeals];
+          mealIds.forEach((id: string) => { if (!newCompleted.includes(id)) newCompleted.push(id); });
+          setCompletedMeals(newCompleted);
+          if (plan) {
+              localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
           }
-          localStorage.setItem(`diet_progress_${plan.id}`, JSON.stringify(newCompleted));
+          return;
+      }
+      
+      // Logged in user - call API for each meal
+      for (const mealId of mealIds) {
+          if (!completedMeals.includes(mealId)) {
+              await toggleMealCompletion(mealId);
+          }
       }
   };
 
