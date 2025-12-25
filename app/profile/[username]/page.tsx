@@ -278,7 +278,7 @@ export default function PublicProfilePage() {
                     </div>
                     {/* Level Badge */}
                     <div className="absolute -top-3 -right-3 bg-gray-900 text-white px-3 py-1 rounded-full text-xs font-black border-4 border-white shadow-sm z-10">
-                        LVL {profile.level}
+                        LVL {typeof profile.level === 'object' ? profile.level.level : (profile.level || 1)}
                     </div>
                 </div>
 
