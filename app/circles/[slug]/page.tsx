@@ -4,6 +4,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { auth, getComments, createComment } from '@/lib/api';
+import { joinedCircle } from '@/lib/events';
+import { usePoints } from '@/hooks/usePoints';
+import PointsToast from '@/components/PointsToast';
 
 // Hazır Circle Avatarları
 const CIRCLE_AVATARS = [
@@ -53,6 +56,7 @@ export default function CircleDetailPage() {
   const [isMember, setIsMember] = useState(false);
   const [isMentor, setIsMentor] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const { lastEarned, lastMessage, showToast, handleEventResponse, hideToast } = usePoints();
 
   // Chat States
   const [chatMessages, setChatMessages] = useState<any[]>([]);
@@ -184,6 +188,11 @@ export default function CircleDetailPage() {
     setActionLoading(true);
     try {
       await auth.joinCircle(circle.id);
+      
+      // Send gamification v2 event
+      const eventResponse = await joinedCircle(circle.id);
+      handleEventResponse(eventResponse);
+      
       setIsMember(true);
       setCircle({ ...circle, member_count: circle.member_count + 1 });
       showMessage("Başarılı", "Circle'a hoş geldin!", "success");
@@ -244,6 +253,7 @@ export default function CircleDetailPage() {
 
   return (
     <div className="min-h-screen pb-20 font-sans text-gray-800 bg-gray-50/50">
+      {showToast && <PointsToast points={lastEarned} message={lastMessage} onClose={hideToast} />}
       
       {/* HEADER */}
       <div className="bg-[#FF6F91] text-white py-12 md:py-16 relative overflow-hidden shadow-lg mb-8">
