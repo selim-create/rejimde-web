@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { fetchComments, postComment, toggleLikeComment, CommentData } from '@/lib/comment-service';
+import { commentCreated, likeComment as sendLikeCommentEvent } from '@/lib/events';
 
 // --- SABİTLER: DETAYLI UZMANLIK KATEGORİLERİ ---
 const SPECIALTY_CATEGORIES = [
@@ -154,13 +155,18 @@ export default function CommentsSection({
 
   const handlePostComment = useCallback(async (content: string, rating: number) => {
     try {
-      await postComment({
+      const result = await postComment({
         post: postId,
         content: content,
         context: context,
         parent: replyTo ? replyTo.id : 0,
         rating: (allowRating && !replyTo) ? rating : undefined,
       });
+      
+      // Send comment created event if we have the comment ID
+      if (result && typeof result === 'object' && 'id' in result) {
+        commentCreated(result.id as number, context, postId).catch(console.error);
+      }
       
       setReplyTo(null);
       loadComments();
@@ -175,7 +181,11 @@ export default function CommentsSection({
     setComments(prevComments => updateCommentLikeInTree(prevComments, commentId));
     
     try {
-        await toggleLikeComment(commentId);
+        const result = await toggleLikeComment(commentId);
+        // Send like event only if the comment was liked (not unliked)
+        if (result && result.liked) {
+          sendLikeCommentEvent(commentId).catch(console.error);
+        }
     } catch (e) {
         setComments(prevComments => updateCommentLikeInTree(prevComments, commentId));
     }
