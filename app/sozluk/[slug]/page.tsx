@@ -65,6 +65,8 @@ export default function DictionaryDetailPage() {
   const [loading, setLoading] = useState(true);
   const [learned, setLearned] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -102,7 +104,7 @@ export default function DictionaryDetailPage() {
 
   const handleLearn = async () => {
       if (!currentUser) {
-          alert("Puan kazanmak için giriş yapmalısın!");
+          setShowLoginModal(true);
           return;
       }
       
@@ -115,11 +117,11 @@ export default function DictionaryDetailPage() {
           if (result.success || result.already_started) {
               setLearned(true);
           } else {
-              alert("İşlem sırasında bir hata oluştu.");
+              setShowErrorModal(true);
           }
       } catch (e) {
           console.error('Dictionary learn error:', e);
-          alert("İşlem sırasında bir hata oluştu.");
+          setShowErrorModal(true);
       }
   };
 
@@ -306,6 +308,45 @@ export default function DictionaryDetailPage() {
 
             </div>
         </LayoutWrapper>
+        
+        {/* Login Required Modal */}
+        {showLoginModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowLoginModal(false)}>
+                <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-6 text-center bg-blue-50">
+                        <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl mb-3 shadow-sm border-4 border-white bg-blue-500 text-white">
+                            <i className="fa-solid fa-info"></i>
+                        </div>
+                        <h3 className="font-black text-xl text-gray-800 mb-1">Giriş Yapmalısın</h3>
+                    </div>
+                    <div className="p-6 text-center">
+                        <p className="text-gray-600 font-bold mb-6 text-sm leading-relaxed">Puan kazanmak için lütfen giriş yapmalısın.</p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowLoginModal(false)} className="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold">İptal</button>
+                            <Link href="/login" className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-extrabold shadow-lg hover:bg-blue-700 transition text-center">Giriş Yap</Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+        
+        {/* Error Modal */}
+        {showErrorModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowErrorModal(false)}>
+                <div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-6 text-center bg-red-50">
+                        <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center text-3xl mb-3 shadow-sm border-4 border-white bg-red-500 text-white">
+                            <i className="fa-solid fa-xmark"></i>
+                        </div>
+                        <h3 className="font-black text-xl text-gray-800 mb-1">Hata</h3>
+                    </div>
+                    <div className="p-6 text-center">
+                        <p className="text-gray-600 font-bold mb-6 text-sm leading-relaxed">İşlem sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.</p>
+                        <button onClick={() => setShowErrorModal(false)} className="w-full bg-gray-900 text-white py-3 rounded-xl font-extrabold uppercase shadow-lg hover:bg-gray-800 hover:scale-[1.02] active:scale-95 transition-all">Tamam</button>
+                    </div>
+                </div>
+            </div>
+        )}
 
     </div>
   );

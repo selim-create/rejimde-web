@@ -875,17 +875,17 @@ export async function dispatchEvent(
       };
     }
     
-    // 400 hatası ama already earned durumu
+    // 400 error but already earned situation
     if (res.status === 400 && json.message?.includes('already')) {
       return {
-        success: true, // Hata değil, zaten kazanılmış
+        success: true, // Not an error, already earned
         event_type: eventType,
         points_earned: 0,
         total_score: 0,
         daily_score: 0,
         streak: null,
         milestone: null,
-        message: json.message || 'Zaten kazanıldı',
+        message: json.message || 'Already earned',
         already_earned: true
       };
     }
@@ -2007,10 +2007,10 @@ export async function claimReward(contentType: string, contentId: number | strin
 }
 
 /**
- * Tek bir öğeyi toggle et (meal, exercise move) - ekle veya çıkar
+ * Toggle a single item (meal, exercise move) - add or remove
  * @param contentType - 'diet' or 'exercise'
- * @param contentId - İçeriğin ID'si
- * @param itemId - Toggle edilecek öğenin ID'si (meal id, exercise move id)
+ * @param contentId - Content ID
+ * @param itemId - Item ID to toggle (meal id, exercise move id)
  */
 export async function toggleProgressItem(contentType: string, contentId: number | string, itemId: string) {
     try {
@@ -2022,7 +2022,7 @@ export async function toggleProgressItem(contentType: string, contentId: number 
         
         const json = await res.json();
         
-        // 200 veya 409 durumlarını handle et
+        // Handle 200 or 409 status codes
         if (json.status === 'success' || json.data) {
             return { 
                 success: true, 
@@ -2033,7 +2033,7 @@ export async function toggleProgressItem(contentType: string, contentId: number 
         }
         return { success: false, message: json.message };
     } catch (error) {
-        return { success: false, message: 'İşlem başarısız.' };
+        return { success: false, message: 'Operation failed.' };
     }
 }
 
