@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { fetchComments, postComment, toggleLikeComment, CommentData } from '@/lib/comment-service';
+import { dispatchEvent } from '@/lib/api';
+import PointsToast from '@/components/PointsToast';
+import { useGamification } from '@/hooks/useGamification';
 
 // --- SABİTLER: DETAYLI UZMANLIK KATEGORİLERİ ---
 const SPECIALTY_CATEGORIES = [
@@ -123,6 +126,9 @@ export default function CommentsSection({
   
   // User state
   const [user, setUser] = useState<{ isLoggedIn: boolean, name: string, slug: string, avatar: string, role: string, rank?: number, score?: number } | null>(null);
+  
+  // Gamification Hook
+  const { dispatchAction, lastResult, showToast, closeToast } = useGamification();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -162,12 +168,18 @@ export default function CommentsSection({
         rating: (allowRating && !replyTo) ? rating : undefined,
       });
       
+      // Dispatch comment_created event
+      await dispatchAction('comment_created', context, postId, {
+        has_rating: allowRating && !replyTo && rating > 0,
+        is_reply: replyTo !== null
+      });
+      
       setReplyTo(null);
       loadComments();
     } catch (error: any) {
       alert(error.message || 'Yorum gönderilirken bir hata oluştu.');
     }
-  }, [postId, context, replyTo, allowRating]);
+  }, [postId, context, replyTo, allowRating, dispatchAction]);
 
   const handleLike = useCallback(async (commentId: number) => {
     if (!user?.isLoggedIn) return alert("Beğenmek için giriş yapmalısın.");
@@ -176,10 +188,13 @@ export default function CommentsSection({
     
     try {
         await toggleLikeComment(commentId);
+        
+        // Dispatch comment_liked event
+        await dispatchAction('comment_liked', 'comment', commentId);
     } catch (e) {
         setComments(prevComments => updateCommentLikeInTree(prevComments, commentId));
     }
-  }, [user]);
+  }, [user, dispatchAction]);
 
   const updateCommentLikeInTree = (list: CommentData[], targetId: number): CommentData[] => {
     return list.map(c => {
@@ -671,6 +686,17 @@ const CommentItem = ({
               </div>
             )}
           </div>
+          
+          {/* Points Toast Notification */}
+          {showToast && lastResult && (
+            <PointsToast
+              points={lastResult.points_earned}
+              message={lastResult.message}
+              streak={lastResult.streak}
+              milestone={lastResult.milestone}
+              onClose={closeToast}
+            />
+          )}
       </div>
     );
 };
