@@ -49,6 +49,14 @@ export interface User {
     token: string;
     score: number;
     streak: number;
-    level: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-    levelName: 'Begin' | 'Adapt' | 'Commit' | 'Balance' | 'Strengthen' | 'Sustain' | 'Mastery' | 'Transform';
+    rank: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8; // Kullanıcı deneyim seviyesi (eski level)
+    level: { // Puan bazlı level sistemi (eski league)
+        id: string;
+        name: string;
+        level: number;
+        slug: string;
+        icon: string;
+        color: string;
+        description: string;
+    };
 }

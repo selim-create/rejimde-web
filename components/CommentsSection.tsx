@@ -122,13 +122,13 @@ export default function CommentsSection({
   const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'oldest'>('newest');
   
   // User state
-  const [user, setUser] = useState<{ isLoggedIn: boolean, name: string, slug: string, avatar: string, role: string, level?: number, score?: number } | null>(null);
+  const [user, setUser] = useState<{ isLoggedIn: boolean, name: string, slug: string, avatar: string, role: string, rank?: number, score?: number } | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('jwt_token');
       if (token) {
-        const storedLevel = localStorage.getItem('user_level');
+        const storedRank = localStorage.getItem('user_rank') || localStorage.getItem('user_level'); // backward compatibility
         const storedScore = localStorage.getItem('user_score');
         setUser({
           isLoggedIn: true,
@@ -136,7 +136,7 @@ export default function CommentsSection({
           slug: localStorage.getItem('user_slug') || '', // Slug eklendi
           avatar: localStorage.getItem('user_avatar') || `https://api.dicebear.com/9.x/avataaars/svg?seed=User`,
           role: localStorage.getItem('user_role') || 'rejimde_user',
-          level: storedLevel ? parseInt(storedLevel) : 1,
+          rank: storedRank ? parseInt(storedRank) : 1,
           score: storedScore ? parseInt(storedScore) : 0
         });
       }
@@ -353,7 +353,7 @@ const CommentForm = ({ user, onSubmit, allowRating, isReply = false, autoFocus =
                     />
                     {user?.isLoggedIn && !isReply && (
                         <div className="text-[10px] font-black text-center text-purple-600 mt-1 bg-purple-50 rounded-md py-0.5">
-                            {user.role === 'rejimde_pro' ? `${user.score || 0} XP` : `LVL ${typeof user.level === 'object' ? user.level.name || user.level.level || 1 : user.level || 1}`}
+                            {user.role === 'rejimde_pro' ? `${user.score || 0} XP` : `RANK ${user.rank || 1}`}
                         </div>
                     )}
                 </div>
@@ -532,12 +532,12 @@ const CommentItem = ({
                     </div>
                 ) : (
                     <div className="flex flex-col items-center mt-1 w-full gap-1">
-                        {author.level && (
+                        {author.rank && (
                             <div className="bg-gradient-to-r from-gray-900 to-gray-700 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-md flex items-center gap-1">
-                                <i className="fa-solid fa-bolt text-yellow-400 text-[8px]"></i> {typeof author.level === 'object' ? author.level.name : author.level}
+                                <i className="fa-solid fa-bolt text-yellow-400 text-[8px]"></i> RANK {author.rank}
                             </div>
                         )}
-                        {(author.score || author.level) && (
+                        {(author.score || author.rank) && (
                             <span className="text-[9px] text-gray-500 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-100 shadow-sm">
                                 {author.score ? `${author.score} P` : ''}
                             </span>

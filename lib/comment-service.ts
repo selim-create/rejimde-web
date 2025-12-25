@@ -4,7 +4,7 @@ export interface CommentUser {
   name: string;
   slug?: string;
   avatar: string;
-  level?: string | number | { name: string; level: number; [key: string]: any };
+  rank?: string | number; // Renamed from level to rank - user experience level
   role?: string;
   profession?: string;
   is_expert?: boolean;
@@ -47,7 +47,7 @@ const mapSafeComment = (c: any): CommentData => {
     let authorSlug = '';
     let authorRole = 'guest';
     let isExpertUser = false;
-    let authorLevel: string | number = 1;
+    let authorRank: string | number = 1; // Renamed from authorLevel to authorRank
     let authorProfession = 'Üye';
     let isOnline = false;
     let isVerified = false;
@@ -58,11 +58,16 @@ const mapSafeComment = (c: any): CommentData => {
         authorSlug = c.author.slug || c.author.username || '';
         authorRole = c.author.role || 'rejimde_user';
         isExpertUser = c.author.is_expert || c.author.role === 'rejimde_pro' || false;
-        // Handle level - it could be an object or a number
-        if (typeof c.author.level === 'object' && c.author.level) {
-            authorLevel = c.author.level.name || c.author.level.level || 1;
-        } else {
-            authorLevel = c.author.level || 1;
+        // Handle rank (old level field from API) - it could be an object or a number
+        if (c.author.rank !== undefined) {
+            // API now sends rank
+            authorRank = c.author.rank || 1;
+        } else if (typeof c.author.level === 'object' && c.author.level) {
+            // If level is object, it's the new level system, extract rank if available
+            authorRank = c.author.level.level || 1;
+        } else if (typeof c.author.level === 'number') {
+            // Backward compatibility: old level field
+            authorRank = c.author.level || 1;
         }
         authorProfession = c.author.profession || '';
         isOnline = c.author.is_online || false;
@@ -113,7 +118,7 @@ const mapSafeComment = (c: any): CommentData => {
             avatar: avatarUrl,
             role: authorRole,
             is_expert: isExpertUser,
-            level: authorLevel,
+            rank: authorRank, // Changed from level to rank
             profession: authorProfession,
             is_online: isOnline,
             is_verified: isVerified,
