@@ -667,7 +667,8 @@ export async function getPostBySlug(slug: string) {
         author_is_expert: authorData.is_expert,
         
         category: categoryName, // Artık dinamik
-        read_time: `${readTime} dk`
+        read_time: `${readTime} dk`,
+        sticky: post.sticky || false
     };
   } catch (error) {
     console.error("Blog detayı çekilemedi", error);

@@ -39,6 +39,7 @@ export interface BlogPost {
     image: string;
     category: string;
     read_time: string;
+    sticky?: boolean;
 }
 
 // Kullanıcı (User) Tipi
