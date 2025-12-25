@@ -128,7 +128,7 @@ interface AuthorCardProps {
         profession?: string;
         isExpert?: boolean;
         isVerified?: boolean;
-        level?: number;
+        rank?: number; // Renamed from level - user experience rank
         score?: number;
         rejimde_total_score?: number;
         articleCount?: number;
