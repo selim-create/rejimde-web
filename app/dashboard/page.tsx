@@ -4,8 +4,11 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import LayoutWrapper from '@/components/LayoutWrapper';
 import MascotDisplay from "@/components/MascotDisplay";
+import StreakDisplay from "@/components/StreakDisplay";
+import PointsToast from "@/components/PointsToast";
 import { earnPoints, getMe, getGamificationStats, getPlans, getExercisePlans } from "@/lib/api"; 
 import { MascotState } from "@/lib/mascot-config";
+import { useGamification } from "@/hooks/useGamification";
 
 export default function DashboardPage() {
   // User & Gamification States
@@ -22,6 +25,9 @@ export default function DashboardPage() {
   const [mascotState, setMascotState] = useState<MascotState>("idle_dashboard");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Gamification Hook
+  const { dispatchAction, lastResult, showToast, closeToast } = useGamification();
 
   // Veri Çekme
   useEffect(() => {
@@ -299,6 +305,9 @@ export default function DashboardPage() {
           {/* RIGHT SIDEBAR: Level & Social */}
           <div className="lg:col-span-3 space-y-6">
               
+              {/* STREAK DISPLAY */}
+              {!user?.roles?.includes('rejimde_pro') && <StreakDisplay />}
+              
               {/* LEVEL WIDGET */}
               <Link href="/levels" className="block bg-white border-2 border-gray-200 rounded-[2rem] overflow-hidden shadow-card group hover:border-yellow-400 transition cursor-pointer">
                   <div className={`p-4 border-b-2 flex justify-between items-center ${levelInfo?.bg ? levelInfo.bg.replace('bg-gradient-to-br', 'bg') : 'bg-gray-400'} text-white`}>
@@ -386,6 +395,17 @@ export default function DashboardPage() {
 
       </div>
     </div>
+    
+    {/* Points Toast Notification */}
+    {showToast && lastResult && (
+      <PointsToast
+        points={lastResult.points_earned}
+        message={lastResult.message}
+        streak={lastResult.streak}
+        milestone={lastResult.milestone}
+        onClose={closeToast}
+      />
+    )}
     </LayoutWrapper>
   );
 }

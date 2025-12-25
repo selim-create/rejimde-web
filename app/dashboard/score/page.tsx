@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import LayoutWrapper from '@/components/LayoutWrapper';
 import MascotDisplay from "@/components/MascotDisplay";
-import { auth, getAllBadges } from "@/lib/api";
+import StreakDisplay from "@/components/StreakDisplay";
+import { auth, getAllBadges, getUserStreak, getUserEvents } from "@/lib/api";
 
 export default function ScoreAnalysisPage() {
   const [loading, setLoading] = useState(true);
@@ -15,6 +16,8 @@ export default function ScoreAnalysisPage() {
   const [levelName, setLevelName] = useState('Begin (Level 1)');
   const [earnedBadgeIds, setEarnedBadgeIds] = useState<number[]>([]);
   const [allBadges, setAllBadges] = useState<any[]>([]);
+  const [streakData, setStreakData] = useState<any>(null);
+  const [recentEvents, setRecentEvents] = useState<any[]>([]);
 
   // Simulator States
   const [water, setWater] = useState(3);
@@ -29,9 +32,11 @@ export default function ScoreAnalysisPage() {
     async function loadData() {
         try {
             // Paralel veri çekimi (Hız için)
-            const [stats, badgesData] = await Promise.all([
+            const [stats, badgesData, streak, events] = await Promise.all([
                 auth.getGamificationStats(),
-                getAllBadges()
+                getAllBadges(),
+                getUserStreak(),
+                getUserEvents(10)
             ]);
 
             // İstatistikleri İşle
@@ -60,6 +65,16 @@ export default function ScoreAnalysisPage() {
             // Rozetleri İşle
             if (Array.isArray(badgesData)) {
                 setAllBadges(badgesData);
+            }
+            
+            // Streak verisi
+            if (streak) {
+                setStreakData(streak);
+            }
+            
+            // Event geçmişi
+            if (Array.isArray(events)) {
+                setRecentEvents(events);
             }
 
         } catch (error) {
@@ -309,6 +324,39 @@ export default function ScoreAnalysisPage() {
 
           {/* RIGHT COLUMN: Weekly Trend */}
           <div className="lg:col-span-4 space-y-6">
+              
+              {/* Streak Display */}
+              <StreakDisplay />
+              
+              {/* Recent Events */}
+              {recentEvents.length > 0 && (
+                <div className="bg-white border-2 border-gray-200 rounded-[2rem] p-6 shadow-sm">
+                  <h3 className="font-extrabold text-gray-700 mb-4 uppercase text-sm flex items-center gap-2">
+                    <i className="fa-solid fa-clock-rotate-left text-gray-400"></i> Son Aktiviteler
+                  </h3>
+                  <div className="space-y-3">
+                    {recentEvents.slice(0, 5).map((event) => (
+                      <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-sm">
+                            <i className="fa-solid fa-bolt"></i>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-700 capitalize">
+                              {event.event_type.replace(/_/g, ' ')}
+                            </p>
+                            <p className="text-[10px] text-gray-400 font-bold">
+                              {new Date(event.created_at).toLocaleDateString('tr-TR')}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-sm font-black text-green-500">+{event.points}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="bg-white border-2 border-gray-200 rounded-[2rem] p-6 shadow-sm">
                   <h3 className="font-extrabold text-gray-700 mb-6 uppercase text-sm flex items-center gap-2">
                       <i className="fa-solid fa-calendar-days text-gray-400"></i> Haftalık Trend

@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { use, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { earnPoints, getProgress, claimReward } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 
 import SocialShare from "@/components/SocialShare";
+import PointsToast from "@/components/PointsToast";
 import { getUserProfileUrl, getSafeAvatarUrl } from "@/lib/helpers";
+import { useGamification } from "@/hooks/useGamification";
 
 interface ClientBlogPostProps {
   post: any;
@@ -52,6 +54,9 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
   const [isFavorited, setIsFavorited] = useState(false);
   const [infoModal, setInfoModal] = useState<{show: boolean, title: string, message: string, type: 'error' | 'success' | 'info'}>({ show: false, title: "", message: "", type: "info" });
   const [currentUser, setCurrentUser] = useState<{ role: string, name: string, id: number, avatar: string } | null>(null);
+  
+  // Gamification Hook
+  const { dispatchAction, lastResult, showToast, closeToast } = useGamification();
 
   // Yazar Detayları
   const [authorDetail, setAuthorDetail] = useState<any>({
@@ -168,24 +173,29 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       
       if (currentUser) {
           try {
-              const result = await claimReward('blog', post.id);
-              if (result.success) {
+              // Use new event-driven system
+              const result = await dispatchAction(
+                'blog_points_claimed',
+                'blog',
+                post.id,
+                { is_sticky: false } // You can determine if post is sticky
+              );
+              
+              if (result.success && result.points_earned > 0) {
                   setHasClaimed(true);
                   const claimedPosts = JSON.parse(localStorage.getItem('claimed_posts') || '[]');
                   claimedPosts.push(post.id);
                   localStorage.setItem('claimed_posts', JSON.stringify(claimedPosts));
-                  setRewardMessage({
-                      title: "Harikasın! 🎉",
-                      desc: `Bu yazıyı tamamladın ve ${result.data?.earned || 10} Puan kazandın!`,
-                      points: result.data?.earned || 10
-                  });
-                  setShowRewardModal(true);
+                  // Toast will be shown automatically by useGamification hook
                   setClaiming(false);
                   return;
               }
-          } catch (e) { console.error(e); }
+          } catch (e) { 
+              console.error(e); 
+          }
       }
       
+      // Fallback to old system if not logged in
       const res = await earnPoints('read_blog', post.id);
       if (res.success) {
           setHasClaimed(true);
@@ -417,6 +427,17 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                    )}
               </div>
           </div>
+      )}
+      
+      {/* Points Toast Notification */}
+      {showToast && lastResult && (
+        <PointsToast
+          points={lastResult.points_earned}
+          message={lastResult.message}
+          streak={lastResult.streak}
+          milestone={lastResult.milestone}
+          onClose={closeToast}
+        />
       )}
     </>
   );

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation"; 
 import { getMe, getGamificationStats, logoutUser } from "@/lib/api";
 import { getSafeAvatarUrl } from "@/lib/helpers"; 
+import StreakDisplay from "@/components/StreakDisplay"; 
 
 export default function Header() {
   const [userRole, setUserRole] = useState('rejimde_user'); 
@@ -193,10 +194,13 @@ export default function Header() {
               <div className="hidden md:flex items-center gap-2 md:gap-4 animate-in fade-in zoom-in duration-300">
                 
                 {!isPro && (
-                    <div className="hidden md:flex items-center gap-2 hover:bg-gray-100 px-3 py-1.5 rounded-xl cursor-pointer transition" title="Toplam Puan">
-                      <i className="fa-solid fa-star text-rejimde-yellow text-xl"></i>
-                      <span className="font-black text-gray-700 text-lg">{score}</span>
-                    </div>
+                    <>
+                      <div className="hidden md:flex items-center gap-2 hover:bg-gray-100 px-3 py-1.5 rounded-xl cursor-pointer transition" title="Toplam Puan">
+                        <i className="fa-solid fa-star text-rejimde-yellow text-xl"></i>
+                        <span className="font-black text-gray-700 text-lg">{score}</span>
+                      </div>
+                      <StreakDisplay compact={true} />
+                    </>
                 )}
 
                 {/* Profile Dropdown */}
