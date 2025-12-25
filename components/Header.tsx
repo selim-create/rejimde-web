@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation"; 
 import { getMe, getGamificationStats, logoutUser } from "@/lib/api";
 import { getSafeAvatarUrl } from "@/lib/helpers"; 
-import StreakDisplay from "@/components/StreakDisplay"; 
+import StreakDisplay from "@/components/StreakDisplay";
+import NotificationDropdown from "@/components/NotificationDropdown"; 
 
 export default function Header() {
   const [userRole, setUserRole] = useState('rejimde_user'); 
@@ -202,6 +203,9 @@ export default function Header() {
                       <StreakDisplay compact={true} />
                     </>
                 )}
+
+                {/* Notification Dropdown */}
+                <NotificationDropdown isPro={isPro} />
 
                 {/* Profile Dropdown */}
                 <div className="relative group h-12 flex items-center">
