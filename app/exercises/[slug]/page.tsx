@@ -51,14 +51,14 @@ interface DayPlan {
 
 // --- MODAL BİLEŞENLERİ ---
 
-const AlertModal = ({ isOpen, title, message, type, onConfirm, onCancel }: { isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm' | 'warning', onConfirm?: () => void, onCancel?: () => void }) => {
+const AlertModal = ({ isOpen, title, message, type, onConfirm, onCancel }: { isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm' | 'warning' | 'info', onConfirm?: () => void, onCancel?: () => void }) => {
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 transform transition-all scale-100 animate-in zoom-in-95 duration-300 relative overflow-hidden">
-                <div className={`absolute top-0 left-0 w-full h-2 ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto ${type === 'success' ? 'bg-green-100 text-green-600' : type === 'error' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                    <i className={`fa-solid ${type === 'success' ? 'fa-trophy' : type === 'error' ? 'fa-circle-exclamation' : type === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-question'} text-2xl`}></i>
+                <div className={`absolute top-0 left-0 w-full h-2 ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto ${type === 'success' ? 'bg-green-100 text-green-600' : type === 'error' ? 'bg-red-100 text-red-600' : type === 'warning' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                    <i className={`fa-solid ${type === 'success' ? 'fa-trophy' : type === 'error' ? 'fa-circle-exclamation' : type === 'warning' ? 'fa-triangle-exclamation' : type === 'info' ? 'fa-circle-info' : 'fa-circle-question'} text-2xl`}></i>
                 </div>
                 <h3 className="text-xl font-black text-gray-900 text-center mb-2">{title}</h3>
                 <p className="text-gray-500 text-center text-sm mb-8 leading-relaxed">{message}</p>
@@ -229,14 +229,14 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   const [isStarted, setIsStarted] = useState(false);
   
   // Modals
-  const [alertModal, setAlertModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm' | 'warning', onConfirm?: () => void, onCancel?: () => void }>({ isOpen: false, title: '', message: '', type: 'success' });
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm' | 'warning' | 'info', onConfirm?: () => void, onCancel?: () => void }>({ isOpen: false, title: '', message: '', type: 'success' });
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   
   // Gamification Hook
   const { dispatchAction, lastResult, showToast, closeToast } = useGamification();
 
-  const showAlert = (title: string, message: string, type: 'success' | 'error' | 'confirm' | 'warning', onConfirm?: () => void) => {
+  const showAlert = (title: string, message: string, type: 'success' | 'error' | 'confirm' | 'warning' | 'info', onConfirm?: () => void) => {
       setAlertModal({ 
           isOpen: true, title, message, type, 
           onConfirm: () => { if(onConfirm) onConfirm(); setAlertModal(prev => ({...prev, isOpen: false})); },
