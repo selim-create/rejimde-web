@@ -1,5 +1,8 @@
 export const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://api.rejimde.com/wp-json';
 
+// Import types
+import type { PlanListItem, PlanDetail, PlanEditData, BackendResponse, ApiResponse } from '@/types';
+
 // Import helper functions
 import { calculateReadingTime, translateDifficulty } from './helpers';
 
@@ -1118,7 +1121,7 @@ export async function createComment(postId: number, content: string, context: st
  * DİYET PLANLARINI LİSTELE
  * Backend'den gelen planları alır ve tutarlı format sağlar
  */
-export async function getPlans(category?: string, difficulty?: string) {
+export async function getPlans(category?: string, difficulty?: string): Promise<PlanListItem[]> {
   try {
     let endpoint = '/rejimde/v1/plans'; 
     const params = new URLSearchParams();
@@ -1133,7 +1136,7 @@ export async function getPlans(category?: string, difficulty?: string) {
     
     if (params.toString()) endpoint += `?${params.toString()}`;
 
-    const response = await fetchAPI(endpoint);
+    const response: BackendResponse<PlanListItem[]> = await fetchAPI(endpoint);
     
     // Backend yanıt formatlarını destekle
     // Format 1: { status: 'success', data: [...] }
@@ -1143,7 +1146,7 @@ export async function getPlans(category?: string, difficulty?: string) {
     
     // Format 2: Direkt array dönüyorsa
     if (response && Array.isArray(response)) {
-      return response;
+      return response as unknown as PlanListItem[];
     }
     
     // Format 3: { data: [...] } (status olmadan)
@@ -1257,7 +1260,7 @@ export async function updatePlan(id: number, data: any) {
  * DİYET PLANI DETAY (Slug ile)
  * Backend'den plan detayını alır ve tutarlı format sağlar
  */
-export async function getPlanBySlug(slug: string) {
+export async function getPlanBySlug(slug: string): Promise<PlanDetail | null> {
   try {
     // Slug validasyonu
     if (!slug || typeof slug !== 'string' || slug.trim() === '') {
@@ -1265,7 +1268,7 @@ export async function getPlanBySlug(slug: string) {
       return null;
     }
     
-    const response = await fetchAPI(`/rejimde/v1/plans/${encodeURIComponent(slug)}`);
+    const response: BackendResponse<PlanDetail> = await fetchAPI(`/rejimde/v1/plans/${encodeURIComponent(slug)}`);
     
     // Backend yanıt formatlarını destekle
     // Format 1: { status: 'success', data: {...} }
@@ -1279,8 +1282,8 @@ export async function getPlanBySlug(slug: string) {
     }
     
     // Format 3: Direkt obje dönüyorsa (id varsa geçerli plan objesi)
-    if (response && response.id && typeof response === 'object') {
-      return response;
+    if (response && (response as any).id && typeof response === 'object') {
+      return response as unknown as PlanDetail;
     }
     
     // Hata yanıtı kontrolü
@@ -1300,11 +1303,11 @@ export async function getPlanBySlug(slug: string) {
  * DİYET PLANI ID İLE (Edit için)
  * WordPress REST API'den plan detayını alır ve düzenleme için hazırlar
  */
-export async function getPlan(id: number | string) {
+export async function getPlan(id: number | string): Promise<ApiResponse<PlanEditData>> {
     try {
         // ID validasyonu
         if (!id || (typeof id === 'string' && id.trim() === '')) {
-            return { success: false, message: 'Geçersiz plan ID.' };
+            return { success: false, message: 'Geçersiz plan ID.' } as ApiResponse<PlanEditData>;
         }
         
         const post = await fetchAPI(`/wp/v2/rejimde_plan/${id}?context=edit&_embed`, {
@@ -1317,7 +1320,7 @@ export async function getPlan(id: number | string) {
              return { 
                success: false, 
                message: post?.message || 'Plan bulunamadı veya erişim yetkiniz yok.' 
-             };
+             } as ApiResponse<PlanEditData>;
         }
         
         // Plan verisi parse et
@@ -1336,7 +1339,7 @@ export async function getPlan(id: number | string) {
                 : (Array.isArray(post.meta.shopping_list) ? post.meta.shopping_list : []);
         }
 
-        const formattedData = {
+        const formattedData: PlanEditData = {
             id: post.id,
             title: post.title?.raw || post.title?.rendered || '',
             content: post.content?.raw || post.content?.rendered || '',
@@ -1361,7 +1364,7 @@ export async function getPlan(id: number | string) {
         return { success: true, data: formattedData };
     } catch (e) {
         console.error("getPlan hatası:", e);
-        return { success: false, message: 'Plan yüklenirken hata oluştu.' };
+        return { success: false, message: 'Plan yüklenirken hata oluştu.' } as ApiResponse<PlanEditData>;
     }
 }
 
