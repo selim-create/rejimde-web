@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 interface SocialShareProps {
   url: string;
@@ -8,17 +8,38 @@ interface SocialShareProps {
   description?: string;
 }
 
-export default function SocialShare({ url, title, description = '' }: SocialShareProps) {
+export default function SocialShare({ url, title }: SocialShareProps) {
   const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Ensure we have a complete URL for sharing
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://rejimde.com';
-  const shareUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
-  const shareText = description || title;
+  // Ensure component is mounted on client
+  useEffect(() => {
+    // This is needed to prevent hydration mismatch
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
+  // Generate share links only on client side
+  const shareLinks = useMemo(() => {
+    if (!mounted) return null;
+
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
+    const encodedUrl = encodeURIComponent(fullUrl);
+    const encodedTitle = encodeURIComponent(title);
+
+    return {
+      whatsapp: `https://wa.me/?text=${encodedTitle}%20-%20${encodedUrl}`,
+      twitter: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+      copy: fullUrl
+    };
+  }, [mounted, url, title]);
 
   const handleCopyLink = async () => {
+    if (!shareLinks) return;
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(shareLinks.copy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -26,11 +47,19 @@ export default function SocialShare({ url, title, description = '' }: SocialShar
     }
   };
 
-  const shareLinks = {
-    whatsapp: `https://wa.me/?text=${encodeURIComponent(title + ' - ' + shareUrl)}`,
-    twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(shareUrl)}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
-  };
+  // Show skeleton until links are ready
+  if (!shareLinks) {
+    return (
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium text-gray-600">Paylaş:</span>
+        <div className="flex gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="w-10 h-10 rounded-full bg-gray-100 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-3">

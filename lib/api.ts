@@ -2206,6 +2206,11 @@ export async function getNotifications(options?: {
   category?: string;
 }): Promise<{ notifications: Notification[]; unread_count: number }> {
   try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    if (!token) {
+      return { notifications: [], unread_count: 0 };
+    }
+
     const params = new URLSearchParams();
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.offset) params.append('offset', options.offset.toString());
@@ -2216,12 +2221,27 @@ export async function getNotifications(options?: {
       method: 'GET',
       headers: getAuthHeaders(),
     });
-    const json = await res.json();
+
+    // 404 or 403 - API not available yet
+    if (!res.ok) {
+      console.warn(`Notifications API returned ${res.status}`);
+      return { notifications: [], unread_count: 0 };
+    }
+
+    const text = await res.text();
+    
+    // HTML response check (WordPress 404 page returned if API not available)
+    if (text.startsWith('<') || text.startsWith('<!DOCTYPE')) {
+      console.warn('Notifications API returned HTML instead of JSON');
+      return { notifications: [], unread_count: 0 };
+    }
+
+    const json = JSON.parse(text);
 
     if (json.status === 'success') {
       return {
-        notifications: json.data.notifications || [],
-        unread_count: json.data.unread_count || 0,
+        notifications: json.data?.notifications || [],
+        unread_count: json.data?.unread_count || 0,
       };
     }
     return { notifications: [], unread_count: 0 };
@@ -2354,6 +2374,14 @@ export async function getExpertNotifications(options?: {
   offset?: number;
 }): Promise<{ notifications: Notification[]; unread_count: number }> {
   try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    const role = typeof window !== 'undefined' ? localStorage.getItem('user_role') : null;
+    
+    // Don't make API call if user is not pro
+    if (!token || role !== 'rejimde_pro') {
+      return { notifications: [], unread_count: 0 };
+    }
+
     const params = new URLSearchParams();
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.offset) params.append('offset', options.offset.toString());
@@ -2362,12 +2390,27 @@ export async function getExpertNotifications(options?: {
       method: 'GET',
       headers: getAuthHeaders(),
     });
-    const json = await res.json();
+
+    // 404 or 403 - API not available yet
+    if (!res.ok) {
+      console.warn(`Expert notifications API returned ${res.status}`);
+      return { notifications: [], unread_count: 0 };
+    }
+
+    const text = await res.text();
+    
+    // HTML response check (WordPress 404 page returned if API not available)
+    if (text.startsWith('<') || text.startsWith('<!DOCTYPE')) {
+      console.warn('Expert notifications API returned HTML instead of JSON');
+      return { notifications: [], unread_count: 0 };
+    }
+
+    const json = JSON.parse(text);
 
     if (json.status === 'success') {
       return {
-        notifications: json.data.notifications || [],
-        unread_count: json.data.unread_count || 0,
+        notifications: json.data?.notifications || [],
+        unread_count: json.data?.unread_count || 0,
       };
     }
     return { notifications: [], unread_count: 0 };
