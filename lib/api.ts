@@ -2,6 +2,7 @@ export const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://api.rejimde
 
 // Import helper functions
 import { calculateReadingTime, translateDifficulty } from './helpers';
+import { sendLoginEvent } from './events';
 
 // --- AVATAR PAKETİ ---
 export const AVATAR_PACK = [
@@ -334,6 +335,10 @@ export async function loginUser(username: string, password: string) {
             roles: json.data.roles
         }));
       }
+      
+      // Login başarılı olduktan sonra event gönder
+      sendLoginEvent().catch(console.error);
+      
       return { success: true, data: json.data };
     } else {
       return { success: false, message: json.message || 'Giriş başarısız.' };
@@ -396,6 +401,10 @@ export async function loginWithGoogle(credential: string) {
             roles: json.data.roles
         }));
       }
+      
+      // Login başarılı olduktan sonra event gönder
+      sendLoginEvent().catch(console.error);
+      
       return { success: true, data: json.data };
     } else {
       return { success: false, message: json.message || 'Google girişi başarısız.' };
@@ -1579,6 +1588,177 @@ export async function claimReward(contentType: string, contentId: number | strin
     }
 }
 
+// ═══════════════════════════════════════════════════════════
+// YENİ: GAMIFICATION V2 API FONKSİYONLARI
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Kullanıcı puanları ve balance
+ */
+export async function getUserPoints(userId?: number) {
+  try {
+    const endpoint = userId ? `/rejimde/v1/users/${userId}/points` : '/rejimde/v1/users/me/points';
+    const res = await fetch(`${API_URL}${endpoint}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data;
+  } catch (error) {
+    console.error('getUserPoints error:', error);
+    return null;
+  }
+}
+
+/**
+ * Kullanıcı puan hareketleri (ledger)
+ */
+export async function getUserLedger(userId?: number, limit: number = 50) {
+  try {
+    const endpoint = userId ? `/rejimde/v1/users/${userId}/ledger` : '/rejimde/v1/users/me/ledger';
+    const res = await fetch(`${API_URL}${endpoint}?limit=${limit}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    console.error('getUserLedger error:', error);
+    return [];
+  }
+}
+
+/**
+ * Kullanıcı event geçmişi
+ */
+export async function getUserEvents(userId?: number, limit: number = 50) {
+  try {
+    const endpoint = userId ? `/rejimde/v1/users/${userId}/events` : '/rejimde/v1/users/me/events';
+    const res = await fetch(`${API_URL}${endpoint}?limit=${limit}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    console.error('getUserEvents error:', error);
+    return [];
+  }
+}
+
+/**
+ * Kullanıcı score bilgisi (haftalık/aylık)
+ */
+export async function getUserScore(userId?: number) {
+  try {
+    const endpoint = userId ? `/rejimde/v1/users/${userId}/score` : '/rejimde/v1/users/me/score';
+    const res = await fetch(`${API_URL}${endpoint}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data;
+  } catch (error) {
+    console.error('getUserScore error:', error);
+    return null;
+  }
+}
+
+/**
+ * Kullanıcı level bilgisi
+ */
+export async function getUserLevel(userId?: number) {
+  try {
+    const endpoint = userId ? `/rejimde/v1/users/${userId}/level` : '/rejimde/v1/users/me/level';
+    const res = await fetch(`${API_URL}${endpoint}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data;
+  } catch (error) {
+    console.error('getUserLevel error:', error);
+    return null;
+  }
+}
+
+/**
+ * Tüm level'ları getir
+ */
+export async function getAllLevels() {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/levels`, {
+      method: 'GET',
+      cache: 'no-store'
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    console.error('getAllLevels error:', error);
+    return [];
+  }
+}
+
+/**
+ * Haftalık leaderboard
+ */
+export async function getWeeklyLeaderboard(limit: number = 20) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/leaderboard/weekly?limit=${limit}`, {
+      method: 'GET',
+      cache: 'no-store'
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    console.error('getWeeklyLeaderboard error:', error);
+    return [];
+  }
+}
+
+/**
+ * Aylık leaderboard
+ */
+export async function getMonthlyLeaderboard(limit: number = 20) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/leaderboard/monthly?limit=${limit}`, {
+      method: 'GET',
+      cache: 'no-store'
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    console.error('getMonthlyLeaderboard error:', error);
+    return [];
+  }
+}
+
+/**
+ * Circle score bilgisi
+ */
+export async function getCircleScore(circleId: number) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/score`, {
+      method: 'GET',
+      cache: 'no-store'
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data;
+  } catch (error) {
+    console.error('getCircleScore error:', error);
+    return null;
+  }
+}
+
 /**
  * AUTH OBJESİ (Toplu Kullanım İçin)
  * Diğer sayfalardaki import { auth } from '@/lib/api' kullanımını destekler.
@@ -1627,6 +1807,16 @@ export const auth = {
     deletePost,
     getProfileByUsername,  // Profile fetch by username
     saveCalculatorResult,  // Calculator results
+    // Gamification V2
+    getUserPoints,
+    getUserLedger,
+    getUserEvents,
+    getUserScore,
+    getUserLevel,
+    getAllLevels,
+    getWeeklyLeaderboard,
+    getMonthlyLeaderboard,
+    getCircleScore,
 };
 
 /**
