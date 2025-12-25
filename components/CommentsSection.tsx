@@ -353,7 +353,7 @@ const CommentForm = ({ user, onSubmit, allowRating, isReply = false, autoFocus =
                     />
                     {user?.isLoggedIn && !isReply && (
                         <div className="text-[10px] font-black text-center text-purple-600 mt-1 bg-purple-50 rounded-md py-0.5">
-                            {user.role === 'rejimde_pro' ? `${user.score || 0} XP` : `LVL ${user.level || 1}`}
+                            {user.role === 'rejimde_pro' ? `${user.score || 0} XP` : `LVL ${typeof user.level === 'object' ? user.level.name || user.level.level || 1 : user.level || 1}`}
                         </div>
                     )}
                 </div>
@@ -534,7 +534,7 @@ const CommentItem = ({
                     <div className="flex flex-col items-center mt-1 w-full gap-1">
                         {author.level && (
                             <div className="bg-gradient-to-r from-gray-900 to-gray-700 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-md flex items-center gap-1">
-                                <i className="fa-solid fa-bolt text-yellow-400 text-[8px]"></i> {author.level}
+                                <i className="fa-solid fa-bolt text-yellow-400 text-[8px]"></i> {typeof author.level === 'object' ? author.level.name : author.level}
                             </div>
                         )}
                         {(author.score || author.level) && (

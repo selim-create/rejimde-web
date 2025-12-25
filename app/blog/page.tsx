@@ -61,76 +61,117 @@ export default function BlogPage() {
 
             // 1. Kategoriler
             let catsData: any[] = [];
-            const catRes = await fetch(`${apiUrl}/wp/v2/categories?per_page=20`);
-            if (catRes.ok) {
-                catsData = await catRes.json();
-                setCategories(catsData);
+            try {
+                const catRes = await fetch(`${apiUrl}/wp/v2/categories?per_page=20`, {
+                    cache: 'no-store',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                if (catRes.ok) {
+                    catsData = await catRes.json();
+                    setCategories(catsData);
+                }
+            } catch (error) {
+                console.error('Kategori fetch hatası:', error);
+                // Fallback veya boş array kullan
+                setCategories([]);
             }
 
             // 2. Yazıları Çek
-            const postsRes = await fetch(`${apiUrl}/wp/v2/posts?_embed&per_page=100`);
-            let realPosts = [];
-            
-            if (postsRes.ok) {
-                const postsJson = await postsRes.json();
-                realPosts = postsJson.map((p: any) => {
-                    const catId = p.categories && p.categories.length > 0 ? p.categories[0] : null;
-                    const catObj = catsData.find((c: any) => c.id === catId);
-                    const catName = catObj ? decodeHtml(catObj.name) : "Genel";
-                    
-                    const author = p._embedded?.author?.[0];
-                    const authorAvatar = getSafeAvatarUrl(author?.avatar_url, author?.slug || 'admin');
-                    const authorIsExpert = isUserExpert(author?.roles);
-
-                    // Mock Okuyucular (Gerçek API gelene kadar görseli sağlamak için)
-                    const mockReaderCount = Math.floor(Math.random() * 50) + 5;
-                    const mockReaders = [1, 2, 3].map(i => `https://api.dicebear.com/9.x/avataaars/svg?seed=reader_${p.id}_${i}`);
-
-                    return {
-                        id: p.id,
-                        title: p.title.rendered,
-                        slug: p.slug,
-                        excerpt: p.excerpt.rendered.replace(/<[^>]+>/g, ''),
-                        content: p.content.rendered,
-                        image: p._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://placehold.co/600x400',
-                        date: new Date(p.date).toLocaleDateString('tr-TR'),
-                        author_name: author?.name || 'Rejimde Editör',
-                        author_slug: author?.slug || 'admin',
-                        author_avatar: authorAvatar,
-                        author_is_expert: authorIsExpert,
-                        category: catName,
-                        read_time: '5 dk', 
-                        sticky: p.sticky,
-                        comment_count: p._embedded?.['replies']?.[0]?.length || 0,
-                        // Yeni Alanlar
-                        last_readers: mockReaders,
-                        read_count: mockReaderCount
-                    };
+            try {
+                const postsRes = await fetch(`${apiUrl}/wp/v2/posts?_embed&per_page=100`, {
+                    cache: 'no-store',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
                 });
-                setPosts(realPosts);
+                let realPosts = [];
+                
+                if (postsRes.ok) {
+                    const postsJson = await postsRes.json();
+                    realPosts = postsJson.map((p: any) => {
+                        const catId = p.categories && p.categories.length > 0 ? p.categories[0] : null;
+                        const catObj = catsData.find((c: any) => c.id === catId);
+                        const catName = catObj ? decodeHtml(catObj.name) : "Genel";
+                        
+                        const author = p._embedded?.author?.[0];
+                        const authorAvatar = getSafeAvatarUrl(author?.avatar_url, author?.slug || 'admin');
+                        const authorIsExpert = isUserExpert(author?.roles);
+
+                        // Mock Okuyucular (Gerçek API gelene kadar görseli sağlamak için)
+                        const mockReaderCount = Math.floor(Math.random() * 50) + 5;
+                        const mockReaders = [1, 2, 3].map(i => `https://api.dicebear.com/9.x/avataaars/svg?seed=reader_${p.id}_${i}`);
+
+                        return {
+                            id: p.id,
+                            title: p.title.rendered,
+                            slug: p.slug,
+                            excerpt: p.excerpt.rendered.replace(/<[^>]+>/g, ''),
+                            content: p.content.rendered,
+                            image: p._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://placehold.co/600x400',
+                            date: new Date(p.date).toLocaleDateString('tr-TR'),
+                            author_name: author?.name || 'Rejimde Editör',
+                            author_slug: author?.slug || 'admin',
+                            author_avatar: authorAvatar,
+                            author_is_expert: authorIsExpert,
+                            category: catName,
+                            read_time: '5 dk', 
+                            sticky: p.sticky,
+                            comment_count: p._embedded?.['replies']?.[0]?.length || 0,
+                            // Yeni Alanlar
+                            last_readers: mockReaders,
+                            read_count: mockReaderCount
+                        };
+                    });
+                    setPosts(realPosts);
+                }
+            } catch (error) {
+                console.error('Yazılar fetch hatası:', error);
+                setPosts([]);
             }
 
             // 3. Etiketleri Çek
-            const tagRes = await fetch(`${apiUrl}/wp/v2/tags?orderby=count&order=desc&per_page=10`);
-            if (tagRes.ok) setTags(await tagRes.json());
+            try {
+                const tagRes = await fetch(`${apiUrl}/wp/v2/tags?orderby=count&order=desc&per_page=10`, {
+                    cache: 'no-store',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                if (tagRes.ok) setTags(await tagRes.json());
+            } catch (error) {
+                console.error('Etiket fetch hatası:', error);
+                setTags([]);
+            }
 
             // 4. Haftanın Okurları (Leaderboard)
-            const leaderRes = await fetch(`${apiUrl}/rejimde/v1/gamification/leaderboard`);
-            if (leaderRes.ok) {
-                const leaderData = await leaderRes.json();
-                if (leaderData.status === 'success' && Array.isArray(leaderData.data) && leaderData.data.length > 0) {
-                    const enrichedReaders = leaderData.data.slice(0, 10).map((reader: any) => {
-                        const readerAvatar = getSafeAvatarUrl(reader.avatar, reader.name);
-                        const readerSlug = reader.slug || reader.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-                        return { ...reader, avatar: readerAvatar, slug: readerSlug };
-                    });
-                    setTopReaders(enrichedReaders);
+            try {
+                const leaderRes = await fetch(`${apiUrl}/rejimde/v1/gamification/leaderboard`, {
+                    cache: 'no-store',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                if (leaderRes.ok) {
+                    const leaderData = await leaderRes.json();
+                    if (leaderData.status === 'success' && Array.isArray(leaderData.data) && leaderData.data.length > 0) {
+                        const enrichedReaders = leaderData.data.slice(0, 10).map((reader: any) => {
+                            const readerAvatar = getSafeAvatarUrl(reader.avatar, reader.name);
+                            const readerSlug = reader.slug || reader.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+                            return { ...reader, avatar: readerAvatar, slug: readerSlug };
+                        });
+                        setTopReaders(enrichedReaders);
+                    } else {
+                        // Fallback Mock Data (10 Kişi)
+                        setTopReaders(generateMockReaders());
+                    }
                 } else {
-                    // Fallback Mock Data (10 Kişi)
-                    setTopReaders(generateMockReaders());
+                     setTopReaders(generateMockReaders());
                 }
-            } else {
-                 setTopReaders(generateMockReaders());
+            } catch (error) {
+                console.error('Leaderboard fetch hatası:', error);
+                setTopReaders(generateMockReaders());
             }
 
         } catch (error) {

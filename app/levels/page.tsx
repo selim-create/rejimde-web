@@ -3,17 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { auth } from '@/lib/api';
-
-const LEVELS = [
-  { id: 'level-1', name: 'Begin', level: 1, min: 0, max: 200, color: 'text-gray-500', icon: 'fa-seedling', description: 'Her yolculuk bir adımla başlar. Burada beklenti yok, sadece başlamak var.' },
-  { id: 'level-2', name: 'Adapt', level: 2, min: 200, max: 300, color: 'text-orange-500', icon: 'fa-sync', description: 'Vücut ve zihin yeni rutine alışmaya başlar. Küçük değişimler büyük farklar yaratır.' },
-  { id: 'level-3', name: 'Commit', level: 3, min: 300, max: 500, color: 'text-green-500', icon: 'fa-check-circle', description: 'İstikrar burada doğar. Düzenli devam etmek artık bir tercih değil, alışkanlık.' },
-  { id: 'level-4', name: 'Balance', level: 4, min: 500, max: 1000, color: 'text-blue-500', icon: 'fa-scale-balanced', description: 'Beslenme, hareket ve zihin dengelenir. Kendini daha kontrollü ve rahat hissedersin.' },
-  { id: 'level-5', name: 'Strengthen', level: 5, min: 1000, max: 2000, color: 'text-red-500', icon: 'fa-dumbbell', description: 'Fiziksel ve zihinsel olarak güçlenme başlar. Gelişim artık net şekilde hissedilir.' },
-  { id: 'level-6', name: 'Sustain', level: 6, min: 2000, max: 4000, color: 'text-teal-500', icon: 'fa-infinity', description: 'Bu bir rejim olmaktan çıkar, yaşam tarzına dönüşür. Devam etmek zor gelmez.' },
-  { id: 'level-7', name: 'Mastery', level: 7, min: 4000, max: 6000, color: 'text-yellow-500', icon: 'fa-crown', description: 'Bilinçli seçimler yaparsın. Ne yaptığını ve neden yaptığını bilerek ilerlersin.' },
-  { id: 'level-8', name: 'Transform', level: 8, min: 6000, max: 10000, color: 'text-purple-600', icon: 'fa-star', description: 'Kalıcı değişim. Yeni bir denge, yeni bir sen.' },
-];
+import { LEVELS } from '@/lib/constants';
 
 export default function LevelsHubPage() {
   const [userScore, setUserScore] = useState(0);
