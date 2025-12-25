@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getPlanBySlug, getMe, earnPoints, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
+import { getPlanBySlug, getMe, earnPoints, getProgress, updateProgress, startProgress, completeProgress, dispatchEvent } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 
 import SocialShare from "@/components/SocialShare";
+import PointsToast from "@/components/PointsToast";
+import { useGamification } from "@/hooks/useGamification";
 
 // --- API Helperları ---
 const approvePlan = async (id: number) => {
@@ -94,6 +96,9 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   const [isCompleted, setIsCompleted] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
   const [modal, setModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void, onCancel?: () => void }>({ isOpen: false, title: '', message: '', type: 'success' });
+  
+  // Gamification Hook
+  const { dispatchAction, lastResult, showToast, closeToast } = useGamification();
 
   const showModal = (title: string, message: string, type: 'success' | 'error' | 'confirm', onConfirm?: () => void) => {
       setModal({ 
@@ -246,18 +251,20 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       if (!currentUser) return showModal("Giriş Yapmalısın", "Diyet takibi yapmak için lütfen giriş yap.", "error");
       
       try {
-          // Use new Progress API
-          const result = await startProgress('diet', plan.id);
+          // Dispatch diet_started event
+          const result = await dispatchAction('diet_started', 'diet', plan.id);
+          
           if (result.success) {
               setIsStarted(true);
               localStorage.setItem(`diet_started_${plan.id}`, 'true');
               showModal("Başarılar!", "Bu diyete başladın. İlerlemeni kaydetmek için öğünleri işaretlemeyi unutma.", "success");
+              
+              // Also call startProgress for tracking
+              await startProgress('diet', plan.id);
           } else {
-              // Hata durumunda (örneğin zaten başlamışsa backend hata dönebilir)
-              // Yine de client tarafında başladı olarak işaretleyelim ve devam edelim
+              // Fallback
               setIsStarted(true);
               localStorage.setItem(`diet_started_${plan.id}`, 'true');
-              // Sessizce geç veya başarı mesajı göster
               showModal("Başarılar!", "Bu diyete başladın.", "success");
           }
       } catch (e) {
@@ -288,11 +295,16 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
       if (currentUser) {
           try {
             const reward = parseInt(plan?.meta?.score_reward || "0");
-            const result = await completeProgress('diet', plan.id);
+            
+            // Dispatch diet_completed event
+            const result = await dispatchAction('diet_completed', 'diet', plan.id);
+            
             if (result.success) {
-                await earnPoints('complete_plan', plan?.id);
-                showModal("Tebrikler Şampiyon! 🏆", `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, "success");
+                // Also mark as complete in progress tracking
+                await completeProgress('diet', plan.id);
+                showModal("Tebrikler Şampiyon! 🏆", `Bu diyet planını başarıyla tamamladın ve ${result.points_earned || reward} puan kazandın!`, "success");
             } else {
+                // Fallback
                 await earnPoints('complete_plan', plan?.id);
                 await completePlanAPI(plan.id);
                 showModal("Tebrikler Şampiyon! 🏆", `Bu diyet planını başarıyla tamamladın ve ${reward} puan kazandın!`, "success");
@@ -758,6 +770,18 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
           </div>
 
       </div>
+      
+      {/* Points Toast Notification */}
+      {showToast && lastResult && (
+        <PointsToast
+          points={lastResult.points_earned}
+          message={lastResult.message}
+          streak={lastResult.streak}
+          milestone={lastResult.milestone}
+          onClose={closeToast}
+        />
+      )}
     </div>
   );
+}
 }

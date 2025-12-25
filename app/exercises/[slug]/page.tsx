@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, getProgress, updateProgress, startProgress, completeProgress } from "@/lib/api";
+import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, getProgress, updateProgress, startProgress, completeProgress, dispatchEvent } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; // Import AuthorCard
 import SocialShare from "@/components/SocialShare";
+import PointsToast from "@/components/PointsToast";
+import { useGamification } from "@/hooks/useGamification";
 
 // --- UZMANLIK KATEGORİLERİ (AuthorCard Renkleri İçin) ---
 const SPECIALTY_CATEGORIES = [
@@ -230,6 +232,9 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm' | 'warning', onConfirm?: () => void, onCancel?: () => void }>({ isOpen: false, title: '', message: '', type: 'success' });
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  
+  // Gamification Hook
+  const { dispatchAction, lastResult, showToast, closeToast } = useGamification();
 
   const showAlert = (title: string, message: string, type: 'success' | 'error' | 'confirm' | 'warning', onConfirm?: () => void) => {
       setAlertModal({ 
@@ -410,12 +415,16 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
       if (!currentUser) return showAlert("Giriş Yapmalısın", "Antrenman takibi yapmak için lütfen giriş yap.", "error");
       
       try {
-          // Use new Progress API
-          const result = await startProgress('exercise', plan?.id);
+          // Dispatch exercise_started event
+          const result = await dispatchAction('exercise_started', 'exercise', plan?.id);
+          
           if (result.success) {
               setIsStarted(true);
               localStorage.setItem(`exercise_started_${plan?.id}`, 'true');
               showAlert("Başarılar!", "Antrenman programına başladın. Hedefine ulaşman dileğiyle!", "success");
+              
+              // Also call startProgress for tracking
+              await startProgress('exercise', plan?.id);
           } else {
               // Fallback - still mark as started locally
               setIsStarted(true);
@@ -436,13 +445,15 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           try {
             const reward = parseInt(plan?.meta?.score_reward || "0");
             
-            // Use new Progress API
-            const result = await completeProgress('exercise', plan?.id);
+            // Dispatch exercise_completed event
+            const result = await dispatchAction('exercise_completed', 'exercise', plan?.id);
+            
             if (result.success) {
-                await earnPoints('complete_exercise_plan', plan?.id);
+                // Also mark as complete in progress tracking
+                await completeProgress('exercise', plan?.id);
                 showAlert(
                     "Tebrikler Şampiyon! 🏆", 
-                    `Bu antrenman programını başarıyla tamamladın ve ${reward} puan kazandın! Gücüne güç kattın.`, 
+                    `Bu antrenman programını başarıyla tamamladın ve ${result.points_earned || reward} puan kazandın! Gücüne güç kattın.`, 
                     "success"
                 );
             } else {
@@ -806,6 +817,18 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           </div>
 
       </div>
+      
+      {/* Points Toast Notification */}
+      {showToast && lastResult && (
+        <PointsToast
+          points={lastResult.points_earned}
+          message={lastResult.message}
+          streak={lastResult.streak}
+          milestone={lastResult.milestone}
+          onClose={closeToast}
+        />
+      )}
     </div>
   );
+}
 }
