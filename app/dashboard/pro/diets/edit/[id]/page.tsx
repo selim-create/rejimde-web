@@ -195,8 +195,8 @@ export default function EditDietPage({ params }: { params: Promise<{ id: string 
                     if (metaTags && Array.isArray(metaTags)) {
                         setTags(metaTags);
                     } else if (data.tags && Array.isArray(data.tags)) {
-                        // Root seviyesinden geliyorsa (yedek) - number[] to string[]
-                        setTags(data.tags.map(String));
+                        // Root seviyesinden geliyorsa (yedek)
+                        setTags(data.tags);
                     }
                 }
 

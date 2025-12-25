@@ -6,6 +6,28 @@ import type { PlanListItem, PlanDetail, PlanEditData, BackendResponse, ApiRespon
 // Import helper functions
 import { calculateReadingTime, translateDifficulty } from './helpers';
 
+// --- TYPE GUARDS ---
+/**
+ * Type guard to check if response is a BackendResponse with success status
+ */
+function isSuccessBackendResponse<T>(response: any): response is BackendResponse<T> & { status: 'success'; data: T } {
+  return response && response.status === 'success' && response.data !== undefined;
+}
+
+/**
+ * Type guard to check if response has data property
+ */
+function hasDataProperty<T>(response: any): response is { data: T } {
+  return response && response.data !== undefined && typeof response.data === 'object';
+}
+
+/**
+ * Type guard to check if response is a valid plan object
+ */
+function isPlanObject(response: any): boolean {
+  return response && typeof response === 'object' && 'id' in response && typeof response.id === 'number';
+}
+
 // --- AVATAR PAKETİ ---
 export const AVATAR_PACK = [
   { id: '1', url: 'https://api.dicebear.com/9.x/personas/svg?seed=Felix', gender: 'male' },
@@ -1136,21 +1158,21 @@ export async function getPlans(category?: string, difficulty?: string): Promise<
     
     if (params.toString()) endpoint += `?${params.toString()}`;
 
-    const response: BackendResponse<PlanListItem[]> = await fetchAPI(endpoint);
+    const response = await fetchAPI(endpoint);
     
-    // Backend yanıt formatlarını destekle
+    // Backend yanıt formatlarını destekle - Type guard kullan
     // Format 1: { status: 'success', data: [...] }
-    if (response && response.status === 'success' && response.data) {
+    if (isSuccessBackendResponse<PlanListItem[]>(response)) {
       return Array.isArray(response.data) ? response.data : [];
     }
     
     // Format 2: Direkt array dönüyorsa
-    if (response && Array.isArray(response)) {
-      return response as unknown as PlanListItem[];
+    if (Array.isArray(response)) {
+      return response;
     }
     
     // Format 3: { data: [...] } (status olmadan)
-    if (response && response.data && Array.isArray(response.data)) {
+    if (hasDataProperty<PlanListItem[]>(response) && Array.isArray(response.data)) {
       return response.data;
     }
     
@@ -1268,22 +1290,22 @@ export async function getPlanBySlug(slug: string): Promise<PlanDetail | null> {
       return null;
     }
     
-    const response: BackendResponse<PlanDetail> = await fetchAPI(`/rejimde/v1/plans/${encodeURIComponent(slug)}`);
+    const response = await fetchAPI(`/rejimde/v1/plans/${encodeURIComponent(slug)}`);
     
-    // Backend yanıt formatlarını destekle
+    // Backend yanıt formatlarını destekle - Type guard kullan
     // Format 1: { status: 'success', data: {...} }
-    if (response && response.status === 'success' && response.data) {
+    if (isSuccessBackendResponse<PlanDetail>(response)) {
       return response.data;
     }
     
     // Format 2: { data: {...} } (status olmadan)
-    if (response && response.data && typeof response.data === 'object') {
+    if (hasDataProperty<PlanDetail>(response)) {
       return response.data;
     }
     
     // Format 3: Direkt obje dönüyorsa (id varsa geçerli plan objesi)
-    if (response && (response as any).id && typeof response === 'object') {
-      return response as unknown as PlanDetail;
+    if (isPlanObject(response)) {
+      return response as PlanDetail;
     }
     
     // Hata yanıtı kontrolü
@@ -1298,6 +1320,15 @@ export async function getPlanBySlug(slug: string): Promise<PlanDetail | null> {
     return null;
   }
 }
+
+// Default values for plan metadata
+const DEFAULT_PLAN_META = {
+    difficulty: 'medium' as const,
+    duration: '7',
+    calories: '',
+    score_reward: '100',
+    diet_category: '',
+};
 
 /**
  * DİYET PLANI ID İLE (Edit için)
@@ -1346,13 +1377,13 @@ export async function getPlan(id: number | string): Promise<ApiResponse<PlanEdit
             status: post.status || 'draft',
             plan_data: planData,
             shopping_list: shoppingList,
-            tags: Array.isArray(post.tags) ? post.tags : [],
+            tags: Array.isArray(post.tags) ? post.tags.map(String) : [],
             meta: {
-                difficulty: post.meta?.difficulty || 'medium',
-                duration: post.meta?.duration || '7',
-                calories: post.meta?.calories || '',
-                score_reward: post.meta?.score_reward || '100',
-                diet_category: post.meta?.diet_category || '',
+                difficulty: post.meta?.difficulty || DEFAULT_PLAN_META.difficulty,
+                duration: post.meta?.duration || DEFAULT_PLAN_META.duration,
+                calories: post.meta?.calories || DEFAULT_PLAN_META.calories,
+                score_reward: post.meta?.score_reward || DEFAULT_PLAN_META.score_reward,
+                diet_category: post.meta?.diet_category || DEFAULT_PLAN_META.diet_category,
                 rank_math_title: post.meta?.rank_math_title || '',
                 rank_math_description: post.meta?.rank_math_description || '',
                 rank_math_focus_keyword: post.meta?.rank_math_focus_keyword || ''

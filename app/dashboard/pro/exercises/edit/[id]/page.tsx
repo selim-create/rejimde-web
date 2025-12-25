@@ -185,10 +185,10 @@ export default function EditExercisePage({ params }: { params: Promise<{ id: str
 
                     if (Array.isArray(pData)) {
                         // PlanDay[] to DayPlan[] - convert meals to exercises structure
-                        const convertedDays = pData.map((day, idx) => ({
+                        const convertedDays = pData.map((day: { dayNumber: number; meals?: any[] }, idx: number) => ({
                             id: String(idx + 1),
                             dayNumber: day.dayNumber,
-                            exercises: (day.meals || []).map((meal: any) => ({
+                            exercises: (day.meals || []).map((meal: { id: string; title?: string; content?: string; tags?: string[] }) => ({
                                 id: meal.id,
                                 name: meal.title || '',
                                 sets: '3',

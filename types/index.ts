@@ -143,7 +143,7 @@ export interface PlanEditData {
     status: string;
     plan_data: PlanDay[];
     shopping_list: string[];
-    tags: number[];
+    tags: string[]; // Changed from number[] to string[] for consistency
     meta: PlanMeta;
     featured_media_id: number;
     featured_media_url: string;
