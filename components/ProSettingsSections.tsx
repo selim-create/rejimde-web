@@ -2,7 +2,6 @@
 "use client";
 
 import {
-  PROFESSION_CATEGORIES,
   EXPERTISE_TAGS,
   GOAL_TAGS,
   LEVEL_OPTIONS,
@@ -10,22 +9,34 @@ import {
   EXCLUDED_CASES_OPTIONS
 } from "@/lib/constants";
 
+// Type definitions
+type EducationItem = { school: string; department: string; year: string };
+type CertificateItem = { name: string; institution: string; year: string; file_url: string };
+
+type TagField = "expertise_tags" | "goal_tags" | "level_suitability" | "age_groups" | "service_languages" | "excluded_cases";
+
 interface SectionProps {
   formData: any;
   setFormData: (data: any) => void;
-  toggleTag: (field: string, value: string) => void;
+  toggleTag: (field: TagField, value: string) => void;
   calculateExperience: (date: string) => number | null;
 }
 
-// Professional Experience Section
-export function ProfessionalExperienceSection({ formData, setFormData, calculateExperience, toggleTag }: SectionProps & {
+interface ProfessionalExperienceSectionProps extends SectionProps {
   addEducation: () => void;
   removeEducation: (index: number) => void;
-  updateEducation: (index: number, field: string, value: string) => void;
+  updateEducation: (index: number, field: keyof EducationItem, value: string) => void;
   addCertificate: () => void;
   removeCertificate: (index: number) => void;
-  updateCertificate: (index: number, field: string, value: string) => void;
-}) {
+  updateCertificate: (index: number, field: keyof CertificateItem, value: string) => void;
+}
+
+// Professional Experience Section
+export function ProfessionalExperienceSection({ 
+  formData, 
+  setFormData, 
+  calculateExperience 
+}: ProfessionalExperienceSectionProps) {
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
       <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
@@ -57,11 +68,11 @@ export function ProfessionalExperienceSection({ formData, setFormData, calculate
               <i className="fa-solid fa-plus mr-1"></i> Ekle
             </button>
           </div>
-          {formData.education.map((edu: any, index: number) => (
+          {formData.education.map((edu: EducationItem, index: number) => (
             <div key={index} className="bg-slate-900 rounded-xl p-4 mb-3 relative border border-slate-700">
               <button 
                 type="button"
-                onClick={() => setFormData({...formData, education: formData.education.filter((_: any, i: number) => i !== index)})}
+                onClick={() => setFormData({...formData, education: formData.education.filter((_: EducationItem, i: number) => i !== index)})}
                 className="absolute top-2 right-2 text-red-400 hover:text-red-300 text-sm"
               >
                 <i className="fa-solid fa-times"></i>
@@ -438,7 +449,7 @@ export function PrivacySettingsSection({ formData, setFormData }: SectionProps) 
               onChange={(e) => setFormData({...formData, emergency_disclaimer: e.target.checked})}
               className="w-5 h-5 mt-0.5 mr-3 rounded accent-orange-500"
             />
-            <span className="text-xs font-bold text-orange-200">Acil sağlık durumlarında 112'yi aramalarını hatırlatıyorum.</span>
+            <span className="text-xs font-bold text-orange-200">Acil sağlık durumlarında 112&apos;yi aramalarını hatırlatıyorum.</span>
           </label>
         </div>
       </div>
