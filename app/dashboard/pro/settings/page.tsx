@@ -15,6 +15,13 @@ import {
   COMMUNICATION_PREFERENCES,
   EXCLUDED_CASES_OPTIONS
 } from "@/lib/constants";
+import {
+  ProfessionalExperienceSection,
+  ExpertiseTagsSection,
+  WorkCommunicationSection,
+  ExcludedCasesSection,
+  PrivacySettingsSection
+} from "@/components/ProSettingsSections";
 
 export default function ProSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -494,6 +501,43 @@ export default function ProSettingsPage() {
                         <input type="text" value={formData.brand_name} onChange={(e) => setFormData({...formData, brand_name: e.target.value})} 
                             className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue" placeholder="Varsa kurum adınız" />
                     </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Meslek Grubu</label>
+                            <select 
+                                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue cursor-pointer"
+                                value={formData.profession_category}
+                                onChange={(e) => setFormData({...formData, profession_category: e.target.value})}
+                            >
+                                <option value="">Seçiniz</option>
+                                {PROFESSION_CATEGORIES.flatMap(cat => cat.items.map(item => (
+                                    <option key={item.id} value={item.id}>{item.label}</option>
+                                )))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Doğum Tarihi</label>
+                            <input 
+                                type="date" 
+                                value={formData.birth_date} 
+                                onChange={(e) => setFormData({...formData, birth_date: e.target.value})} 
+                                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue" 
+                            />
+                            {formData.birth_date && (
+                                <p className="text-xs text-slate-500 mt-1 font-bold">Yaş: {calculateAge(formData.birth_date)}</p>
+                            )}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Motto / Yaklaşım (Max 150 karakter)</label>
+                        <textarea 
+                            value={formData.motto} 
+                            onChange={(e) => setFormData({...formData, motto: e.target.value.slice(0, 150)})} 
+                            className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-blue h-20 resize-none"
+                            placeholder="Kısa ve öz bir motto veya yaklaşımınızı yazın..."
+                        ></textarea>
+                        <p className="text-xs text-slate-500 mt-1 text-right font-bold">{formData.motto.length}/150</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -504,31 +548,90 @@ export default function ProSettingsPage() {
                 <i className="fa-solid fa-location-dot text-rejimde-green"></i> Lokasyon & Adres
             </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Şehir</label>
-                    <select 
-                        className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-green cursor-pointer"
-                        value={formData.city} 
-                        onChange={(e) => setFormData({...formData, city: e.target.value, district: ''})}
-                    >
-                        <option value="">Seçiniz</option>
-                        {CITIES.map(city => (
-                            <option key={city.id} value={city.id}>{city.name}</option>
-                        ))}
-                    </select>
+            <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Ülke</label>
+                        <select 
+                            className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-green cursor-pointer"
+                            value={formData.country} 
+                            onChange={(e) => setFormData({...formData, country: e.target.value, city: '', district: ''})}
+                        >
+                            {COUNTRY_OPTIONS.map(country => (
+                                <option key={country.id} value={country.id}>{country.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Hizmet Dilleri</label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {LANGUAGE_OPTIONS.map(lang => (
+                                <button
+                                    key={lang.id}
+                                    type="button"
+                                    onClick={() => toggleTag('service_languages', lang.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ${
+                                        formData.service_languages.includes(lang.id)
+                                            ? 'bg-rejimde-green text-white border-rejimde-green'
+                                            : 'bg-slate-900 text-slate-400 border-slate-600 hover:border-slate-500'
+                                    }`}
+                                >
+                                    {lang.flag} {lang.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
+
+                {formData.country === 'TR' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Şehir</label>
+                            <select 
+                                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-green cursor-pointer"
+                                value={formData.city} 
+                                onChange={(e) => setFormData({...formData, city: e.target.value, district: ''})}
+                            >
+                                <option value="">Seçiniz</option>
+                                {CITIES.map(city => (
+                                    <option key={city.id} value={city.id}>{city.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">İlçe</label>
+                            <select 
+                                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-green cursor-pointer disabled:opacity-50"
+                                value={formData.district} 
+                                onChange={(e) => setFormData({...formData, district: e.target.value})}
+                                disabled={!formData.city}
+                            >
+                                <option value="">Seçiniz</option>
+                                {selectedCity?.districts.map(dist => (
+                                    <option key={dist} value={dist}>{dist}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                ) : (
+                    <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Şehir / Bölge</label>
+                        <input 
+                            type="text" 
+                            value={formData.city} 
+                            onChange={(e) => setFormData({...formData, city: e.target.value})} 
+                            className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-green" 
+                            placeholder="Şehir veya bölge adını yazın"
+                        />
+                    </div>
+                )}
                 <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">İlçe</label>
-                    <select 
-                        className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-green cursor-pointer disabled:opacity-50"
-                        value={formData.district} 
-                        onChange={(e) => setFormData({...formData, district: e.target.value})}
-                        disabled={!formData.city}
-                    >
-                        <option value="">Seçiniz</option>
-                        {selectedCity?.districts.map(dist => (
-                            <option key={dist} value={dist}>{dist}</option>
+                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Açık Adres (Yüz Yüze İçin)</label>
+                    <textarea value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} 
+                        className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green h-20 resize-none"></textarea>
+                </div>
+            </div>
+        </div>
                         ))}
                     </select>
                 </div>
@@ -618,6 +721,48 @@ export default function ProSettingsPage() {
                 <input type="file" ref={certInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleCertificateChange} />
             </div>
         </div>
+
+        {/* NEW SECTIONS */}
+        <ProfessionalExperienceSection 
+          formData={formData}
+          setFormData={setFormData}
+          calculateExperience={calculateExperience}
+          toggleTag={toggleTag}
+          addEducation={addEducation}
+          removeEducation={removeEducation}
+          updateEducation={updateEducation}
+          addCertificate={addCertificate}
+          removeCertificate={removeCertificate}
+          updateCertificate={updateCertificate}
+        />
+
+        <ExpertiseTagsSection 
+          formData={formData}
+          setFormData={setFormData}
+          toggleTag={toggleTag}
+          calculateExperience={calculateExperience}
+        />
+
+        <ExcludedCasesSection 
+          formData={formData}
+          setFormData={setFormData}
+          toggleTag={toggleTag}
+          calculateExperience={calculateExperience}
+        />
+
+        <WorkCommunicationSection 
+          formData={formData}
+          setFormData={setFormData}
+          toggleTag={toggleTag}
+          calculateExperience={calculateExperience}
+        />
+
+        <PrivacySettingsSection 
+          formData={formData}
+          setFormData={setFormData}
+          toggleTag={toggleTag}
+          calculateExperience={calculateExperience}
+        />
 
         {/* KAYDET BUTONU */}
         <div className="flex justify-end sticky bottom-6 z-30 pointer-events-none">
