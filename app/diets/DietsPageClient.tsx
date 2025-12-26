@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useEffect, useState } from "react";
-import MascotDisplay from "@/components/MascotDisplay";
 import { getPlans } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
+import MascotDisplay from "@/components/MascotDisplay";
 
 // KATEGORİLER
 const CATEGORIES = [
@@ -31,47 +30,24 @@ const SORT_OPTIONS = [
 type CompletedUser = {
   id?: number;
   name?: string;
-  avatar?: string;
   slug?: string;
+  avatar?: string;
   is_expert?: boolean;
 };
 
-export default function DietsPage() {
-  const router = useRouter();
-
+export default function DietsPageClient() {
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
+  // Filtre State'leri
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeSort, setActiveSort] = useState("newest");
   const [showVerifiedOnly, setShowVerifiedOnly] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 9;
 
-  // Sidebar: leaderboard
-  const [dietHeroes, setDietHeroes] = useState<any[]>([]);
-
-  // SEO (client-side, mevcut blog yaklaşımıyla)
-  useEffect(() => {
-    document.title = "Diyet Listeleri | Rejimde";
-
-    const desc =
-      "Uzman onaylı diyet listeleri: keto, vegan, akdeniz, detoks, aralıklı oruç ve daha fazlası. Plan seç, tamamla, puan kazan.";
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute("content", desc);
-    } else {
-      const meta = document.createElement("meta");
-      meta.name = "description";
-      meta.content = desc;
-      document.head.appendChild(meta);
-    }
-  }, []);
-
-  // Plans fetch
   useEffect(() => {
     async function fetchData() {
       try {
@@ -88,53 +64,13 @@ export default function DietsPage() {
     fetchData();
   }, []);
 
-  // Leaderboard fetch (gerçek kullanıcı)
-  useEffect(() => {
-    async function fetchLeaderboard() {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || "https://api.rejimde.com/wp-json";
-        const res = await fetch(`${apiUrl}/rejimde/v1/gamification/leaderboard`, {
-          cache: "no-store",
-          headers: { "Content-Type": "application/json" },
-        });
-
-        if (!res.ok) return;
-
-        const json = await res.json();
-        if (json?.status === "success" && Array.isArray(json.data)) {
-          const mapped = json.data.slice(0, 10).map((u: any) => {
-            const slug =
-              u.slug ||
-              String(u.name || "user")
-                .toLowerCase()
-                .replace(/\s+/g, "-")
-                .replace(/[^\w-]+/g, "");
-
-            return {
-              ...u,
-              slug,
-              avatar: getSafeAvatarUrl(u.avatar, slug),
-              is_expert: Boolean(u.is_expert),
-            };
-          });
-
-          setDietHeroes(mapped);
-        }
-      } catch (e) {
-        console.error("Leaderboard fetch hatası:", e);
-      }
-    }
-
-    fetchLeaderboard();
-  }, []);
-
-  // Filter + sort
+  // filtre + sıralama
   const filteredPlans = useMemo(() => {
     return plans
       .filter((plan) => {
         if (!plan || !plan.meta) return false;
 
-        // category
+        // Kategori
         if (activeCategory !== "all") {
           const planCat = plan.meta.diet_category;
           if (Array.isArray(planCat)) {
@@ -144,9 +80,12 @@ export default function DietsPage() {
           }
         }
 
-        // verified
+        // Onaylı
         if (showVerifiedOnly) {
-          const isVerified = plan.meta.is_verified === true || plan.meta.is_verified === "1" || plan.meta.is_verified === "true";
+          const isVerified =
+            plan.meta.is_verified === true ||
+            plan.meta.is_verified === "1" ||
+            plan.meta.is_verified === "true";
           if (!isVerified) return false;
         }
 
@@ -171,27 +110,53 @@ export default function DietsPage() {
       });
   }, [plans, activeCategory, activeSort, showVerifiedOnly]);
 
-  // Reset page on filter change
+  // Pagination hesapları
+  const totalPages = Math.ceil(filteredPlans.length / itemsPerPage);
+  const paginatedPlans = filteredPlans.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Filtre değişince sayfayı 1'e çek
   useEffect(() => {
     setCurrentPage(1);
   }, [activeCategory, activeSort, showVerifiedOnly]);
 
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredPlans.length / itemsPerPage);
-  const paginatedPlans = filteredPlans.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
-      window.scrollTo({ top: 520, behavior: "smooth" });
+      window.scrollTo({ top: 400, behavior: "smooth" });
     }
   };
 
-  // Popular plans: most completed
+  // Sidebar modülleri: basit örnekler (UI)
   const popularPlans = useMemo(() => {
-    const sorted = [...plans].sort((a, b) => (b.completed_count || 0) - (a.completed_count || 0));
+    // “popüler”i şimdilik score_reward’a göre türetiyoruz
+    const sorted = [...filteredPlans].sort((a, b) => {
+      const scoreA = parseInt(a.meta?.score_reward) || 0;
+      const scoreB = parseInt(b.meta?.score_reward) || 0;
+      return scoreB - scoreA;
+    });
     return sorted.slice(0, 5);
-  }, [plans]);
+  }, [filteredPlans]);
+
+  // “Haftanın Okurları” benzeri (diyet uyarlaması) - şimdilik mock / fallback
+  const [dietHeroes, setDietHeroes] = useState<any[]>([]);
+  useEffect(() => {
+    // İsterseniz burayı backend leaderboard/points endpoint'ine bağlarız.
+    setDietHeroes([
+      { id: 1, name: "BulgurPilavı", score: 1280, avatar: "https://api.dicebear.com/9.x/personas/svg?seed=Bulgur", slug: "bulgurpilavi" },
+      { id: 2, name: "KetoKaptan", score: 1170, avatar: "https://api.dicebear.com/9.x/personas/svg?seed=Keto", slug: "ketokaptan" },
+      { id: 3, name: "YeşilCanavar", score: 990, avatar: "https://api.dicebear.com/9.x/personas/svg?seed=Yesil", slug: "yesilcanavar" },
+      { id: 4, name: "IFNinja", score: 880, avatar: "https://api.dicebear.com/9.x/personas/svg?seed=IF", slug: "ifninja" },
+      { id: 5, name: "ProteinPanda", score: 760, avatar: "https://api.dicebear.com/9.x/personas/svg?seed=Panda", slug: "proteinpanda" },
+      { id: 6, name: "DetoksDedektifi", score: 640, avatar: "https://api.dicebear.com/9.x/personas/svg?seed=Detoks", slug: "detoksdedektifi" },
+      { id: 7, name: "AkdenizAşığı", score: 540, avatar: "https://api.dicebear.com/9.x/personas/svg?seed=Akdeniz", slug: "akdeniz asigi" },
+      { id: 8, name: "VeganVızır", score: 430, avatar: "https://api.dicebear.com/9.x/personas/svg?seed=Vegan", slug: "veganvizir" },
+      { id: 9, name: "GlutensizGurme", score: 320, avatar: "https://api.dicebear.com/9.x/personas/svg?seed=Gurme", slug: "glutensizgurme" },
+      { id: 10, name: "Suİçtim", score: 210, avatar: "https://api.dicebear.com/9.x/personas/svg?seed=Su", slug: "suictim" },
+    ]);
+  }, []);
 
   return (
     <div className="min-h-screen pb-20 font-sans text-gray-800 bg-gray-50/30">
@@ -208,11 +173,11 @@ export default function DietsPage() {
               <i className="fa-solid fa-wand-magic-sparkles text-yellow-300"></i> Rejimde AI
             </div>
             <h1 className="text-3xl md:text-5xl font-black mb-4 leading-tight">
-              Hangi diyet sana uygun? <br />
-              <span className="text-purple-200">Bırak yapay zeka seçsin.</span>
+              Diyet seçmek zor mu? <br />
+              <span className="text-purple-200">Bırak planlar konuşsun.</span>
             </h1>
             <p className="text-purple-100 font-bold mb-8 text-lg opacity-90">
-              Boyunu, kilonu ve hedefini söyle, sana en uygun beslenme planını saniyeler içinde oluşturalım.
+              Hedefine uygun listeleri seç, uygula, tamamla… sonra puanları cebe indir.
             </p>
             <Link
               href="/ai-diet-generator"
@@ -230,7 +195,7 @@ export default function DietsPage() {
         </div>
       </div>
 
-      {/* MAIN */}
+      {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 pb-12">
         {/* CONTROL BAR */}
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-10">
@@ -301,7 +266,7 @@ export default function DietsPage() {
 
         {/* GRID + SIDEBAR */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* LEFT */}
+          {/* LEFT: Cards */}
           <div className="lg:col-span-8">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-32 gap-6">
@@ -332,75 +297,58 @@ export default function DietsPage() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {paginatedPlans.map((plan) => {
-                    // theme
-                    let themeColor = "rejimde-green";
-                    let borderColor = "hover:border-rejimde-green";
-                    let iconColor = "text-rejimde-green";
-
-                    const cat = plan.meta?.diet_category;
-                    if (["Keto", "Protein Ağırlıklı"].includes(cat)) {
-                      themeColor = "rejimde-red";
-                      borderColor = "hover:border-rejimde-red";
-                      iconColor = "text-rejimde-red";
-                    }
-                    if (["Vegan", "Vejetaryen", "Akdeniz"].includes(cat)) {
-                      themeColor = "rejimde-green";
-                      borderColor = "hover:border-rejimde-green";
-                      iconColor = "text-rejimde-green";
-                    }
-                    if (["Ekonomik", "Hızlı Sonuç"].includes(cat)) {
-                      themeColor = "rejimde-yellow";
-                      borderColor = "hover:border-rejimde-yellow";
-                      iconColor = "text-rejimde-yellow";
-                    }
-                    if (["Detoks", "Aralıklı Oruç"].includes(cat)) {
-                      themeColor = "rejimde-blue";
-                      borderColor = "hover:border-rejimde-blue";
-                      iconColor = "text-rejimde-blue";
-                    }
-
+                    // Yazar
                     const authorName = plan.author?.name || "Rejimde Uzman";
                     const authorAvatar = getSafeAvatarUrl(plan.author?.avatar, plan.author?.slug || authorName);
 
-                    const completedUsers: CompletedUser[] = Array.isArray(plan.completed_users) ? plan.completed_users : [];
-                    const completedCount: number = plan.completed_count || completedUsers.length || 0;
+                    // Tamamlayanlar (avatar FIX burada)
+                    const completedUsersRaw: CompletedUser[] = Array.isArray(plan.completed_users) ? plan.completed_users : [];
+                    const completedUsers = completedUsersRaw.map((u) => ({
+                      ...u,
+                      avatar: getSafeAvatarUrl(u.avatar, u.slug || u.name || "user"),
+                    }));
+                    const completedCount = completedUsers.length;
+
+                    const scoreReward = parseInt(plan.meta?.score_reward) || 0;
 
                     return (
                       <Link
                         key={plan.id}
                         href={`/diets/${plan.slug}`}
-                        className={`bg-white border-2 border-gray-100 rounded-[2rem] p-0 transition-all duration-300 shadow-sm hover:shadow-xl ${borderColor} group flex flex-col h-full relative`}
+                        className="bg-white border-2 border-gray-100 rounded-[2rem] p-0 transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1 group flex flex-col h-full relative"
                       >
-                        {/* Badge */}
+                        {/* Badge: Verified */}
                         <div className="absolute top-4 left-4 z-10 flex gap-2">
-                          {plan.meta?.is_verified === true || plan.meta?.is_verified === "1" ? (
+                          {(plan.meta?.is_verified === true || plan.meta?.is_verified === "1") && (
                             <div className="bg-blue-600/90 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase shadow-lg border border-white/20 flex items-center gap-2">
                               <i className="fa-solid fa-circle-check"></i> Uzman Onaylı
                             </div>
-                          ) : null}
+                          )}
 
                           {plan.meta?.diet_category && (
-                            <div
-                              className={`text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase shadow-lg border border-white/20 bg-${themeColor}/90 backdrop-blur-md`}
-                            >
+                            <div className="bg-white/90 backdrop-blur-md text-gray-800 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase shadow-lg border border-white/20">
                               {plan.meta.diet_category}
                             </div>
                           )}
                         </div>
 
-                        {/* Points */}
-                        {plan.meta?.score_reward && (
+                        {/* Puan Badge (Sağ Üst) */}
+                        {scoreReward > 0 && (
                           <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-md text-yellow-600 px-3 py-1.5 rounded-xl text-[10px] font-black border border-yellow-100 shadow-sm flex items-center gap-2">
-                            <i className="fa-solid fa-trophy"></i> +{plan.meta.score_reward}
+                            <i className="fa-solid fa-trophy"></i> +{scoreReward}
                           </div>
                         )}
 
                         <div className="h-52 bg-gray-100 relative overflow-hidden flex-shrink-0 rounded-t-[2rem]">
                           {plan.image ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={plan.image} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" alt={plan.title} />
+                            <img
+                              src={plan.image}
+                              className="w-full h-full object-cover group-hover:scale-110 transition duration-700"
+                              alt={plan.title}
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-100 to-green-50">
                               <i className="fa-solid fa-leaf text-7xl text-green-400 opacity-60"></i>
@@ -408,9 +356,9 @@ export default function DietsPage() {
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90"></div>
                           <div className="absolute bottom-5 left-5 right-5 text-white">
-                            <h3 className="font-extrabold text-xl shadow-black drop-shadow-md line-clamp-2 mb-2 leading-tight" dangerouslySetInnerHTML={{ __html: plan.title }}></h3>
+                            <h3 className="font-extrabold text-xl drop-shadow-md line-clamp-2 mb-2 leading-tight" dangerouslySetInnerHTML={{ __html: plan.title }} />
                             <div className="flex items-center gap-2 opacity-90">
-                              <div className="w-5 h-5 rounded-full overflow-hidden border border-white/50 bg-white/10">
+                              <div className="w-5 h-5 rounded-full overflow-hidden border border-white/50">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={authorAvatar} alt={authorName} className="w-full h-full object-cover" />
                               </div>
@@ -423,59 +371,45 @@ export default function DietsPage() {
                           <div
                             className="text-gray-500 text-sm font-bold mb-6 line-clamp-2 min-h-[40px] leading-relaxed"
                             dangerouslySetInnerHTML={{
-                              __html: plan.content ? String(plan.content).replace(/<[^>]+>/g, "").slice(0, 160) : "",
+                              __html: plan.content ? String(plan.content).replace(/<[^>]+>/g, "").slice(0, 120) : "",
                             }}
                           />
 
                           <div className="grid grid-cols-3 gap-3 mb-6">
-                            <div className="bg-gray-50 rounded-2xl p-3 flex flex-col items-center justify-center text-center group-hover:bg-gray-100 transition-colors border border-transparent">
-                              <i className={`fa-solid fa-gauge-high ${iconColor} text-sm mb-1.5`}></i>
+                            <div className="bg-gray-50 rounded-2xl p-3 flex flex-col items-center justify-center text-center border border-transparent">
+                              <i className="fa-solid fa-gauge-high text-rejimde-purple text-sm mb-1.5"></i>
                               <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide truncate w-full">
                                 {plan.meta?.difficulty === "easy" ? "Kolay" : plan.meta?.difficulty === "hard" ? "Zor" : "Orta"}
                               </span>
                             </div>
-                            <div className="bg-gray-50 rounded-2xl p-3 flex flex-col items-center justify-center text-center group-hover:bg-gray-100 transition-colors border border-transparent">
+                            <div className="bg-gray-50 rounded-2xl p-3 flex flex-col items-center justify-center text-center border border-transparent">
                               <i className="fa-regular fa-clock text-rejimde-blue text-sm mb-1.5"></i>
-                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide truncate w-full">{plan.meta?.duration || "3"} Gün</span>
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide truncate w-full">
+                                {plan.meta?.duration || "3"} Gün
+                              </span>
                             </div>
-                            <div className="bg-gray-50 rounded-2xl p-3 flex flex-col items-center justify-center text-center group-hover:bg-gray-100 transition-colors border border-transparent">
+                            <div className="bg-gray-50 rounded-2xl p-3 flex flex-col items-center justify-center text-center border border-transparent">
                               <i className="fa-solid fa-fire text-orange-500 text-sm mb-1.5"></i>
-                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide truncate w-full">{plan.meta?.calories || "-"} kcal</span>
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide truncate w-full">
+                                {plan.meta?.calories || "-"} kcal
+                              </span>
                             </div>
                           </div>
 
                           <div className="mt-auto pt-5 border-t border-gray-100 flex items-center justify-between">
-                            {/* Completed users (NO nested <a>) */}
+                            {/* Tamamlayanlar - blog tarzı */}
                             <div className="flex items-center gap-2">
                               <div className="flex -space-x-2 overflow-hidden pl-2">
-                                {completedUsers.slice(0, 3).map((u, i) => {
-                                  const slug =
-                                    u.slug ||
-                                    String(u.name || "user")
-                                      .toLowerCase()
-                                      .replace(/\s+/g, "-")
-                                      .replace(/[^\w-]+/g, "");
-                                  const isExpert = Boolean(u.is_expert);
-                                  const avatar = getSafeAvatarUrl(u.avatar, slug);
-                                  const href = getUserProfileUrl(slug, isExpert);
-
-                                  return (
-                                    <button
-                                      key={`${plan.id}-cu-${i}`}
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        router.push(href);
-                                      }}
-                                      className="w-7 h-7 rounded-full border-2 border-white relative shadow-sm bg-gray-100 block hover:scale-110 transition-transform"
-                                      title={u.name || "Kullanıcı"}
-                                    >
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={avatar} className="w-full h-full object-cover rounded-full" alt={u.name || "Kullanıcı"} />
-                                    </button>
-                                  );
-                                })}
+                                {completedUsers.slice(0, 3).map((u, i) => (
+                                  <div key={`${plan.id}-c-${i}`} className="w-7 h-7 rounded-full border-2 border-white relative shadow-sm bg-gray-100">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={u.avatar}
+                                      className="w-full h-full object-cover rounded-full"
+                                      alt={u.name || "Kullanıcı"}
+                                    />
+                                  </div>
+                                ))}
 
                                 {completedCount > 3 && (
                                   <div className="w-7 h-7 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-black text-gray-500">
@@ -484,12 +418,19 @@ export default function DietsPage() {
                                 )}
 
                                 {completedCount === 0 && (
-                                  <span className="text-[10px] font-bold text-gray-400 ml-[-8px] bg-gray-50 px-2 py-1 rounded-md">Henüz yok</span>
+                                  <span className="text-[10px] font-bold text-gray-400 ml-[-8px] bg-gray-50 px-2 py-1 rounded-md">
+                                    Henüz yok
+                                  </span>
                                 )}
                               </div>
+                              {completedCount > 0 && (
+                                <span className="text-xs font-bold text-gray-400">
+                                  {completedCount} kişi bitirdi
+                                </span>
+                              )}
                             </div>
 
-                            <span className="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-extrabold text-xs shadow-lg shadow-gray-200 btn-game uppercase flex items-center gap-2 group-hover:bg-gray-800 transition">
+                            <span className="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-extrabold text-xs shadow-lg shadow-gray-200 btn-game uppercase flex items-center gap-2 group-hover:bg-black transition">
                               İncele <i className="fa-solid fa-arrow-right"></i>
                             </span>
                           </div>
@@ -499,7 +440,7 @@ export default function DietsPage() {
                   })}
                 </div>
 
-                {/* Pagination */}
+                {/* Pagination (blog benzeri) */}
                 {totalPages > 1 && (
                   <div className="flex justify-center items-center gap-2 mt-12">
                     <button
@@ -515,7 +456,9 @@ export default function DietsPage() {
                         key={page}
                         onClick={() => handlePageChange(page)}
                         className={`w-10 h-10 rounded-xl font-black flex items-center justify-center transition ${
-                          currentPage === page ? "bg-rejimde-blue text-white shadow-btn shadow-blue-200" : "bg-white border-2 border-gray-200 text-gray-600 hover:border-rejimde-blue"
+                          currentPage === page
+                            ? "bg-rejimde-blue text-white shadow-btn shadow-blue-200"
+                            : "bg-white border-2 border-gray-200 text-gray-600 hover:border-rejimde-blue"
                         }`}
                       >
                         {page}
@@ -535,27 +478,29 @@ export default function DietsPage() {
             )}
           </div>
 
-          {/* RIGHT */}
+          {/* RIGHT: Sidebar */}
           <aside className="lg:col-span-4 space-y-8">
-            {/* Popular diets */}
+            {/* Popüler Diyetler */}
             <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-card">
               <h3 className="font-extrabold text-gray-700 uppercase text-sm mb-4">Popüler Diyetler</h3>
               <div className="space-y-4">
                 {popularPlans.map((p) => (
                   <Link
+                    key={`pop-${p.id}`}
                     href={`/diets/${p.slug}`}
-                    key={`popular-${p.id}`}
                     className="flex gap-3 group p-2 rounded-xl transition border border-transparent hover:border-gray-200"
                   >
                     <div className="w-14 h-14 bg-gray-200 rounded-xl shrink-0 overflow-hidden border-2 border-transparent group-hover:border-rejimde-blue transition">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.image || "https://placehold.co/100x100?text=Diyet"} alt={String(p.title)} className="w-full h-full object-cover" />
+                      <img src={p.image || "https://placehold.co/100x100?text=Diyet"} alt={p.title} className="w-full h-full object-cover" />
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-extrabold text-gray-700 text-sm leading-tight group-hover:text-rejimde-blue transition line-clamp-2">
                         {String(p.title).replace(/<[^>]+>/g, "")}
                       </h4>
-                      <span className="text-xs font-bold text-gray-400">{p.completed_count || 0} kişi bitirdi</span>
+                      <span className="text-xs font-bold text-gray-400">
+                        +{parseInt(p.meta?.score_reward) || 0} puan • {p.meta?.duration || "-"} gün
+                      </span>
                     </div>
                   </Link>
                 ))}
@@ -570,19 +515,25 @@ export default function DietsPage() {
                 <i className="fa-solid fa-envelope-open-text text-3xl"></i>
               </div>
               <h3 className="font-extrabold text-lg mb-2">Tüyoları Kaçırma!</h3>
-              <p className="text-purple-100 text-xs font-bold mb-4 px-2">“Bugün ne yesem?” sorusunu e-postaya devrediyoruz. Haftalık öneriler gelsin.</p>
+              <p className="text-purple-100 text-xs font-bold mb-4 px-2">
+                “Bugün ne yesem?” sorusunu e-postaya outsource ediyoruz. Haftalık öneriler gelsin.
+              </p>
               <div className="bg-white p-1 rounded-xl flex">
-                <input type="email" placeholder="E-posta adresin" className="flex-1 bg-transparent border-none text-gray-700 text-xs font-bold px-3 focus:outline-none" />
+                <input
+                  type="email"
+                  placeholder="E-posta adresin"
+                  className="flex-1 bg-transparent border-none text-gray-700 text-xs font-bold px-3 focus:outline-none"
+                />
                 <button className="bg-rejimde-purpleDark text-white px-3 py-2 rounded-lg font-black text-xs uppercase hover:bg-purple-900 transition">
                   <i className="fa-solid fa-paper-plane"></i>
                 </button>
               </div>
             </div>
 
-            {/* Leaderboard */}
+            {/* Haftanın Diyet Canavarları (blogdaki okurlar modülünün uyarlaması) */}
             <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-card">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-extrabold text-gray-700 uppercase text-sm">Haftanın Diyet Kahramanları</h3>
+                <h3 className="font-extrabold text-gray-700 uppercase text-sm">Haftanın Diyet Canavarları</h3>
                 <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Top 10</span>
               </div>
 
@@ -591,32 +542,22 @@ export default function DietsPage() {
                   dietHeroes.map((reader: any, index: number) => {
                     let rankColor = "text-gray-400";
                     let rankBg = "bg-gray-100";
-                    if (index === 0) {
-                      rankColor = "text-yellow-600";
-                      rankBg = "bg-yellow-100 border-yellow-200";
-                    } else if (index === 1) {
-                      rankColor = "text-gray-600";
-                      rankBg = "bg-gray-200 border-gray-300";
-                    } else if (index === 2) {
-                      rankColor = "text-orange-600";
-                      rankBg = "bg-orange-100 border-orange-200";
-                    }
-
-                    const slug = reader.slug || "user";
-                    const isExpert = Boolean(reader.is_expert);
+                    if (index === 0) { rankColor = "text-yellow-600"; rankBg = "bg-yellow-100 border-yellow-200"; }
+                    else if (index === 1) { rankColor = "text-gray-600"; rankBg = "bg-gray-200 border-gray-300"; }
+                    else if (index === 2) { rankColor = "text-orange-600"; rankBg = "bg-orange-100 border-orange-200"; }
 
                     return (
-                      <div key={reader.id || `${slug}-${index}`} className="flex items-center gap-3 group">
+                      <div key={reader.id} className="flex items-center gap-3 group">
                         <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs border ${rankBg} ${rankColor}`}>
                           {index + 1}
                         </div>
 
-                        <Link href={getUserProfileUrl(slug, isExpert)} className="relative hover:scale-110 transition-transform">
+                        <Link href={getUserProfileUrl(reader.slug || "user", false)} className="relative hover:scale-110 transition-transform">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={getSafeAvatarUrl(reader.avatar, slug)}
+                            src={getSafeAvatarUrl(reader.avatar, reader.name)}
                             className="w-9 h-9 rounded-xl bg-gray-100 object-cover border-2 border-white shadow-sm"
-                            alt={reader.name || "Reader"}
+                            alt={reader.name}
                           />
                           {index < 3 && (
                             <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-yellow-400 rounded-full border-2 border-white flex items-center justify-center">
@@ -626,18 +567,18 @@ export default function DietsPage() {
                         </Link>
 
                         <div className="flex-1 min-w-0">
-                          <Link href={getUserProfileUrl(slug, isExpert)} className="text-xs font-bold text-gray-700 hover:text-rejimde-blue truncate block transition">
+                          <Link href={getUserProfileUrl(reader.slug || "user", false)} className="text-xs font-bold text-gray-700 hover:text-rejimde-blue truncate block transition">
                             {reader.name}
                           </Link>
                           <div className="flex items-center gap-1">
                             <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-rejimde-green rounded-full" style={{ width: `${Math.min(((reader.score || 0) / 2000) * 100, 100)}%` }}></div>
+                              <div className="h-full bg-rejimde-green rounded-full" style={{ width: `${Math.min((reader.score / 2000) * 100, 100)}%` }}></div>
                             </div>
                           </div>
                         </div>
 
                         <div className="text-right">
-                          <span className="text-xs font-black text-gray-700 block">{reader.score || 0}</span>
+                          <span className="text-xs font-black text-gray-700 block">{reader.score}</span>
                           <span className="text-[9px] font-bold text-gray-400 uppercase">Puan</span>
                         </div>
                       </div>
@@ -653,7 +594,7 @@ export default function DietsPage() {
 
               <div className="mt-4 pt-4 border-t border-gray-100 text-center">
                 <Link href="/leagues" className="text-xs font-bold text-rejimde-blue hover:underline">
-                  Tüm Sıralamayı Gör
+                  “Canavarlar Ligi” Tam Liste
                 </Link>
               </div>
             </div>

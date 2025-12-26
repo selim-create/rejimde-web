@@ -13,14 +13,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   return {
     title: `${post.title} - Rejimde Blog`,
-    description: post.excerpt ? post.excerpt.slice(0, 160) : "Rejimde Blog",
-    openGraph: {
+    description: post.excerpt ?  post.excerpt. slice(0, 160) : "Rejimde Blog",
+    openGraph:  {
       images: [post.image],
     },
   };
 }
 
-export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function BlogPostPage({ params }:  { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   
@@ -40,7 +40,6 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   }
 
   // Başlık Formatlayıcı (Kelime Vurgulama)
-  // Sunucuda render edilir ve Client Component'e ReactNode olarak geçilir
   const formatTitle = () => {
     const title = post.title;
     const highlighted = title.replace(

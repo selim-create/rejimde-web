@@ -660,20 +660,20 @@ export async function getPostById(id: number) {
 }
 
 /**
- * TEKİL BLOG YAZISI GETİR (Yazar Detaylarıyla - DÜZELTİLDİ)
+ * TEKİL BLOG YAZISI GETİR (Yazar Detaylarıyla + Okuyucular - GÜNCELLENDİ)
  */
 export async function getPostBySlug(slug: string) {
   try {
-    const data = await fetchAPI(`/wp/v2/posts?slug=${slug}&_embed`);
+    const data = await fetchAPI(`/wp/v2/posts? slug=${slug}&_embed`);
     if (!data || data.length === 0) return null;
     const post = data[0];
     const wordCount = post.content.rendered.replace(/<[^>]+>/g, '').split(/\s+/).length;
     const readTime = Math.ceil(wordCount / 200);
 
-    // Kategori Çekme (Düzeltildi)
+    // Kategori Çekme
     const terms = post._embedded?.['wp:term'] || [];
     const categories = terms[0] || [];
-    const categoryName = categories.length > 0 ? categories[0].name : 'Genel';
+    const categoryName = categories.length > 0 ?  categories[0].name : 'Genel';
 
     // Yazar Detayları
     let authorData = {
@@ -690,33 +690,67 @@ export async function getPostBySlug(slug: string) {
                 const author = await authorRes.json();
                 authorData = {
                     name: author.name,
-                    avatar: author.avatar_url || author.avatar_urls?.['96'] || getDefaultAvatar(author.gender),
+                    avatar: author. avatar_url || author.avatar_urls?. ['96'] || getDefaultAvatar(author.gender),
                     slug: author.slug,
                     is_expert: author.roles && author.roles.includes('rejimde_pro')
                 };
             }
-        } catch (e) { console.error('Author fetch error', e); }
+        } catch (e) { 
+            console.error('Author fetch error', e); 
+        }
+    }
+
+    // Sticky kontrolü
+    const isSticky = post. sticky || false;
+    
+    // Rejimde API'den ek verileri al (readers, is_sticky doğrulaması)
+    let readers:  Array<{ id: number; name: string; avatar: string; slug: string }> = [];
+    let readersCount = 0;
+    
+    try {
+        const rejimdeRes = await fetch(`${API_URL}/rejimde/v1/blog/${slug}`, {
+            cache: 'no-store'
+        });
+        if (rejimdeRes.ok) {
+            const rejimdeJson = await rejimdeRes.json();
+            const blogData = rejimdeJson.data || rejimdeJson;
+            
+            if (blogData.readers && Array.isArray(blogData.readers)) {
+                readers = blogData.readers;
+                readersCount = blogData.readers_count || blogData.readers.length;
+            }
+        }
+    } catch (e) {
+        console.error('Rejimde blog data fetch error:', e);
     }
 
     return {
         id: post.id,
-        title: post.title.rendered,
+        title: post.title. rendered,
         slug: post.slug,
         content: post.content.rendered,
-        excerpt: post.excerpt.rendered.replace(/<[^>]+>/g, ''),
-        image: post._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://placehold.co/800x400',
+        excerpt: post.excerpt.rendered. replace(/<[^>]+>/g, ''),
+        image: post._embedded?.['wp:featuredmedia']?.[0]?. source_url || 'https://placehold.co/800x400',
         date: new Date(post.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }),
         
-        author_name: authorData.name,
+        author_name: authorData. name,
         author_avatar: authorData.avatar,
         author_slug: authorData.slug,
-        author_is_expert: authorData.is_expert,
+        author_is_expert: authorData. is_expert,
         
-        category: categoryName, // Artık dinamik
-        read_time: `${readTime} dk`
+        category:  categoryName,
+        read_time: `${readTime} dk`,
+        
+        // Sticky ve dinamik puan bilgileri
+        is_sticky: isSticky,
+        score_reward: isSticky ? 50 : 10,
+        
+        // Okuyucu bilgileri
+        readers:  readers,
+        readers_count: readersCount
     };
   } catch (error) {
-    console.error("Blog detayı çekilemedi", error);
+    console. error("Blog detayı çekilemedi", error);
     return null;
   }
 }
