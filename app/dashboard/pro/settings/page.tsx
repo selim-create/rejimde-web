@@ -1,988 +1,1070 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { User } from '@supabase/supabase-js';
-import { 
-    FaUser, 
-    FaCamera, 
-    FaMapMarkerAlt, 
-    FaBriefcase, 
-    FaClock, 
-    FaMoneyBillWave, 
-    FaCertificate, 
-    FaGraduationCap,
-    FaInstagram,
-    FaGlobe,
-    FaTiktok,
-    FaSave,
-    FaSpinner,
-    FaCheckCircle,
-    FaExclamationCircle,
-    FaTimes,
-    FaPlus,
-    FaTrash,
-    FaYoutube,
-    FaImage,
-    FaVideo
-} from 'react-icons/fa';
-import { turkishCities, getDistrictsByCity } from '@/lib/turkishLocations';
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faUser,
+  faLock,
+  faCamera,
+  faSpinner,
+  faCheck,
+  faTimes,
+  faEye,
+  faEyeSlash,
+  faUpload,
+  faFileAlt,
+  faTrash,
+  faBriefcase,
+  faGraduationCap,
+  faMapMarkerAlt,
+  faPhone,
+  faEnvelope,
+  faIdCard,
+  faCalendar,
+  faVenusMars,
+  faLanguage,
+  faCertificate,
+  faInfoCircle,
+} from "@fortawesome/free-solid-svg-icons";
+import { getMe, updateUser, changePassword, uploadAvatar, uploadCertificate } from "@/lib/api";
+import { CITIES } from "@/lib/locations";
 
-// Uzmanlık alanları
-const expertiseAreas = [
-    "Kilo Verme",
-    "Kas Geliştirme", 
-    "Fonksiyonel Antrenman",
-    "Rehabilitasyon",
-    "Sporcu Performansı",
-    "Vücut Geliştirme",
-    "Kardiyovasküler Sağlık",
-    "Esneklik ve Mobilite",
-    "Yaşlı Fitness",
-    "Hamilelik ve Doğum Sonrası",
-    "Gençler ve Çocuklar",
-    "Beslenme Koçluğu",
-    "Online Koçluk",
-    "Grup Dersleri",
-    "HIIT",
-    "CrossFit",
-    "Yoga",
-    "Pilates",
-    "Boks/Kickboks",
-    "Yüzme"
-];
-
-// Sertifikalar
-const certificationOptions = [
-    "ACE (American Council on Exercise)",
-    "NASM (National Academy of Sports Medicine)",
-    "ACSM (American College of Sports Medicine)",
-    "ISSA (International Sports Sciences Association)",
-    "NSCA (National Strength and Conditioning Association)",
-    "CrossFit Level 1/2/3",
-    "Yoga Alliance RYT 200/500",
-    "Pilates Mat/Reformer",
-    "TRX Suspension Training",
-    "Kettlebell Certification",
-    "Olympic Weightlifting",
-    "Sports Nutrition Certification",
-    "CPR/AED/First Aid",
-    "Pre/Postnatal Fitness",
-    "Senior Fitness Specialist",
-    "Corrective Exercise Specialist",
-    "Performance Enhancement Specialist",
-    "Türkiye Vücut Geliştirme Federasyonu",
-    "Gençlik ve Spor Bakanlığı Antrenörlük Belgesi",
-    "Üniversite Spor Bilimleri Diploması"
-];
-
-interface ProProfile {
-    id: string;
-    user_id: string;
-    // Temel bilgiler
-    display_name: string;
-    bio: string;
-    profile_image_url: string;
-    cover_image_url: string;
-    // Konum
-    city: string;
-    district: string;
-    address: string;
-    // Mesleki
-    experience_years: number;
-    expertise_areas: string[];
-    certifications: string[];
-    education: string;
-    // Çalışma bilgileri
-    session_duration: number;
-    session_types: string[];
-    availability_status: string;
-    // Fiyatlandırma
-    hourly_rate: number;
-    package_rates: { sessions: number; price: number; discount: number }[];
-    // Galeri
-    gallery_images: string[];
-    intro_video_url: string;
-    // Sosyal
-    instagram_url: string;
-    youtube_url: string;
-    tiktok_url: string;
-    website_url: string;
-    // Durum
-    is_verified: boolean;
-    is_featured: boolean;
-    rating: number;
-    total_reviews: number;
-    created_at: string;
-    updated_at: string;
+interface UserData {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+  phone: string;
+  avatar: string;
+  role: string;
+  // Expert specific fields
+  title?: string;
+  bio?: string;
+  specializations?: string[];
+  experience?: string;
+  education?: string;
+  certificates?: string[];
+  city?: string;
+  district?: string;
+  languages?: string[];
+  gender?: string;
+  birthDate?: string;
+  tcNo?: string;
+  sessionPrice?: number;
+  sessionDuration?: number;
+  availableOnline?: boolean;
+  availableInPerson?: boolean;
 }
 
 export default function ProSettingsPage() {
-    const router = useRouter();
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
-    const [activeTab, setActiveTab] = useState('profile');
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const coverInputRef = useRef<HTMLInputElement>(null);
-    const galleryInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"profile" | "security" | "expert">("profile");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    displayName: "",
+    phone: "",
+    email: "",
+  });
+
+  const [expertData, setExpertData] = useState({
+    title: "",
+    bio: "",
+    specializations: [] as string[],
+    experience: "",
+    education: "",
+    city: "",
+    district: "",
+    languages: [] as string[],
+    gender: "",
+    birthDate: "",
+    tcNo: "",
+    sessionPrice: 0,
+    sessionDuration: 50,
+    availableOnline: true,
+    availableInPerson: false,
+  });
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [certificateUploading, setCertificateUploading] = useState(false);
+  const [certificates, setCertificates] = useState<string[]>([]);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const certificateInputRef = useRef<HTMLInputElement>(null);
+
+  const specializationOptions = [
+    "Klinik Psikolog",
+    "Uzman Psikolog",
+    "Psikiyatrist",
+    "Aile Terapisti",
+    "Çift Terapisti",
+    "Çocuk Psikoloğu",
+    "Ergen Psikoloğu",
+    "Travma Uzmanı",
+    "Bağımlılık Uzmanı",
+    "Yeme Bozuklukları Uzmanı",
+    "Anksiyete Uzmanı",
+    "Depresyon Uzmanı",
+    "OKB Uzmanı",
+    "EMDR Terapisti",
+    "Bilişsel Davranışçı Terapist",
+    "Psikanalitik Terapist",
+    "Gestalt Terapist",
+    "Varoluşçu Terapist",
+  ];
+
+  const languageOptions = [
+    "Türkçe",
+    "İngilizce",
+    "Almanca",
+    "Fransızca",
+    "İspanyolca",
+    "Arapça",
+    "Rusça",
+    "Çince",
+    "Japonca",
+    "Korece",
+  ];
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      const response = await getMe();
+      
+      if (response.success && response.data) {
+        const user = response.data;
+        setUserData(user);
+        setFormData({
+          firstName: user.firstName || "",
+          lastName: user.lastName || "",
+          displayName: user.displayName || "",
+          phone: user.phone || "",
+          email: user.email || "",
+        });
+        setExpertData({
+          title: user.title || "",
+          bio: user.bio || "",
+          specializations: user.specializations || [],
+          experience: user.experience || "",
+          education: user.education || "",
+          city: user.city || "",
+          district: user.district || "",
+          languages: user.languages || ["Türkçe"],
+          gender: user.gender || "",
+          birthDate: user.birthDate || "",
+          tcNo: user.tcNo || "",
+          sessionPrice: user.sessionPrice || 0,
+          sessionDuration: user.sessionDuration || 50,
+          availableOnline: user.availableOnline ?? true,
+          availableInPerson: user.availableInPerson ?? false,
+        });
+        setCertificates(user.certificates || []);
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      setMessage({ type: "error", text: "Kullanıcı bilgileri yüklenemedi" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const response = await updateUser({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        displayName: formData.displayName,
+        phone: formData.phone,
+      });
+
+      if (response.success) {
+        setMessage({ type: "success", text: "Profil bilgileri güncellendi" });
+        fetchUserData();
+      } else {
+        setMessage({ type: "error", text: response.message || "Güncelleme başarısız" });
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      setMessage({ type: "error", text: "Bir hata oluştu" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleExpertSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const response = await updateUser({
+        ...expertData,
+        certificates,
+      });
+
+      if (response.success) {
+        setMessage({ type: "success", text: "Uzman bilgileri güncellendi" });
+        fetchUserData();
+      } else {
+        setMessage({ type: "error", text: response.message || "Güncelleme başarısız" });
+      }
+    } catch (error) {
+      console.error("Error updating expert data:", error);
+      setMessage({ type: "error", text: "Bir hata oluştu" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    const [formData, setFormData] = useState<Partial<ProProfile>>({
-        display_name: '',
-        bio: '',
-        profile_image_url: '',
-        cover_image_url: '',
-        city: '',
-        district: '',
-        address: '',
-        experience_years: 0,
-        expertise_areas: [],
-        certifications: [],
-        education: '',
-        session_duration: 60,
-        session_types: [],
-        availability_status: 'available',
-        hourly_rate: 0,
-        package_rates: [],
-        gallery_images: [],
-        intro_video_url: '',
-        instagram_url: '',
-        youtube_url: '',
-        tiktok_url: '',
-        website_url: ''
-    });
-
-    const [districts, setDistricts] = useState<string[]>([]);
-    const [newCertification, setNewCertification] = useState('');
-    const [uploadingImage, setUploadingImage] = useState(false);
-
-    useEffect(() => {
-        checkUser();
-    }, []);
-
-    useEffect(() => {
-        if (formData.city) {
-            const cityDistricts = getDistrictsByCity(formData.city);
-            setDistricts(cityDistricts);
-        }
-    }, [formData.city]);
-
-    const checkUser = async () => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                router.push('/auth');
-                return;
-            }
-            setUser(user);
-            await loadProfile(user.id);
-        } catch (error) {
-            console.error('Auth error:', error);
-            router.push('/auth');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const loadProfile = async (userId: string) => {
-        try {
-            const { data, error } = await supabase
-                .from('pro_profiles')
-                .select('*')
-                .eq('user_id', userId)
-                .single();
-
-            if (error && error.code !== 'PGRST116') {
-                console.error('Error loading profile:', error);
-                return;
-            }
-
-            if (data) {
-                setFormData(data);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    };
-
-    const handleImageUpload = async (file: File, type: 'profile' | 'cover' | 'gallery') => {
-        if (!user) return;
-        
-        setUploadingImage(true);
-        try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${user.id}/${type}/${Date.now()}.${fileExt}`;
-            
-            const { error: uploadError } = await supabase.storage
-                .from('pro-images')
-                .upload(fileName, file);
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('pro-images')
-                .getPublicUrl(fileName);
-
-            if (type === 'profile') {
-                setFormData(prev => ({ ...prev, profile_image_url: publicUrl }));
-            } else if (type === 'cover') {
-                setFormData(prev => ({ ...prev, cover_image_url: publicUrl }));
-            } else if (type === 'gallery') {
-                setFormData(prev => ({
-                    ...prev,
-                    gallery_images: [...(prev.gallery_images || []), publicUrl]
-                }));
-            }
-        } catch (error) {
-            console.error('Upload error:', error);
-            alert('Resim yüklenirken bir hata oluştu.');
-        } finally {
-            setUploadingImage(false);
-        }
-    };
-
-    const removeGalleryImage = (index: number) => {
-        setFormData(prev => ({
-            ...prev,
-            gallery_images: prev.gallery_images?.filter((_, i) => i !== index) || []
-        }));
-    };
-
-    const addPackageRate = () => {
-        setFormData(prev => ({
-            ...prev,
-            package_rates: [...(prev.package_rates || []), { sessions: 8, price: 0, discount: 10 }]
-        }));
-    };
-
-    const removePackageRate = (index: number) => {
-        setFormData(prev => ({
-            ...prev,
-            package_rates: prev.package_rates?.filter((_, i) => i !== index) || []
-        }));
-    };
-
-    const updatePackageRate = (index: number, field: string, value: number) => {
-        setFormData(prev => ({
-            ...prev,
-            package_rates: prev.package_rates?.map((pkg, i) => 
-                i === index ? { ...pkg, [field]: value } : pkg
-            ) || []
-        }));
-    };
-
-    const toggleExpertise = (expertise: string) => {
-        setFormData(prev => ({
-            ...prev,
-            expertise_areas: prev.expertise_areas?.includes(expertise)
-                ? prev.expertise_areas.filter(e => e !== expertise)
-                : [...(prev.expertise_areas || []), expertise]
-        }));
-    };
-
-    const toggleCertification = (cert: string) => {
-        setFormData(prev => ({
-            ...prev,
-            certifications: prev.certifications?.includes(cert)
-                ? prev.certifications.filter(c => c !== cert)
-                : [...(prev.certifications || []), cert]
-        }));
-    };
-
-    const addCustomCertification = () => {
-        if (newCertification.trim() && !formData.certifications?.includes(newCertification.trim())) {
-            setFormData(prev => ({
-                ...prev,
-                certifications: [...(prev.certifications || []), newCertification.trim()]
-            }));
-            setNewCertification('');
-        }
-    };
-
-    const toggleSessionType = (type: string) => {
-        setFormData(prev => ({
-            ...prev,
-            session_types: prev.session_types?.includes(type)
-                ? prev.session_types.filter(t => t !== type)
-                : [...(prev.session_types || []), type]
-        }));
-    };
-
-    const handleSubmit = async () => {
-        if (!user) return;
-        
-        setSaving(true);
-        setSaveStatus('idle');
-
-        try {
-            const { data: existing } = await supabase
-                .from('pro_profiles')
-                .select('id')
-                .eq('user_id', user.id)
-                .single();
-
-            const profileData = {
-                ...formData,
-                user_id: user.id,
-                updated_at: new Date().toISOString()
-            };
-
-            let error;
-            if (existing) {
-                const { error: updateError } = await supabase
-                    .from('pro_profiles')
-                    .update(profileData)
-                    .eq('user_id', user.id);
-                error = updateError;
-            } else {
-                const { error: insertError } = await supabase
-                    .from('pro_profiles')
-                    .insert({
-                        ...profileData,
-                        created_at: new Date().toISOString()
-                    });
-                error = insertError;
-            }
-
-            if (error) throw error;
-
-            setSaveStatus('success');
-            setTimeout(() => setSaveStatus('idle'), 3000);
-        } catch (error) {
-            console.error('Save error:', error);
-            setSaveStatus('error');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-950">
-                <FaSpinner className="animate-spin text-4xl text-rejimde-green" />
-            </div>
-        );
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setMessage({ type: "error", text: "Yeni şifreler eşleşmiyor" });
+      return;
     }
 
-    const tabs = [
-        { id: 'profile', label: 'Profil', icon: FaUser },
-        { id: 'professional', label: 'Mesleki', icon: FaBriefcase },
-        { id: 'pricing', label: 'Fiyatlandırma', icon: FaMoneyBillWave },
-        { id: 'gallery', label: 'Galeri', icon: FaImage },
-        { id: 'social', label: 'Sosyal', icon: FaGlobe }
-    ];
+    if (passwordData.newPassword.length < 8) {
+      setMessage({ type: "error", text: "Şifre en az 8 karakter olmalıdır" });
+      return;
+    }
 
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const response = await changePassword(
+        passwordData.currentPassword,
+        passwordData.newPassword
+      );
+
+      if (response.success) {
+        setMessage({ type: "success", text: "Şifre başarıyla değiştirildi" });
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+      } else {
+        setMessage({ type: "error", text: response.message || "Şifre değiştirilemedi" });
+      }
+    } catch (error) {
+      console.error("Error changing password:", error);
+      setMessage({ type: "error", text: "Bir hata oluştu" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setMessage({ type: "error", text: "Lütfen bir resim dosyası seçin" });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: "error", text: "Dosya boyutu 5MB'dan küçük olmalıdır" });
+      return;
+    }
+
+    setAvatarUploading(true);
+    setMessage(null);
+
+    try {
+      const response = await uploadAvatar(file);
+
+      if (response.success) {
+        setMessage({ type: "success", text: "Profil fotoğrafı güncellendi" });
+        fetchUserData();
+      } else {
+        setMessage({ type: "error", text: response.message || "Yükleme başarısız" });
+      }
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      setMessage({ type: "error", text: "Bir hata oluştu" });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleCertificateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      setMessage({ type: "error", text: "Lütfen resim veya PDF dosyası seçin" });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setMessage({ type: "error", text: "Dosya boyutu 10MB'dan küçük olmalıdır" });
+      return;
+    }
+
+    setCertificateUploading(true);
+    setMessage(null);
+
+    try {
+      const response = await uploadCertificate(file);
+
+      if (response.success && response.data?.url) {
+        setCertificates([...certificates, response.data.url]);
+        setMessage({ type: "success", text: "Sertifika yüklendi" });
+      } else {
+        setMessage({ type: "error", text: response.message || "Yükleme başarısız" });
+      }
+    } catch (error) {
+      console.error("Error uploading certificate:", error);
+      setMessage({ type: "error", text: "Bir hata oluştu" });
+    } finally {
+      setCertificateUploading(false);
+    }
+  };
+
+  const removeCertificate = (index: number) => {
+    const newCertificates = certificates.filter((_, i) => i !== index);
+    setCertificates(newCertificates);
+  };
+
+  const toggleSpecialization = (spec: string) => {
+    if (expertData.specializations.includes(spec)) {
+      setExpertData({
+        ...expertData,
+        specializations: expertData.specializations.filter((s) => s !== spec),
+      });
+    } else {
+      setExpertData({
+        ...expertData,
+        specializations: [...expertData.specializations, spec],
+      });
+    }
+  };
+
+  const toggleLanguage = (lang: string) => {
+    if (expertData.languages.includes(lang)) {
+      setExpertData({
+        ...expertData,
+        languages: expertData.languages.filter((l) => l !== lang),
+      });
+    } else {
+      setExpertData({
+        ...expertData,
+        languages: [...expertData.languages, lang],
+      });
+    }
+  };
+
+  const getDistrictsForCity = (cityName: string) => {
+    const city = CITIES.find((c) => c.name === cityName);
+    return city?.districts || [];
+  };
+
+  if (loading) {
     return (
-        <div className="min-h-screen bg-slate-950 py-8 px-4">
-            <div className="max-w-5xl mx-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-black text-white">PRO Profil Ayarları</h1>
-                        <p className="text-slate-400 mt-1">Profesyonel profilinizi oluşturun ve müşterilerinizi etkileyin</p>
-                    </div>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={saving}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
-                            saving 
-                                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                                : saveStatus === 'success'
-                                ? 'bg-green-500 text-white'
-                                : saveStatus === 'error'
-                                ? 'bg-red-500 text-white'
-                                : 'bg-rejimde-green text-black hover:bg-rejimde-green/90'
-                        }`}
-                    >
-                        {saving ? (
-                            <>
-                                <FaSpinner className="animate-spin" />
-                                Kaydediliyor...
-                            </>
-                        ) : saveStatus === 'success' ? (
-                            <>
-                                <FaCheckCircle />
-                                Kaydedildi!
-                            </>
-                        ) : saveStatus === 'error' ? (
-                            <>
-                                <FaExclamationCircle />
-                                Hata!
-                            </>
-                        ) : (
-                            <>
-                                <FaSave />
-                                Kaydet
-                            </>
-                        )}
-                    </button>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex flex-wrap gap-2 mb-8 bg-slate-900/50 p-2 rounded-2xl">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
-                                activeTab === tab.id
-                                    ? 'bg-rejimde-green text-black'
-                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                            }`}
-                        >
-                            <tab.icon className="text-sm" />
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Tab Content */}
-                <div className="bg-slate-900/50 rounded-3xl p-6 md:p-8 border border-slate-800">
-                    
-                    {/* Profile Tab */}
-                    {activeTab === 'profile' && (
-                        <div className="space-y-8">
-                            {/* Cover Image */}
-                            <div>
-                                <label className="block text-sm font-bold text-white mb-3">Kapak Fotoğrafı</label>
-                                <div 
-                                    className="relative h-48 bg-slate-800 rounded-2xl overflow-hidden cursor-pointer group"
-                                    onClick={() => coverInputRef.current?.click()}
-                                >
-                                    {formData.cover_image_url ? (
-                                        <Image
-                                            src={formData.cover_image_url}
-                                            alt="Cover"
-                                            fill
-                                            className="object-cover"
-                                        />
-                                    ) : (
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="text-center">
-                                                <FaCamera className="text-4xl text-slate-600 mx-auto mb-2" />
-                                                <p className="text-slate-500">Kapak fotoğrafı ekleyin</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <FaCamera className="text-3xl text-white" />
-                                    </div>
-                                </div>
-                                <input
-                                    ref={coverInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'cover')}
-                                />
-                            </div>
-
-                            {/* Profile Image & Name */}
-                            <div className="flex flex-col md:flex-row gap-6">
-                                <div className="flex-shrink-0">
-                                    <label className="block text-sm font-bold text-white mb-3">Profil Fotoğrafı</label>
-                                    <div 
-                                        className="relative w-32 h-32 bg-slate-800 rounded-2xl overflow-hidden cursor-pointer group"
-                                        onClick={() => fileInputRef.current?.click()}
-                                    >
-                                        {formData.profile_image_url ? (
-                                            <Image
-                                                src={formData.profile_image_url}
-                                                alt="Profile"
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        ) : (
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                <FaUser className="text-4xl text-slate-600" />
-                                            </div>
-                                        )}
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <FaCamera className="text-2xl text-white" />
-                                        </div>
-                                    </div>
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'profile')}
-                                    />
-                                </div>
-
-                                <div className="flex-1 space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Görünen İsim</label>
-                                        <input
-                                            type="text"
-                                            value={formData.display_name}
-                                            onChange={(e) => setFormData({...formData, display_name: e.target.value})}
-                                            placeholder="Müşterilerinizin göreceği isim"
-                                            className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Biyografi</label>
-                                        <textarea
-                                            value={formData.bio}
-                                            onChange={(e) => setFormData({...formData, bio: e.target.value})}
-                                            placeholder="Kendinizi tanıtın, uzmanlık alanlarınızdan ve deneyimlerinizden bahsedin..."
-                                            rows={4}
-                                            className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green resize-none"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Location */}
-                            <div>
-                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                    <FaMapMarkerAlt className="text-rejimde-green" />
-                                    Konum Bilgileri
-                                </h3>
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">İl</label>
-                                        <select
-                                            value={formData.city}
-                                            onChange={(e) => setFormData({...formData, city: e.target.value, district: ''})}
-                                            className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green"
-                                        >
-                                            <option value="">İl Seçin</option>
-                                            {turkishCities.map(city => (
-                                                <option key={city} value={city}>{city}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">İlçe</label>
-                                        <select
-                                            value={formData.district}
-                                            onChange={(e) => setFormData({...formData, district: e.target.value})}
-                                            disabled={!formData.city}
-                                            className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green disabled:opacity-50"
-                                        >
-                                            <option value="">İlçe Seçin</option>
-                                            {districts.map(district => (
-                                                <option key={district} value={district}>{district}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Professional Tab */}
-                    {activeTab === 'professional' && (
-                        <div className="space-y-8">
-                            {/* Experience */}
-                            <div>
-                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                    <FaClock className="text-rejimde-green" />
-                                    Deneyim
-                                </h3>
-                                <div className="max-w-xs">
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Deneyim Süresi (Yıl)</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="50"
-                                        value={formData.experience_years}
-                                        onChange={(e) => setFormData({...formData, experience_years: parseInt(e.target.value) || 0})}
-                                        className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Expertise Areas */}
-                            <div>
-                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                    <FaBriefcase className="text-rejimde-green" />
-                                    Uzmanlık Alanları
-                                </h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {expertiseAreas.map(area => (
-                                        <button
-                                            key={area}
-                                            onClick={() => toggleExpertise(area)}
-                                            className={`px-4 py-2 rounded-xl font-medium transition-all ${
-                                                formData.expertise_areas?.includes(area)
-                                                    ? 'bg-rejimde-green text-black'
-                                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                                            }`}
-                                        >
-                                            {area}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Certifications */}
-                            <div>
-                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                    <FaCertificate className="text-rejimde-green" />
-                                    Sertifikalar
-                                </h3>
-                                <div className="flex flex-wrap gap-2 mb-4">
-                                    {certificationOptions.map(cert => (
-                                        <button
-                                            key={cert}
-                                            onClick={() => toggleCertification(cert)}
-                                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                                                formData.certifications?.includes(cert)
-                                                    ? 'bg-rejimde-green text-black'
-                                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                                            }`}
-                                        >
-                                            {cert}
-                                        </button>
-                                    ))}
-                                </div>
-                                
-                                {/* Custom certification */}
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={newCertification}
-                                        onChange={(e) => setNewCertification(e.target.value)}
-                                        placeholder="Başka sertifika ekleyin..."
-                                        className="flex-1 bg-slate-900 border border-slate-600 rounded-xl p-3 font-medium text-white outline-none focus:border-rejimde-green"
-                                        onKeyPress={(e) => e.key === 'Enter' && addCustomCertification()}
-                                    />
-                                    <button
-                                        onClick={addCustomCertification}
-                                        className="px-4 py-3 bg-rejimde-green text-black rounded-xl font-bold hover:bg-rejimde-green/90 transition-all"
-                                    >
-                                        <FaPlus />
-                                    </button>
-                                </div>
-
-                                {/* Selected certifications */}
-                                {formData.certifications && formData.certifications.length > 0 && (
-                                    <div className="mt-4">
-                                        <p className="text-xs font-bold text-slate-400 uppercase mb-2">Seçili Sertifikalar:</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {formData.certifications.map((cert, index) => (
-                                                <span
-                                                    key={index}
-                                                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg text-sm text-white"
-                                                >
-                                                    {cert}
-                                                    <button
-                                                        onClick={() => toggleCertification(cert)}
-                                                        className="text-slate-400 hover:text-red-400"
-                                                    >
-                                                        <FaTimes />
-                                                    </button>
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Education */}
-                            <div>
-                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                    <FaGraduationCap className="text-rejimde-green" />
-                                    Eğitim
-                                </h3>
-                                <textarea
-                                    value={formData.education}
-                                    onChange={(e) => setFormData({...formData, education: e.target.value})}
-                                    placeholder="Eğitim geçmişinizi yazın (üniversite, bölüm, kurslar vb.)"
-                                    rows={3}
-                                    className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green resize-none"
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Pricing Tab */}
-                    {activeTab === 'pricing' && (
-                        <div className="space-y-8">
-                            {/* Session Types */}
-                            <div>
-                                <h3 className="text-lg font-bold text-white mb-4">Ders Türleri</h3>
-                                <div className="flex flex-wrap gap-3">
-                                    {['Yüz Yüze', 'Online', 'Açık Hava'].map(type => (
-                                        <button
-                                            key={type}
-                                            onClick={() => toggleSessionType(type)}
-                                            className={`px-6 py-3 rounded-xl font-bold transition-all ${
-                                                formData.session_types?.includes(type)
-                                                    ? 'bg-rejimde-green text-black'
-                                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                                            }`}
-                                        >
-                                            {type}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Session Duration */}
-                            <div>
-                                <h3 className="text-lg font-bold text-white mb-4">Ders Süresi</h3>
-                                <div className="flex flex-wrap gap-3">
-                                    {[30, 45, 60, 90, 120].map(duration => (
-                                        <button
-                                            key={duration}
-                                            onClick={() => setFormData({...formData, session_duration: duration})}
-                                            className={`px-6 py-3 rounded-xl font-bold transition-all ${
-                                                formData.session_duration === duration
-                                                    ? 'bg-rejimde-green text-black'
-                                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                                            }`}
-                                        >
-                                            {duration} dk
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Hourly Rate */}
-                            <div>
-                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                    <FaMoneyBillWave className="text-rejimde-green" />
-                                    Saatlik Ücret
-                                </h3>
-                                <div className="max-w-xs">
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            value={formData.hourly_rate}
-                                            onChange={(e) => setFormData({...formData, hourly_rate: parseInt(e.target.value) || 0})}
-                                            className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 pr-12 font-medium text-white outline-none focus:border-rejimde-green"
-                                        />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₺</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Package Rates */}
-                            <div>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-bold text-white">Paket Fiyatları</h3>
-                                    <button
-                                        onClick={addPackageRate}
-                                        className="flex items-center gap-2 px-4 py-2 bg-rejimde-green text-black rounded-xl font-bold hover:bg-rejimde-green/90 transition-all"
-                                    >
-                                        <FaPlus /> Paket Ekle
-                                    </button>
-                                </div>
-                                
-                                <div className="space-y-4">
-                                    {formData.package_rates?.map((pkg, index) => (
-                                        <div key={index} className="flex flex-wrap items-center gap-4 bg-slate-800/50 p-4 rounded-xl">
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Ders Sayısı</label>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    value={pkg.sessions}
-                                                    onChange={(e) => updatePackageRate(index, 'sessions', parseInt(e.target.value) || 0)}
-                                                    className="w-24 bg-slate-900 border border-slate-600 rounded-lg p-2 font-medium text-white outline-none focus:border-rejimde-green"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Toplam Fiyat (₺)</label>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    value={pkg.price}
-                                                    onChange={(e) => updatePackageRate(index, 'price', parseInt(e.target.value) || 0)}
-                                                    className="w-32 bg-slate-900 border border-slate-600 rounded-lg p-2 font-medium text-white outline-none focus:border-rejimde-green"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">İndirim (%)</label>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    max="100"
-                                                    value={pkg.discount}
-                                                    onChange={(e) => updatePackageRate(index, 'discount', parseInt(e.target.value) || 0)}
-                                                    className="w-20 bg-slate-900 border border-slate-600 rounded-lg p-2 font-medium text-white outline-none focus:border-rejimde-green"
-                                                />
-                                            </div>
-                                            <button
-                                                onClick={() => removePackageRate(index)}
-                                                className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all mt-5"
-                                            >
-                                                <FaTrash />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Availability */}
-                            <div>
-                                <h3 className="text-lg font-bold text-white mb-4">Müsaitlik Durumu</h3>
-                                <div className="flex flex-wrap gap-3">
-                                    {[
-                                        { value: 'available', label: 'Müsait', color: 'bg-green-500' },
-                                        { value: 'limited', label: 'Sınırlı', color: 'bg-yellow-500' },
-                                        { value: 'unavailable', label: 'Müsait Değil', color: 'bg-red-500' }
-                                    ].map(status => (
-                                        <button
-                                            key={status.value}
-                                            onClick={() => setFormData({...formData, availability_status: status.value})}
-                                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
-                                                formData.availability_status === status.value
-                                                    ? 'bg-rejimde-green text-black'
-                                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                                            }`}
-                                        >
-                                            <span className={`w-2 h-2 rounded-full ${status.color}`}></span>
-                                            {status.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Gallery Tab */}
-                    {activeTab === 'gallery' && (
-                        <div className="space-y-8">
-                            {/* Intro Video */}
-                            <div>
-                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                    <FaVideo className="text-rejimde-green" />
-                                    Tanıtım Videosu
-                                </h3>
-                                <p className="text-slate-400 text-sm mb-3">YouTube video linki ekleyin</p>
-                                <input
-                                    type="url"
-                                    value={formData.intro_video_url}
-                                    onChange={(e) => setFormData({...formData, intro_video_url: e.target.value})}
-                                    placeholder="https://youtube.com/watch?v=..."
-                                    className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green"
-                                />
-                            </div>
-
-                            {/* Gallery */}
-                            <div>
-                                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                    <FaImage className="text-rejimde-green" />
-                                    Galeri Fotoğrafları
-                                </h3>
-                                <p className="text-slate-400 text-sm mb-3">Antrenman fotoğrafları, müşteri dönüşümleri, çalışma ortamınız</p>
-                                
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {formData.gallery_images?.map((img, index) => (
-                                        <div key={index} className="relative aspect-square bg-slate-800 rounded-xl overflow-hidden group">
-                                            <Image
-                                                src={img}
-                                                alt={`Gallery ${index + 1}`}
-                                                fill
-                                                className="object-cover"
-                                            />
-                                            <button
-                                                onClick={() => removeGalleryImage(index)}
-                                                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <FaTrash />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    
-                                    <button
-                                        onClick={() => galleryInputRef.current?.click()}
-                                        disabled={uploadingImage}
-                                        className="aspect-square bg-slate-800 rounded-xl border-2 border-dashed border-slate-600 hover:border-rejimde-green transition-colors flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-rejimde-green"
-                                    >
-                                        {uploadingImage ? (
-                                            <FaSpinner className="animate-spin text-2xl" />
-                                        ) : (
-                                            <>
-                                                <FaPlus className="text-2xl" />
-                                                <span className="text-sm font-medium">Ekle</span>
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                                
-                                <input
-                                    ref={galleryInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'gallery')}
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Social Tab */}
-                    {activeTab === 'social' && (
-                        <div className="space-y-6">
-                            <h3 className="text-lg font-bold text-white mb-4">Sosyal Medya Hesapları</h3>
-                            
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="flex items-center gap-2 text-sm font-bold text-slate-400 mb-2">
-                                        <FaInstagram className="text-pink-500" /> Instagram
-                                    </label>
-                                    <input
-                                        type="url"
-                                        value={formData.instagram_url}
-                                        onChange={(e) => setFormData({...formData, instagram_url: e.target.value})}
-                                        placeholder="https://instagram.com/kullaniciadi"
-                                        className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="flex items-center gap-2 text-sm font-bold text-slate-400 mb-2">
-                                        <FaYoutube className="text-red-500" /> YouTube
-                                    </label>
-                                    <input
-                                        type="url"
-                                        value={formData.youtube_url}
-                                        onChange={(e) => setFormData({...formData, youtube_url: e.target.value})}
-                                        placeholder="https://youtube.com/@kanaliniz"
-                                        className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="flex items-center gap-2 text-sm font-bold text-slate-400 mb-2">
-                                        <FaTiktok /> TikTok
-                                    </label>
-                                    <input
-                                        type="url"
-                                        value={formData.tiktok_url}
-                                        onChange={(e) => setFormData({...formData, tiktok_url: e.target.value})}
-                                        placeholder="https://tiktok.com/@kullaniciadi"
-                                        className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="flex items-center gap-2 text-sm font-bold text-slate-400 mb-2">
-                                        <FaGlobe className="text-blue-400" /> Website
-                                    </label>
-                                    <input
-                                        type="url"
-                                        value={formData.website_url}
-                                        onChange={(e) => setFormData({...formData, website_url: e.target.value})}
-                                        placeholder="https://siteniz.com"
-                                        className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
     );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Ayarlar</h1>
+
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 mb-6">
+        <button
+          onClick={() => setActiveTab("profile")}
+          className={`flex items-center gap-2 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+            activeTab === "profile"
+              ? "border-primary-600 text-primary-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
+          Profil Bilgileri
+        </button>
+        <button
+          onClick={() => setActiveTab("expert")}
+          className={`flex items-center gap-2 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+            activeTab === "expert"
+              ? "border-primary-600 text-primary-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <FontAwesomeIcon icon={faBriefcase} className="w-4 h-4" />
+          Uzman Bilgileri
+        </button>
+        <button
+          onClick={() => setActiveTab("security")}
+          className={`flex items-center gap-2 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
+            activeTab === "security"
+              ? "border-primary-600 text-primary-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <FontAwesomeIcon icon={faLock} className="w-4 h-4" />
+          Güvenlik
+        </button>
+      </div>
+
+      {/* Message */}
+      {message && (
+        <div
+          className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
+            message.type === "success"
+              ? "bg-green-50 text-green-800 border border-green-200"
+              : "bg-red-50 text-red-800 border border-red-200"
+          }`}
+        >
+          <FontAwesomeIcon
+            icon={message.type === "success" ? faCheck : faTimes}
+            className="w-5 h-5"
+          />
+          {message.text}
+        </div>
+      )}
+
+      {/* Profile Tab */}
+      {activeTab === "profile" && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          {/* Avatar Section */}
+          <div className="flex items-center gap-6 mb-8 pb-8 border-b border-gray-200">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100">
+                {userData?.avatar ? (
+                  <Image
+                    src={userData.avatar}
+                    alt="Profil"
+                    width={96}
+                    height={96}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-primary-100 text-primary-600 text-2xl font-semibold">
+                    {userData?.firstName?.[0] || "U"}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center hover:bg-primary-700 transition-colors disabled:opacity-50"
+              >
+                {avatarUploading ? (
+                  <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FontAwesomeIcon icon={faCamera} className="w-4 h-4" />
+                )}
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Profil Fotoğrafı</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                JPG, PNG veya WebP. Maksimum 5MB.
+              </p>
+            </div>
+          </div>
+
+          {/* Profile Form */}
+          <form onSubmit={handleProfileSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FontAwesomeIcon icon={faUser} className="w-4 h-4 mr-2 text-gray-400" />
+                  Ad
+                </label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FontAwesomeIcon icon={faUser} className="w-4 h-4 mr-2 text-gray-400" />
+                  Soyad
+                </label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <FontAwesomeIcon icon={faIdCard} className="w-4 h-4 mr-2 text-gray-400" />
+                Görünen Ad
+              </label>
+              <input
+                type="text"
+                value={formData.displayName}
+                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                placeholder="Profilinizde görünecek ad"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 mr-2 text-gray-400" />
+                E-posta
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                disabled
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                E-posta adresi değiştirilemez
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <FontAwesomeIcon icon={faPhone} className="w-4 h-4 mr-2 text-gray-400" />
+                Telefon
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                placeholder="5XX XXX XX XX"
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-6 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                    Kaydediliyor...
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faCheck} className="w-4 h-4" />
+                    Kaydet
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Expert Tab */}
+      {activeTab === "expert" && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <form onSubmit={handleExpertSubmit} className="space-y-8">
+            {/* Basic Expert Info */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FontAwesomeIcon icon={faInfoCircle} className="w-5 h-5 text-primary-600" />
+                Temel Bilgiler
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ünvan
+                  </label>
+                  <input
+                    type="text"
+                    value={expertData.title}
+                    onChange={(e) => setExpertData({ ...expertData, title: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    placeholder="Örn: Klinik Psikolog, Uzman Psikolog"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Hakkımda
+                  </label>
+                  <textarea
+                    value={expertData.bio}
+                    onChange={(e) => setExpertData({ ...expertData, bio: e.target.value })}
+                    rows={4}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none"
+                    placeholder="Kendinizi ve uzmanlık alanlarınızı tanıtın..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FontAwesomeIcon icon={faVenusMars} className="w-4 h-4 mr-2 text-gray-400" />
+                      Cinsiyet
+                    </label>
+                    <select
+                      value={expertData.gender}
+                      onChange={(e) => setExpertData({ ...expertData, gender: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    >
+                      <option value="">Seçiniz</option>
+                      <option value="male">Erkek</option>
+                      <option value="female">Kadın</option>
+                      <option value="other">Belirtmek İstemiyorum</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FontAwesomeIcon icon={faCalendar} className="w-4 h-4 mr-2 text-gray-400" />
+                      Doğum Tarihi
+                    </label>
+                    <input
+                      type="date"
+                      value={expertData.birthDate}
+                      onChange={(e) => setExpertData({ ...expertData, birthDate: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <FontAwesomeIcon icon={faIdCard} className="w-4 h-4 mr-2 text-gray-400" />
+                    TC Kimlik No
+                  </label>
+                  <input
+                    type="text"
+                    value={expertData.tcNo}
+                    onChange={(e) => setExpertData({ ...expertData, tcNo: e.target.value.replace(/\D/g, "").slice(0, 11) })}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    placeholder="11 haneli TC Kimlik numaranız"
+                    maxLength={11}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Kimlik doğrulama için gereklidir, gizli tutulur.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Specializations */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FontAwesomeIcon icon={faBriefcase} className="w-5 h-5 text-primary-600" />
+                Uzmanlık Alanları
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {specializationOptions.map((spec) => (
+                  <button
+                    key={spec}
+                    type="button"
+                    onClick={() => toggleSpecialization(spec)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      expertData.specializations.includes(spec)
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    {spec}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Education & Experience */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FontAwesomeIcon icon={faGraduationCap} className="w-5 h-5 text-primary-600" />
+                Eğitim ve Deneyim
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Eğitim Bilgileri
+                  </label>
+                  <textarea
+                    value={expertData.education}
+                    onChange={(e) => setExpertData({ ...expertData, education: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none"
+                    placeholder="Lisans, yüksek lisans, doktora vb. eğitim bilgileriniz..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Deneyim
+                  </label>
+                  <textarea
+                    value={expertData.experience}
+                    onChange={(e) => setExpertData({ ...expertData, experience: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none"
+                    placeholder="Çalıştığınız kurumlar, yıl, pozisyon vb..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Certificates */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FontAwesomeIcon icon={faCertificate} className="w-5 h-5 text-primary-600" />
+                Sertifikalar ve Belgeler
+              </h3>
+              
+              <div className="space-y-4">
+                {certificates.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {certificates.map((cert, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FontAwesomeIcon icon={faFileAlt} className="w-5 h-5 text-gray-400" />
+                          <span className="text-sm text-gray-700 truncate max-w-[200px]">
+                            Sertifika {index + 1}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeCertificate(index)}
+                          className="text-red-500 hover:text-red-700 transition-colors"
+                        >
+                          <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => certificateInputRef.current?.click()}
+                  disabled={certificateUploading}
+                  className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-primary-500 hover:text-primary-600 transition-colors disabled:opacity-50"
+                >
+                  {certificateUploading ? (
+                    <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FontAwesomeIcon icon={faUpload} className="w-4 h-4" />
+                  )}
+                  Sertifika Yükle
+                </button>
+                <input
+                  ref={certificateInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleCertificateUpload}
+                  className="hidden"
+                />
+                <p className="text-xs text-gray-500">
+                  JPG, PNG, WebP veya PDF. Maksimum 10MB.
+                </p>
+              </div>
+            </div>
+
+            {/* Location */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FontAwesomeIcon icon={faMapMarkerAlt} className="w-5 h-5 text-primary-600" />
+                Konum
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    İl
+                  </label>
+                  <select
+                    value={expertData.city}
+                    onChange={(e) => setExpertData({ ...expertData, city: e.target.value, district: "" })}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                  >
+                    <option value="">İl Seçiniz</option>
+                    {CITIES.map((city) => (
+                      <option key={city.name} value={city.name}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    İlçe
+                  </label>
+                  <select
+                    value={expertData.district}
+                    onChange={(e) => setExpertData({ ...expertData, district: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    disabled={!expertData.city}
+                  >
+                    <option value="">İlçe Seçiniz</option>
+                    {getDistrictsForCity(expertData.city).map((district) => (
+                      <option key={district} value={district}>
+                        {district}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Languages */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FontAwesomeIcon icon={faLanguage} className="w-5 h-5 text-primary-600" />
+                Diller
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {languageOptions.map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => toggleLanguage(lang)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      expertData.languages.includes(lang)
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Session Settings */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FontAwesomeIcon icon={faCalendar} className="w-5 h-5 text-primary-600" />
+                Seans Ayarları
+              </h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Seans Ücreti (₺)
+                    </label>
+                    <input
+                      type="number"
+                      value={expertData.sessionPrice}
+                      onChange={(e) => setExpertData({ ...expertData, sessionPrice: parseInt(e.target.value) || 0 })}
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                      min={0}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Seans Süresi (dk)
+                    </label>
+                    <select
+                      value={expertData.sessionDuration}
+                      onChange={(e) => setExpertData({ ...expertData, sessionDuration: parseInt(e.target.value) })}
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    >
+                      <option value={30}>30 dakika</option>
+                      <option value={45}>45 dakika</option>
+                      <option value={50}>50 dakika</option>
+                      <option value={60}>60 dakika</option>
+                      <option value={90}>90 dakika</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={expertData.availableOnline}
+                      onChange={(e) => setExpertData({ ...expertData, availableOnline: e.target.checked })}
+                      className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Online görüşme yapıyorum</span>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={expertData.availableInPerson}
+                      onChange={(e) => setExpertData({ ...expertData, availableInPerson: e.target.checked })}
+                      className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Yüz yüze görüşme yapıyorum</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-gray-200">
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-6 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                    Kaydediliyor...
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faCheck} className="w-4 h-4" />
+                    Kaydet
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Security Tab */}
+      {activeTab === "security" && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Şifre Değiştir</h3>
+          
+          <form onSubmit={handlePasswordSubmit} className="space-y-6 max-w-md">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Mevcut Şifre
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords.current ? "text" : "password"}
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                  className="w-full px-4 py-2.5 pr-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <FontAwesomeIcon icon={showPasswords.current ? faEyeSlash : faEye} className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Yeni Şifre
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords.new ? "text" : "password"}
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  className="w-full px-4 py-2.5 pr-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                  required
+                  minLength={8}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <FontAwesomeIcon icon={showPasswords.new ? faEyeSlash : faEye} className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">En az 8 karakter</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Yeni Şifre (Tekrar)
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords.confirm ? "text" : "password"}
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  className="w-full px-4 py-2.5 pr-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <FontAwesomeIcon icon={showPasswords.confirm ? faEyeSlash : faEye} className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-6 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                    Değiştiriliyor...
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faLock} className="w-4 h-4" />
+                    Şifreyi Değiştir
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
 }
