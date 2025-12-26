@@ -553,10 +553,8 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           }
       } catch (e) {
           showAlert("Hata", "Onaylama işlemi başarısız.", "error");
-         }
-     } catch (e) {
-         showAlert("Hata", "Bağlantı hatası.", "error");
-     }
+      }
+    });
   };
 
   const toggleFavorite = async () => {
