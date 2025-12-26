@@ -2686,3 +2686,80 @@ export async function getExpertProfileViewers(limit?: number): Promise<Array<{
     return [];
   }
 }
+
+/**
+ * ==========================================
+ * FAVORITES API FUNCTIONS
+ * ==========================================
+ */
+
+/**
+ * Toggle favorite status for content (diet, exercise, blog)
+ * @param contentType - 'diet', 'exercise', or 'blog'
+ * @param contentId - Content ID
+ */
+export async function toggleFavoriteAPI(contentType: string, contentId: number) {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    if (!token) {
+      return { success: false, message: 'Giriş yapmalısınız.' };
+    }
+
+    const res = await fetch(`${API_URL}/rejimde/v1/favorites/toggle`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        content_type: contentType,
+        content_id: contentId
+      }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { 
+        success: true, 
+        is_favorited: json.data?.is_favorited || false,
+        message: json.message || 'İşlem başarılı'
+      };
+    }
+    
+    return { success: false, message: json.message || 'İşlem başarısız.' };
+  } catch (error) {
+    console.error('toggleFavoriteAPI error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+/**
+ * Check if content is favorited
+ * @param contentType - 'diet', 'exercise', or 'blog'
+ * @param contentId - Content ID
+ */
+export async function checkFavoriteAPI(contentType: string, contentId: number) {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    if (!token) {
+      return { success: false, is_favorited: false };
+    }
+
+    const res = await fetch(`${API_URL}/rejimde/v1/favorites/check/${contentType}/${contentId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { 
+        success: true, 
+        is_favorited: json.data?.is_favorited || false
+      };
+    }
+    
+    return { success: false, is_favorited: false };
+  } catch (error) {
+    console.error('checkFavoriteAPI error:', error);
+    return { success: false, is_favorited: false };
+  }
+}
