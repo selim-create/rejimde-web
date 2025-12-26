@@ -10,25 +10,7 @@ import AuthorCard from "@/components/AuthorCard";
 import SocialShare from "@/components/SocialShare";
 import PointsToast from "@/components/PointsToast";
 import { useGamification } from "@/hooks/useGamification";
-
-// --- UZMANLIK KATEGORİLERİ (AuthorCard Renkleri İçin) ---
-const SPECIALTY_CATEGORIES = [
-    { title: "Beslenme", items: [{ id: "dietitian_spec", label: "Diyetisyen" }, { id: "dietitian", label: "Diyetisyen" }] },
-    { title: "Hareket", items: [{ id: "pt", label: "PT / Fitness Koçu" }, { id: "trainer", label: "Antrenör" }] },
-    { title: "Zihin & Alışkanlık", items: [{ id: "psychologist", label: "Psikolog" }, { id: "life_coach", label: "Yaşam Koçu" }] },
-    { title: "Sağlık Destek", items: [{ id: "doctor", label: "Doktor" }, { id: "physio", label: "Fizyoterapist" }] },
-    { title: "Kardiyo & Güç", items: [{ id: "box", label: "Boks / Kickboks" }, { id: "defense", label: "Savunma & Kondisyon" }] }
-];
-
-const getProfessionLabel = (slug: string = '') => {
-    if (!slug) return '';
-    const slugLower = slug.toLowerCase();
-    for (const cat of SPECIALTY_CATEGORIES) {
-        const found = cat.items.find(item => item.id === slugLower || slugLower.includes(item.id));
-        if (found) return found.label;
-    }
-    return slug.charAt(0).toUpperCase() + slug.slice(1);
-};
+import { getProfessionLabel } from "@/lib/constants";
 
 // --- TİPLER ---
 interface Exercise {

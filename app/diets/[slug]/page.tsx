@@ -10,6 +10,7 @@ import AuthorCard from "@/components/AuthorCard";
 import SocialShare from "@/components/SocialShare";
 import PointsToast from "@/components/PointsToast";
 import { useGamification } from "@/hooks/useGamification";
+import { getProfessionLabel } from "@/lib/constants";
 
 // --- API Helperları ---
 const approvePlan = async (id: number) => {
@@ -117,22 +118,6 @@ const Modal = ({
       </div>
     </div>
   );
-};
-
-// --- MESLEK HELPER ---
-const SPECIALTY_CATEGORIES = [
-  { title: "Beslenme", items: [{ id: "dietitian_spec", label: "Diyetisyen" }, { id: "dietitian", label: "Diyetisyen" }] },
-  { title: "Hareket", items: [{ id: "pt", label: "PT / Fitness Koçu" }, { id: "trainer", label: "Antrenör" }] },
-];
-
-const getProfessionLabel = (slug: string = "") => {
-  if (! slug) return "";
-  const slugLower = slug.toLowerCase();
-  for (const cat of SPECIALTY_CATEGORIES) {
-    const found = cat.items. find((item) => item.id === slugLower || slugLower. includes(item.id));
-    if (found) return found.label;
-  }
-  return slug. charAt(0).toUpperCase() + slug.slice(1);
 };
 
 // Completed user type
