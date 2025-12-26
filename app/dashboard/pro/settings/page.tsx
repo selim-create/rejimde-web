@@ -4,6 +4,17 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { getMe, updateUser, changePassword, uploadAvatar, uploadCertificate } from "@/lib/api";
 import { CITIES } from "@/lib/locations";
+import {
+  PROFESSION_CATEGORIES,
+  EXPERTISE_TAGS,
+  GOAL_TAGS,
+  LEVEL_OPTIONS,
+  AGE_GROUP_OPTIONS,
+  LANGUAGE_OPTIONS,
+  COUNTRY_OPTIONS,
+  COMMUNICATION_PREFERENCES,
+  EXCLUDED_CASES_OPTIONS
+} from "@/lib/constants";
 
 export default function ProSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -13,23 +24,85 @@ export default function ProSettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const certInputRef = useRef<HTMLInputElement>(null);
 
+  // Collapse/expand sections state
+  const [expandedSections, setExpandedSections] = useState({
+    identity: true,
+    location: true,
+    professional: true,
+    expertise: false,
+    experience: false,
+    excluded: false,
+    work: false,
+    privacy: false
+  });
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({...prev, [section]: !prev[section]}));
+  };
+
   const [formData, setFormData] = useState({
+    // Basic identity
     name: "",
     email: "",
-    title: "", // Unvan (Dyt, Koç vb.)
-    brand_name: "", // Kurum Adı
+    title: "",
+    brand_name: "",
     bio: "",
+    avatar_url: "https://i.pravatar.cc/150?img=44",
+    certificate_url: "",
+    certificate_status: "",
+    
+    // New identity fields
+    profession_category: "",
+    motto: "",
+    birth_date: "",
+    
+    // Professional details
     branches: "",
     services: "",
     client_types: "",
     consultation_types: "online",
+    
+    // New professional experience
+    career_start_date: "",
+    education: [] as Array<{school: string, department: string, year: string}>,
+    certificates: [] as Array<{name: string, institution: string, year: string, file_url: string}>,
+    
+    // Expertise & tags
+    expertise_tags: [] as string[],
+    goal_tags: [] as string[],
+    level_suitability: [] as string[],
+    age_groups: [] as string[],
+    
+    // Location
+    country: "TR",
     city: "",
     district: "",
     address: "",
+    service_languages: ["tr"] as string[],
+    
+    // Contact
     phone: "",
-    avatar_url: "https://i.pravatar.cc/150?img=44", // Varsayılan Pro Avatar
-    certificate_url: "",
-    certificate_status: "" // pending, approved, rejected
+    
+    // Excluded cases
+    excluded_cases: [] as string[],
+    referral_note: "",
+    
+    // Work & communication
+    working_hours: {
+      weekday: "",
+      weekend: ""
+    },
+    response_time: "24h",
+    communication_preference: "both",
+    
+    // Privacy
+    privacy_settings: {
+      show_phone: false,
+      show_address: false,
+      show_location: true
+    },
+    kvkk_consent: false,
+    emergency_disclaimer: false
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -55,23 +128,63 @@ export default function ProSettingsPage() {
         const user = await getMe();
         
         if (user) {
+          const userData: any = user;
           setFormData({
+              // Basic identity
               name: user.name || "",
               email: user.email || "",
-              title: (user as any).title || "",
-              brand_name: (user as any).brand_name || "",
-              bio: (user as any).bio || "", 
-              branches: (user as any).branches || "",
-              services: (user as any).services || "",
-              client_types: (user as any).client_types || "",
-              consultation_types: (user as any).consultation_types || "online",
-              city: (user as any).city || "",
-              district: (user as any).district || "",
-              address: (user as any).address || "",
-              phone: (user as any).phone || "",
+              title: userData.title || "",
+              brand_name: userData.brand_name || "",
+              bio: userData.bio || "", 
               avatar_url: user.avatar_url || user.avatar_urls?.['96'] || "https://api.dicebear.com/9.x/personas/svg?seed=pro",
-              certificate_url: (user as any).certificate_url || "",
-              certificate_status: (user as any).certificate_status || "none"
+              certificate_url: userData.certificate_url || "",
+              certificate_status: userData.certificate_status || "none",
+              
+              // New identity fields
+              profession_category: userData.profession_category || "",
+              motto: userData.motto || "",
+              birth_date: userData.birth_date || "",
+              
+              // Professional details
+              branches: userData.branches || "",
+              services: userData.services || "",
+              client_types: userData.client_types || "",
+              consultation_types: userData.consultation_types || "online",
+              
+              // Professional experience
+              career_start_date: userData.career_start_date || "",
+              education: userData.education ? (typeof userData.education === 'string' ? JSON.parse(userData.education) : userData.education) : [],
+              certificates: userData.certificates ? (typeof userData.certificates === 'string' ? JSON.parse(userData.certificates) : userData.certificates) : [],
+              
+              // Expertise & tags
+              expertise_tags: userData.expertise_tags ? (typeof userData.expertise_tags === 'string' ? JSON.parse(userData.expertise_tags) : userData.expertise_tags) : [],
+              goal_tags: userData.goal_tags ? (typeof userData.goal_tags === 'string' ? JSON.parse(userData.goal_tags) : userData.goal_tags) : [],
+              level_suitability: userData.level_suitability ? (typeof userData.level_suitability === 'string' ? JSON.parse(userData.level_suitability) : userData.level_suitability) : [],
+              age_groups: userData.age_groups ? (typeof userData.age_groups === 'string' ? JSON.parse(userData.age_groups) : userData.age_groups) : [],
+              
+              // Location
+              country: userData.country || "TR",
+              city: userData.city || "",
+              district: userData.district || "",
+              address: userData.address || "",
+              service_languages: userData.service_languages ? (typeof userData.service_languages === 'string' ? JSON.parse(userData.service_languages) : userData.service_languages) : ["tr"],
+              
+              // Contact
+              phone: userData.phone || "",
+              
+              // Excluded cases
+              excluded_cases: userData.excluded_cases ? (typeof userData.excluded_cases === 'string' ? JSON.parse(userData.excluded_cases) : userData.excluded_cases) : [],
+              referral_note: userData.referral_note || "",
+              
+              // Work & communication
+              working_hours: userData.working_hours ? (typeof userData.working_hours === 'string' ? JSON.parse(userData.working_hours) : userData.working_hours) : {weekday: "", weekend: ""},
+              response_time: userData.response_time || "24h",
+              communication_preference: userData.communication_preference || "both",
+              
+              // Privacy
+              privacy_settings: userData.privacy_settings ? (typeof userData.privacy_settings === 'string' ? JSON.parse(userData.privacy_settings) : userData.privacy_settings) : {show_phone: false, show_address: false, show_location: true},
+              kvkk_consent: userData.kvkk_consent || false,
+              emergency_disclaimer: userData.emergency_disclaimer || false
           });
         } else {
           // API başarısız - localStorage'dan temel bilgileri al
@@ -182,9 +295,23 @@ export default function ProSettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    // Backend location string bekliyorsa birleştirip gönderelim (veya ayrı ayrı)
-    // Şimdilik ayrı gönderiyoruz, backend UserMeta.php'de tanımlı.
-    const result = await updateUser(formData);
+    
+    // Serialize JSON fields
+    const dataToSend = {
+      ...formData,
+      education: JSON.stringify(formData.education),
+      certificates: JSON.stringify(formData.certificates),
+      expertise_tags: JSON.stringify(formData.expertise_tags),
+      goal_tags: JSON.stringify(formData.goal_tags),
+      level_suitability: JSON.stringify(formData.level_suitability),
+      age_groups: JSON.stringify(formData.age_groups),
+      service_languages: JSON.stringify(formData.service_languages),
+      excluded_cases: JSON.stringify(formData.excluded_cases),
+      working_hours: JSON.stringify(formData.working_hours),
+      privacy_settings: JSON.stringify(formData.privacy_settings)
+    };
+    
+    const result = await updateUser(dataToSend);
     
     if (result.success) {
       setMessage({ type: 'success', text: 'Uzman profiliniz güncellendi.' });
@@ -196,6 +323,87 @@ export default function ProSettingsPage() {
       setMessage({ type: 'error', text: 'Hata oluştu.' });
     }
     setSaving(false);
+  };
+
+  // Helper functions for dynamic arrays
+  const addEducation = () => {
+    setFormData(prev => ({
+      ...prev,
+      education: [...prev.education, {school: "", department: "", year: ""}]
+    }));
+  };
+
+  const removeEducation = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      education: prev.education.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateEducation = (index: number, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      education: prev.education.map((edu, i) => i === index ? {...edu, [field]: value} : edu)
+    }));
+  };
+
+  const addCertificate = () => {
+    setFormData(prev => ({
+      ...prev,
+      certificates: [...prev.certificates, {name: "", institution: "", year: "", file_url: ""}]
+    }));
+  };
+
+  const removeCertificate = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      certificates: prev.certificates.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateCertificate = (index: number, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      certificates: prev.certificates.map((cert, i) => i === index ? {...cert, [field]: value} : cert)
+    }));
+  };
+
+  // Helper function for multi-select tags
+  const toggleTag = (field: 'expertise_tags' | 'goal_tags' | 'level_suitability' | 'age_groups' | 'service_languages' | 'excluded_cases', value: string) => {
+    setFormData(prev => {
+      const currentTags = prev[field] as string[];
+      if (currentTags.includes(value)) {
+        return {...prev, [field]: currentTags.filter(t => t !== value)};
+      } else {
+        return {...prev, [field]: [...currentTags, value]};
+      }
+    });
+  };
+
+  // Calculate age from birth date
+  const calculateAge = (birthDate: string) => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // Calculate experience years
+  const calculateExperience = (startDate: string) => {
+    if (!startDate) return null;
+    const today = new Date();
+    const start = new Date(startDate);
+    let years = today.getFullYear() - start.getFullYear();
+    const monthDiff = today.getMonth() - start.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < start.getDate())) {
+      years--;
+    }
+    return years;
   };
 
   const handlePasswordChange = async () => {
