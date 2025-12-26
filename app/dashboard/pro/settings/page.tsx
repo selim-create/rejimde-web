@@ -1,809 +1,707 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
+import Link from "next/link";
+import React, { useEffect, useRef, useState } from "react";
 import { getMe, updateUser, changePassword, uploadAvatar, uploadCertificate } from "@/lib/api";
 import { CITIES } from "@/lib/locations";
+import { PROFESSION_CATEGORIES, LANGUAGE_OPTIONS, COUNTRY_OPTIONS } from "@/lib/constants";
+import {
+  ProfessionalExperienceSection,
+  ExpertiseTagsSection,
+  WorkCommunicationSection,
+  ExcludedCasesSection,
+  PrivacySettingsSection,
+} from "@/components/ProSettingsSections";
 
-interface UserData {
-  id: number;
+type MessageState = { type: "success" | "error"; text: string } | null;
+
+type EducationItem = { school: string; department: string; year: string };
+type CertificateItem = { name: string; institution: string; year: string; file_url: string };
+
+type FormData = {
+  // Basic identity
+  name: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  displayName: string;
+  title: string;
+  brand_name: string;
+  bio: string;
+  avatar_url: string;
+  certificate_url: string;
+  certificate_status: string;
+
+  // New identity fields
+  profession_category: string;
+  motto: string;
+  birth_date: string;
+
+  // Professional details
+  branches: string;
+  services: string;
+  client_types: string;
+  consultation_types: "online" | "face" | "hybrid";
+
+  // New professional experience
+  career_start_date: string;
+  education: EducationItem[];
+  certificates: CertificateItem[];
+
+  // Expertise & tags
+  expertise_tags: string[];
+  goal_tags: string[];
+  level_suitability: string[];
+  age_groups: string[];
+
+  // Location
+  country: string;
+  city: string;
+  district: string;
+  address: string;
+  service_languages: string[];
+
+  // Contact
   phone: string;
-  avatar: string;
-  role: string;
-  // Expert specific fields
-  title?: string;
-  bio?: string;
-  specializations?: string[];
-  experience?: string;
-  education?: string;
-  certificates?: string[];
-  city?: string;
-  district?: string;
-  languages?: string[];
-  gender?: string;
-  birthDate?: string;
-  tcNo?: string;
-  sessionPrice?: number;
-  sessionDuration?: number;
-  availableOnline?: boolean;
-  availableInPerson?: boolean;
-}
+
+  // Excluded cases
+  excluded_cases: string[];
+  referral_note: string;
+
+  // Work & communication
+  working_hours: {
+    weekday: string;
+    weekend: string;
+  };
+  response_time: string;
+  communication_preference: string;
+
+  // Privacy
+  privacy_settings: {
+    show_phone: boolean;
+    show_address: boolean;
+    show_location: boolean;
+  };
+  kvkk_consent: boolean;
+  emergency_disclaimer: boolean;
+};
 
 export default function ProSettingsPage() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"profile" | "security" | "expert">("profile");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    displayName: "",
-    phone: "",
-    email: "",
-  });
+  const [message, setMessage] = useState<MessageState>(null);
 
-  const [expertData, setExpertData] = useState({
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const certInputRef = useRef<HTMLInputElement>(null);
+
+  const [formData, setFormData] = useState<FormData>({
+    // Basic identity
+    name: "",
+    email: "",
     title: "",
+    brand_name: "",
     bio: "",
-    specializations: [] as string[],
-    experience: "",
-    education: "",
+    avatar_url: "https://i.pravatar.cc/150?img=44",
+    certificate_url: "",
+    certificate_status: "none",
+
+    // New identity fields
+    profession_category: "",
+    motto: "",
+    birth_date: "",
+
+    // Professional details
+    branches: "",
+    services: "",
+    client_types: "",
+    consultation_types: "online",
+
+    // New professional experience
+    career_start_date: "",
+    education: [],
+    certificates: [],
+
+    // Expertise & tags
+    expertise_tags: [],
+    goal_tags: [],
+    level_suitability: [],
+    age_groups: [],
+
+    // Location
+    country: "TR",
     city: "",
     district: "",
-    languages: [] as string[],
-    gender: "",
-    birthDate: "",
-    tcNo: "",
-    sessionPrice: 0,
-    sessionDuration: 50,
-    availableOnline: true,
-    availableInPerson: false,
+    address: "",
+    service_languages: ["tr"],
+
+    // Contact
+    phone: "",
+
+    // Excluded cases
+    excluded_cases: [],
+    referral_note: "",
+
+    // Work & communication
+    working_hours: {
+      weekday: "",
+      weekend: "",
+    },
+    response_time: "24h",
+    communication_preference: "both",
+
+    // Privacy
+    privacy_settings: {
+      show_phone: false,
+      show_address: false,
+      show_location: true,
+    },
+    kvkk_consent: false,
+    emergency_disclaimer: false,
   });
 
   const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+    current: "",
+    new: "",
+    confirm: "",
   });
 
-  const [showPasswords, setShowPasswords] = useState({
-    current: false,
-    new: false,
-    confirm: false,
-  });
+  // Seçilen şehre göre ilçeleri getir
+  const selectedCity = CITIES.find((c) => c.id === formData.city);
 
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const [certificateUploading, setCertificateUploading] = useState(false);
-  const [certificates, setCertificates] = useState<string[]>([]);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-  const certificateInputRef = useRef<HTMLInputElement>(null);
-
-  const specializationOptions = [
-    "Klinik Psikolog",
-    "Uzman Psikolog",
-    "Psikiyatrist",
-    "Aile Terapisti",
-    "Çift Terapisti",
-    "Çocuk Psikoloğu",
-    "Ergen Psikoloğu",
-    "Travma Uzmanı",
-    "Bağımlılık Uzmanı",
-    "Yeme Bozuklukları Uzmanı",
-    "Anksiyete Uzmanı",
-    "Depresyon Uzmanı",
-    "OKB Uzmanı",
-    "EMDR Terapisti",
-    "Bilişsel Davranışçı Terapist",
-    "Psikanalitik Terapist",
-    "Gestalt Terapist",
-    "Varoluşçu Terapist",
-  ];
-
-  const languageOptions = [
-    "Türkçe",
-    "İngilizce",
-    "Almanca",
-    "Fransızca",
-    "İspanyolca",
-    "Arapça",
-    "Rusça",
-    "Çince",
-    "Japonca",
-    "Korece",
-  ];
+  // Güvenli JSON parse helper
+  const parseMaybeJson = <T,>(value: any, fallback: T): T => {
+    try {
+      if (value == null) return fallback;
+      if (typeof value === "string") return JSON.parse(value) as T;
+      return value as T;
+    } catch {
+      return fallback;
+    }
+  };
 
   useEffect(() => {
-    fetchUserData();
+    async function loadData() {
+      const getLocalStorageFallback = () => {
+        try {
+          const name = localStorage.getItem("user_name") || "";
+          const email = localStorage.getItem("user_email") || "";
+          const avatar =
+            localStorage.getItem("user_avatar") || "https://api.dicebear.com/9.x/personas/svg?seed=pro";
+          return { name, email, avatar_url: avatar };
+        } catch {
+          return { name: "", email: "", avatar_url: "https://api.dicebear.com/9.x/personas/svg?seed=pro" };
+        }
+      };
+
+      try {
+        const user = await getMe();
+
+        if (user) {
+          const userData: any = user;
+
+          setFormData({
+            // Basic identity
+            name: user.name || "",
+            email: user.email || "",
+            title: userData.title || "",
+            brand_name: userData.brand_name || "",
+            bio: userData.bio || "",
+            avatar_url:
+              user.avatar_url || user.avatar_urls?.["96"] || "https://api.dicebear.com/9.x/personas/svg?seed=pro",
+            certificate_url: userData.certificate_url || "",
+            certificate_status: userData.certificate_status || "none",
+
+            // New identity fields
+            profession_category: userData.profession_category || "",
+            motto: userData.motto || "",
+            birth_date: userData.birth_date || "",
+
+            // Professional details
+            branches: userData.branches || "",
+            services: userData.services || "",
+            client_types: userData.client_types || "",
+            consultation_types: (userData.consultation_types || "online") as FormData["consultation_types"],
+
+            // Professional experience
+            career_start_date: userData.career_start_date || "",
+            education: parseMaybeJson<EducationItem[]>(userData.education, []),
+            certificates: parseMaybeJson<CertificateItem[]>(userData.certificates, []),
+
+            // Expertise & tags
+            expertise_tags: parseMaybeJson<string[]>(userData.expertise_tags, []),
+            goal_tags: parseMaybeJson<string[]>(userData.goal_tags, []),
+            level_suitability: parseMaybeJson<string[]>(userData.level_suitability, []),
+            age_groups: parseMaybeJson<string[]>(userData.age_groups, []),
+
+            // Location
+            country: userData.country || "TR",
+            city: userData.city || "",
+            district: userData.district || "",
+            address: userData.address || "",
+            service_languages: parseMaybeJson<string[]>(userData.service_languages, ["tr"]),
+
+            // Contact
+            phone: userData.phone || "",
+
+            // Excluded cases
+            excluded_cases: parseMaybeJson<string[]>(userData.excluded_cases, []),
+            referral_note: userData.referral_note || "",
+
+            // Work & communication
+            working_hours: parseMaybeJson<{ weekday: string; weekend: string }>(userData.working_hours, {
+              weekday: "",
+              weekend: "",
+            }),
+            response_time: userData.response_time || "24h",
+            communication_preference: userData.communication_preference || "both",
+
+            // Privacy
+            privacy_settings: parseMaybeJson<FormData["privacy_settings"]>(userData.privacy_settings, {
+              show_phone: false,
+              show_address: false,
+              show_location: true,
+            }),
+            kvkk_consent: Boolean(userData.kvkk_consent),
+            emergency_disclaimer: Boolean(userData.emergency_disclaimer),
+          });
+        } else {
+          const fallback = getLocalStorageFallback();
+          setFormData((prev) => ({ ...prev, ...fallback }));
+        }
+      } catch (error) {
+        console.error("Settings veri hatası", error);
+        const fallback = getLocalStorageFallback();
+        setFormData((prev) => ({ ...prev, ...fallback }));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
   }, []);
 
-  const fetchUserData = async () => {
-    try {
-      setLoading(true);
-      const response = await getMe();
-      
-      if (response.success && response.data) {
-        const user = response.data;
-        setUserData(user);
-        setFormData({
-          firstName: user.firstName || "",
-          lastName: user.lastName || "",
-          displayName: user.displayName || "",
-          phone: user.phone || "",
-          email: user.email || "",
-        });
-        setExpertData({
-          title: user.title || "",
-          bio: user.bio || "",
-          specializations: user.specializations || [],
-          experience: user.experience || "",
-          education: user.education || "",
-          city: user.city || "",
-          district: user.district || "",
-          languages: user.languages || ["Türkçe"],
-          gender: user.gender || "",
-          birthDate: user.birthDate || "",
-          tcNo: user.tcNo || "",
-          sessionPrice: user.sessionPrice || 0,
-          sessionDuration: user.sessionDuration || 50,
-          availableOnline: user.availableOnline ?? true,
-          availableInPerson: user.availableInPerson ?? false,
-        });
-        setCertificates(user.certificates || []);
+  // Helper function for multi-select tags
+  const toggleTag = (
+    field: "expertise_tags" | "goal_tags" | "level_suitability" | "age_groups" | "service_languages" | "excluded_cases",
+    value: string
+  ) => {
+    setFormData((prev) => {
+      const currentTags = prev[field] as string[];
+      if (currentTags.includes(value)) {
+        return { ...prev, [field]: currentTags.filter((t) => t !== value) };
       }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      setMessage({ type: "error", text: "Kullanıcı bilgileri yüklenemedi" });
-    } finally {
-      setLoading(false);
-    }
+      return { ...prev, [field]: [...currentTags, value] };
+    });
   };
 
-  const handleProfileSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      const response = await updateUser({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        displayName: formData.displayName,
-        phone: formData.phone,
-      });
-
-      if (response.success) {
-        setMessage({ type: "success", text: "Profil bilgileri güncellendi" });
-        fetchUserData();
-      } else {
-        setMessage({ type: "error", text: response.message || "Güncelleme başarısız" });
-      }
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      setMessage({ type: "error", text: "Bir hata oluştu" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleExpertSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      const response = await updateUser({
-        ...expertData,
-        certificates,
-      });
-
-      if (response.success) {
-        setMessage({ type: "success", text: "Uzman bilgileri güncellendi" });
-        fetchUserData();
-      } else {
-        setMessage({ type: "error", text: response.message || "Güncelleme başarısız" });
-      }
-    } catch (error) {
-      console.error("Error updating expert data:", error);
-      setMessage({ type: "error", text: "Bir hata oluştu" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setMessage({ type: "error", text: "Yeni şifreler eşleşmiyor" });
-      return;
-    }
-
-    if (passwordData.newPassword.length < 8) {
-      setMessage({ type: "error", text: "Şifre en az 8 karakter olmalıdır" });
-      return;
-    }
-
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      const response = await changePassword(
-        passwordData.currentPassword,
-        passwordData.newPassword
-      );
-
-      if (response.success) {
-        setMessage({ type: "success", text: "Şifre başarıyla değiştirildi" });
-        setPasswordData({
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
-      } else {
-        setMessage({ type: "error", text: response.message || "Şifre değiştirilemedi" });
-      }
-    } catch (error) {
-      console.error("Error changing password:", error);
-      setMessage({ type: "error", text: "Bir hata oluştu" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Avatar Yükleme
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      setMessage({ type: "error", text: "Lütfen bir resim dosyası seçin" });
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage({ type: "error", text: "Dosya boyutu 2MB'dan küçük olmalıdır." });
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    // Validate file size (max 5MB)
+    setSaving(true);
+
+    // Önizleme
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const preview = ev.target?.result as string | undefined;
+      if (preview) setFormData((prev) => ({ ...prev, avatar_url: preview }));
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      const uploadRes: any = await uploadAvatar(file);
+
+      if (uploadRes?.success && uploadRes?.url) {
+        const updated = { ...formData, avatar_url: uploadRes.url };
+        setFormData(updated);
+
+        const updateRes: any = await updateUser({ avatar_url: uploadRes.url });
+
+        if (updateRes?.success) {
+          setMessage({ type: "success", text: "Profil fotoğrafı güncellendi." });
+          try {
+            localStorage.setItem("user_avatar", uploadRes.url);
+            window.dispatchEvent(new Event("storage"));
+          } catch {}
+        } else {
+          setMessage({ type: "error", text: "Fotoğraf yüklendi fakat profile atanamadı." });
+        }
+      } else {
+        setMessage({ type: "error", text: uploadRes?.message || "Dosya yüklenemedi." });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Bir hata oluştu." });
+    } finally {
+      setSaving(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  // Sertifika Yükleme
+  const handleCertificateChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     if (file.size > 5 * 1024 * 1024) {
-      setMessage({ type: "error", text: "Dosya boyutu 5MB'dan küçük olmalıdır" });
+      setMessage({ type: "error", text: "Dosya boyutu 5MB'dan küçük olmalıdır." });
+      if (certInputRef.current) certInputRef.current.value = "";
       return;
     }
 
-    setAvatarUploading(true);
-    setMessage(null);
+    setSaving(true);
 
     try {
-      const response = await uploadAvatar(file);
+      const uploadRes: any = await uploadCertificate(file);
 
-      if (response.success) {
-        setMessage({ type: "success", text: "Profil fotoğrafı güncellendi" });
-        fetchUserData();
+      if (uploadRes?.success && uploadRes?.url) {
+        const updated = { ...formData, certificate_url: uploadRes.url, certificate_status: "pending" };
+        setFormData(updated);
+
+        await updateUser({ certificate_url: uploadRes.url, certificate_status: "pending" });
+
+        setMessage({ type: "success", text: "Sertifika yüklendi ve onaya gönderildi." });
       } else {
-        setMessage({ type: "error", text: response.message || "Yükleme başarısız" });
+        setMessage({ type: "error", text: uploadRes?.message || "Yükleme başarısız." });
       }
-    } catch (error) {
-      console.error("Error uploading avatar:", error);
-      setMessage({ type: "error", text: "Bir hata oluştu" });
+    } catch {
+      setMessage({ type: "error", text: "Hata oluştu." });
     } finally {
-      setAvatarUploading(false);
+      setSaving(false);
+      if (certInputRef.current) certInputRef.current.value = "";
     }
   };
 
-  const handleCertificateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleSave = async () => {
+    setSaving(true);
 
-    // Validate file type
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-    if (!allowedTypes.includes(file.type)) {
-      setMessage({ type: "error", text: "Lütfen resim veya PDF dosyası seçin" });
-      return;
-    }
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setMessage({ type: "error", text: "Dosya boyutu 10MB'dan küçük olmalıdır" });
-      return;
-    }
-
-    setCertificateUploading(true);
-    setMessage(null);
+    const dataToSend = {
+      ...formData,
+      education: JSON.stringify(formData.education),
+      certificates: JSON.stringify(formData.certificates),
+      expertise_tags: JSON.stringify(formData.expertise_tags),
+      goal_tags: JSON.stringify(formData.goal_tags),
+      level_suitability: JSON.stringify(formData.level_suitability),
+      age_groups: JSON.stringify(formData.age_groups),
+      service_languages: JSON.stringify(formData.service_languages),
+      excluded_cases: JSON.stringify(formData.excluded_cases),
+      working_hours: JSON.stringify(formData.working_hours),
+      privacy_settings: JSON.stringify(formData.privacy_settings),
+    };
 
     try {
-      const response = await uploadCertificate(file);
+      const result: any = await updateUser(dataToSend);
 
-      if (response.success && response.data?.url) {
-        setCertificates([...certificates, response.data.url]);
-        setMessage({ type: "success", text: "Sertifika yüklendi" });
+      if (result?.success) {
+        setMessage({ type: "success", text: "Uzman profiliniz güncellendi." });
+        try {
+          localStorage.setItem("user_name", formData.name);
+          window.dispatchEvent(new Event("storage"));
+        } catch {}
       } else {
-        setMessage({ type: "error", text: response.message || "Yükleme başarısız" });
+        setMessage({ type: "error", text: result?.message || "Hata oluştu." });
       }
-    } catch (error) {
-      console.error("Error uploading certificate:", error);
-      setMessage({ type: "error", text: "Bir hata oluştu" });
+    } catch {
+      setMessage({ type: "error", text: "Hata oluştu." });
     } finally {
-      setCertificateUploading(false);
+      setSaving(false);
     }
+  };
+
+  // Dynamic arrays helpers
+  const addEducation = () => {
+    setFormData((prev) => ({
+      ...prev,
+      education: [...prev.education, { school: "", department: "", year: "" }],
+    }));
+  };
+
+  const removeEducation = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      education: prev.education.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateEducation = (index: number, field: keyof EducationItem, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      education: prev.education.map((edu, i) => (i === index ? { ...edu, [field]: value } : edu)),
+    }));
+  };
+
+  const addCertificate = () => {
+    setFormData((prev) => ({
+      ...prev,
+      certificates: [...prev.certificates, { name: "", institution: "", year: "", file_url: "" }],
+    }));
   };
 
   const removeCertificate = (index: number) => {
-    const newCertificates = certificates.filter((_, i) => i !== index);
-    setCertificates(newCertificates);
+    setFormData((prev) => ({
+      ...prev,
+      certificates: prev.certificates.filter((_, i) => i !== index),
+    }));
   };
 
-  const toggleSpecialization = (spec: string) => {
-    if (expertData.specializations.includes(spec)) {
-      setExpertData({
-        ...expertData,
-        specializations: expertData.specializations.filter((s) => s !== spec),
-      });
-    } else {
-      setExpertData({
-        ...expertData,
-        specializations: [...expertData.specializations, spec],
-      });
+  const updateCertificate = (index: number, field: keyof CertificateItem, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      certificates: prev.certificates.map((cert, i) => (i === index ? { ...cert, [field]: value } : cert)),
+    }));
+  };
+
+  // Calculate age from birth date
+  const calculateAge = (birthDate: string) => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  };
+
+  // Calculate experience years
+  const calculateExperience = (startDate: string) => {
+    if (!startDate) return null;
+    const today = new Date();
+    const start = new Date(startDate);
+    let years = today.getFullYear() - start.getFullYear();
+    const monthDiff = today.getMonth() - start.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < start.getDate())) years--;
+    return years;
+  };
+
+  const handlePasswordChange = async () => {
+    if (passwordData.new !== passwordData.confirm) {
+      setMessage({ type: "error", text: "Yeni şifreler eşleşmiyor." });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res: any = await changePassword(passwordData.current, passwordData.new);
+      if (res?.success) {
+        setMessage({ type: "success", text: "Şifreniz değiştirildi." });
+        setPasswordData({ current: "", new: "", confirm: "" });
+      } else {
+        setMessage({ type: "error", text: res?.message || "Şifre değiştirilemedi." });
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
-  const toggleLanguage = (lang: string) => {
-    if (expertData.languages.includes(lang)) {
-      setExpertData({
-        ...expertData,
-        languages: expertData.languages.filter((l) => l !== lang),
-      });
-    } else {
-      setExpertData({
-        ...expertData,
-        languages: [...expertData.languages, lang],
-      });
-    }
-  };
-
-  const getDistrictsForCity = (cityName: string) => {
-    const city = CITIES.find((c) => c.name === cityName);
-    return city?.districts || [];
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <i className="fa-solid fa-circle-notch animate-spin text-primary-600 text-3xl"></i>
-      </div>
-    );
-  }
+  if (loading) return <div className="p-8 text-center text-gray-500 font-bold">Yükleniyor...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Ayarlar</h1>
-
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button
-          onClick={() => setActiveTab("profile")}
-          className={`flex items-center gap-2 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
-            activeTab === "profile"
-              ? "border-primary-600 text-primary-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <i className="fa-solid fa-user"></i>
-          Profil Bilgileri
-        </button>
-        <button
-          onClick={() => setActiveTab("expert")}
-          className={`flex items-center gap-2 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
-            activeTab === "expert"
-              ? "border-primary-600 text-primary-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <i className="fa-solid fa-briefcase"></i>
-          Uzman Bilgileri
-        </button>
-        <button
-          onClick={() => setActiveTab("security")}
-          className={`flex items-center gap-2 px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
-            activeTab === "security"
-              ? "border-primary-600 text-primary-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <i className="fa-solid fa-lock"></i>
-          Güvenlik
-        </button>
+    <div className="min-h-screen bg-slate-900 pb-20 font-sans text-slate-200">
+      {/* Pro Header */}
+      <div className="bg-slate-800 border-b border-slate-700 px-6 py-4 flex items-center gap-4">
+        <Link href="/dashboard/pro" className="text-slate-400 hover:text-white transition">
+          <i className="fa-solid fa-arrow-left"></i> Panele Dön
+        </Link>
+        <h1 className="font-extrabold text-white text-xl">Uzman Profil Ayarları</h1>
       </div>
 
-      {/* Message */}
-      {message && (
-        <div
-          className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
-            message.type === "success"
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-800 border border-red-200"
-          }`}
-        >
-          <i className={`fa-solid ${message.type === "success" ? "fa-check" : "fa-times"}`}></i>
-          {message.text}
-        </div>
-      )}
-
-      {/* Profile Tab */}
-      {activeTab === "profile" && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          {/* Avatar Section */}
-          <div className="flex items-center gap-6 mb-8 pb-8 border-b border-gray-200">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100">
-                {userData?.avatar ? (
-                  <Image
-                    src={userData.avatar}
-                    alt="Profil"
-                    width={96}
-                    height={96}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-primary-100 text-primary-600 text-2xl font-semibold">
-                    {userData?.firstName?.[0] || "U"}
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => avatarInputRef.current?.click()}
-                disabled={avatarUploading}
-                className="absolute bottom-0 right-0 w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center hover:bg-primary-700 transition-colors disabled:opacity-50"
-              >
-                {avatarUploading ? (
-                  <i className="fa-solid fa-circle-notch animate-spin"></i>
-                ) : (
-                  <i className="fa-solid fa-camera"></i>
-                )}
-              </button>
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="hidden"
-              />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Profil Fotoğrafı</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                JPG, PNG veya WebP. Maksimum 5MB.
-              </p>
-            </div>
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {message && (
+          <div
+            className={`p-4 rounded-xl font-bold text-sm ${
+              message.type === "success"
+                ? "bg-green-900/50 text-green-400 border border-green-800"
+                : "bg-red-900/50 text-red-400 border border-red-800"
+            }`}
+          >
+            {message.text}
           </div>
+        )}
 
-          {/* Profile Form */}
-          <form onSubmit={handleProfileSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <i className="fa-solid fa-user text-gray-400 mr-2"></i>
-                  Ad
-                </label>
-                <input
-                  type="text"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <i className="fa-solid fa-user text-gray-400 mr-2"></i>
-                  Soyad
-                </label>
-                <input
-                  type="text"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                  required
-                />
-              </div>
-            </div>
+        {/* 1. KİMLİK & AVATAR */}
+        <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+          <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
+            <i className="fa-solid fa-id-card text-rejimde-blue"></i> Kimlik & İletişim
+          </h2>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <i className="fa-solid fa-id-card text-gray-400 mr-2"></i>
-                Görünen Ad
-              </label>
-              <input
-                type="text"
-                value={formData.displayName}
-                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                placeholder="Profilinizde görünecek ad"
+          <div className="flex flex-col md:flex-row gap-8 items-center md:items-start mb-6">
+            {/* Avatar Change */}
+            <div className="relative group cursor-pointer w-24 h-24 shrink-0" onClick={() => fileInputRef.current?.click()}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={formData.avatar_url}
+                className="w-full h-full rounded-2xl border-4 border-slate-600 object-cover group-hover:border-rejimde-blue transition shadow-sm"
+                alt="Avatar"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <i className="fa-solid fa-envelope text-gray-400 mr-2"></i>
-                E-posta
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                disabled
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                E-posta adresi değiştirilemez
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <i className="fa-solid fa-phone text-gray-400 mr-2"></i>
-                Telefon
-              </label>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                placeholder="5XX XXX XX XX"
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-6 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
+              <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition backdrop-blur-sm">
                 {saving ? (
-                  <>
-                    <i className="fa-solid fa-circle-notch animate-spin"></i>
-                    Kaydediliyor...
-                  </>
+                  <i className="fa-solid fa-circle-notch animate-spin text-white text-xl"></i>
                 ) : (
-                  <>
-                    <i className="fa-solid fa-check"></i>
-                    Kaydet
-                  </>
+                  <i className="fa-solid fa-camera text-white text-xl"></i>
                 )}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Expert Tab */}
-      {activeTab === "expert" && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <form onSubmit={handleExpertSubmit} className="space-y-8">
-            {/* Basic Expert Info */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-info-circle text-primary-600"></i>
-                Temel Bilgiler
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ünvan
-                  </label>
-                  <input
-                    type="text"
-                    value={expertData.title}
-                    onChange={(e) => setExpertData({ ...expertData, title: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                    placeholder="Örn: Klinik Psikolog, Uzman Psikolog"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Hakkımda
-                  </label>
-                  <textarea
-                    value={expertData.bio}
-                    onChange={(e) => setExpertData({ ...expertData, bio: e.target.value })}
-                    rows={4}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none"
-                    placeholder="Kendinizi ve uzmanlık alanlarınızı tanıtın..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <i className="fa-solid fa-venus-mars text-gray-400 mr-2"></i>
-                      Cinsiyet
-                    </label>
-                    <select
-                      value={expertData.gender}
-                      onChange={(e) => setExpertData({ ...expertData, gender: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                    >
-                      <option value="">Seçiniz</option>
-                      <option value="male">Erkek</option>
-                      <option value="female">Kadın</option>
-                      <option value="other">Belirtmek İstemiyorum</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <i className="fa-solid fa-calendar text-gray-400 mr-2"></i>
-                      Doğum Tarihi
-                    </label>
-                    <input
-                      type="date"
-                      value={expertData.birthDate}
-                      onChange={(e) => setExpertData({ ...expertData, birthDate: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <i className="fa-solid fa-id-card text-gray-400 mr-2"></i>
-                    TC Kimlik No
-                  </label>
-                  <input
-                    type="text"
-                    value={expertData.tcNo}
-                    onChange={(e) => setExpertData({ ...expertData, tcNo: e.target.value.replace(/\D/g, "").slice(0, 11) })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                    placeholder="11 haneli TC Kimlik numaranız"
-                    maxLength={11}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Kimlik doğrulama için gereklidir, gizli tutulur.
-                  </p>
-                </div>
               </div>
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
             </div>
 
-            {/* Specializations */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-briefcase text-primary-600"></i>
-                Uzmanlık Alanları
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {specializationOptions.map((spec) => (
-                  <button
-                    key={spec}
-                    type="button"
-                    onClick={() => toggleSpecialization(spec)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                      expertData.specializations.includes(spec)
-                        ? "bg-primary-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    {spec}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Education & Experience */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-graduation-cap text-primary-600"></i>
-                Eğitim ve Deneyim
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Eğitim Bilgileri
-                  </label>
-                  <textarea
-                    value={expertData.education}
-                    onChange={(e) => setExpertData({ ...expertData, education: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none"
-                    placeholder="Lisans, yüksek lisans, doktora vb. eğitim bilgileriniz..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Deneyim
-                  </label>
-                  <textarea
-                    value={expertData.experience}
-                    onChange={(e) => setExpertData({ ...expertData, experience: e.target.value })}
-                    rows={3}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none"
-                    placeholder="Çalıştığınız kurumlar, yıl, pozisyon vb..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Certificates */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-certificate text-primary-600"></i>
-                Sertifikalar ve Belgeler
-              </h3>
-              
-              <div className="space-y-4">
-                {certificates.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {certificates.map((cert, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
-                      >
-                        <div className="flex items-center gap-3">
-                          <i className="fa-solid fa-file-alt text-gray-400"></i>
-                          <span className="text-sm text-gray-700 truncate max-w-[200px]">
-                            Sertifika {index + 1}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeCertificate(index)}
-                          className="text-red-500 hover:text-red-700 transition-colors"
-                        >
-                          <i className="fa-solid fa-trash"></i>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => certificateInputRef.current?.click()}
-                  disabled={certificateUploading}
-                  className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-primary-500 hover:text-primary-600 transition-colors disabled:opacity-50"
-                >
-                  {certificateUploading ? (
-                    <i className="fa-solid fa-circle-notch animate-spin"></i>
-                  ) : (
-                    <i className="fa-solid fa-upload"></i>
-                  )}
-                  Sertifika Yükle
-                </button>
-                <input
-                  ref={certificateInputRef}
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={handleCertificateUpload}
-                  className="hidden"
-                />
-                <p className="text-xs text-gray-500">
-                  JPG, PNG, WebP veya PDF. Maksimum 10MB.
-                </p>
-              </div>
-            </div>
-
-            {/* Location */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-map-marker-alt text-primary-600"></i>
-                Konum
-              </h3>
+            <div className="flex-1 w-full space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    İl
-                  </label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Ad Soyad / Marka</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">E-posta</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Telefon</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Unvan (Örn: Uzman Diyetisyen)</label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Kurum / Klinik Adı</label>
+                <input
+                  type="text"
+                  value={formData.brand_name}
+                  onChange={(e) => setFormData({ ...formData, brand_name: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue"
+                  placeholder="Varsa kurum adınız"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Meslek Grubu</label>
                   <select
-                    value={expertData.city}
-                    onChange={(e) => setExpertData({ ...expertData, city: e.target.value, district: "" })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue cursor-pointer"
+                    value={formData.profession_category}
+                    onChange={(e) => setFormData({ ...formData, profession_category: e.target.value })}
                   >
-                    <option value="">İl Seçiniz</option>
+                    <option value="">Seçiniz</option>
+                    {PROFESSION_CATEGORIES.flatMap((cat) =>
+                      cat.items.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Doğum Tarihi</label>
+                  <input
+                    type="date"
+                    value={formData.birth_date}
+                    onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue"
+                  />
+                  {formData.birth_date && (
+                    <p className="text-xs text-slate-500 mt-1 font-bold">Yaş: {calculateAge(formData.birth_date)}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Motto / Yaklaşım (Max 150 karakter)</label>
+                <textarea
+                  value={formData.motto}
+                  onChange={(e) => setFormData({ ...formData, motto: e.target.value.slice(0, 150) })}
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-blue h-20 resize-none"
+                  placeholder="Kısa ve öz bir motto veya yaklaşımınızı yazın..."
+                />
+                <p className="text-xs text-slate-500 mt-1 text-right font-bold">{formData.motto.length}/150</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. LOKASYON BİLGİLERİ */}
+        <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+          <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
+            <i className="fa-solid fa-location-dot text-rejimde-green"></i> Lokasyon & Adres
+          </h2>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Ülke</label>
+                <select
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-green cursor-pointer"
+                  value={formData.country}
+                  onChange={(e) => setFormData({ ...formData, country: e.target.value, city: "", district: "" })}
+                >
+                  {COUNTRY_OPTIONS.map((country) => (
+                    <option key={country.id} value={country.id}>
+                      {country.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Hizmet Dilleri</label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {LANGUAGE_OPTIONS.map((lang) => (
+                    <button
+                      key={lang.id}
+                      type="button"
+                      onClick={() => toggleTag("service_languages", lang.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ${
+                        formData.service_languages.includes(lang.id)
+                          ? "bg-rejimde-green text-white border-rejimde-green"
+                          : "bg-slate-900 text-slate-400 border-slate-600 hover:border-slate-500"
+                      }`}
+                    >
+                      {lang.flag} {lang.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {formData.country === "TR" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Şehir</label>
+                  <select
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-green cursor-pointer"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value, district: "" })}
+                  >
+                    <option value="">Seçiniz</option>
                     {CITIES.map((city) => (
-                      <option key={city.name} value={city.name}>
+                      <option key={city.id} value={city.id}>
                         {city.name}
                       </option>
                     ))}
@@ -811,232 +709,228 @@ export default function ProSettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    İlçe
-                  </label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">İlçe</label>
                   <select
-                    value={expertData.district}
-                    onChange={(e) => setExpertData({ ...expertData, district: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                    disabled={!expertData.city}
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-green cursor-pointer disabled:opacity-50"
+                    value={formData.district}
+                    onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                    disabled={!formData.city}
                   >
-                    <option value="">İlçe Seçiniz</option>
-                    {getDistrictsForCity(expertData.city).map((district) => (
-                      <option key={district} value={district}>
-                        {district}
+                    <option value="">Seçiniz</option>
+                    {(selectedCity?.districts || []).map((dist) => (
+                      <option key={dist} value={dist}>
+                        {dist}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
-            </div>
-
-            {/* Languages */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-language text-primary-600"></i>
-                Diller
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {languageOptions.map((lang) => (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => toggleLanguage(lang)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                      expertData.languages.includes(lang)
-                        ? "bg-primary-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    {lang}
-                  </button>
-                ))}
+            ) : (
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Şehir / Bölge</label>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-green"
+                  placeholder="Şehir veya bölge adını yazın"
+                />
               </div>
-            </div>
+            )}
 
-            {/* Session Settings */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-calendar text-primary-600"></i>
-                Seans Ayarları
-              </h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Seans Ücreti (₺)
-                    </label>
-                    <input
-                      type="number"
-                      value={expertData.sessionPrice}
-                      onChange={(e) => setExpertData({ ...expertData, sessionPrice: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                      min={0}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Seans Süresi (dk)
-                    </label>
-                    <select
-                      value={expertData.sessionDuration}
-                      onChange={(e) => setExpertData({ ...expertData, sessionDuration: parseInt(e.target.value) })}
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                    >
-                      <option value={30}>30 dakika</option>
-                      <option value={45}>45 dakika</option>
-                      <option value={50}>50 dakika</option>
-                      <option value={60}>60 dakika</option>
-                      <option value={90}>90 dakika</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={expertData.availableOnline}
-                      onChange={(e) => setExpertData({ ...expertData, availableOnline: e.target.checked })}
-                      className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Online görüşme yapıyorum</span>
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={expertData.availableInPerson}
-                      onChange={(e) => setExpertData({ ...expertData, availableInPerson: e.target.checked })}
-                      className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Yüz yüze görüşme yapıyorum</span>
-                  </label>
-                </div>
-              </div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Açık Adres (Yüz Yüze İçin)</label>
+              <textarea
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-green h-20 resize-none"
+              />
             </div>
-
-            <div className="flex justify-end pt-4 border-t border-gray-200">
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-6 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {saving ? (
-                  <>
-                    <i className="fa-solid fa-circle-notch animate-spin"></i>
-                    Kaydediliyor...
-                  </>
-                ) : (
-                  <>
-                    <i className="fa-solid fa-check"></i>
-                    Kaydet
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
-      )}
 
-      {/* Security Tab */}
-      {activeTab === "security" && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Şifre Değiştir</h3>
-          
-          <form onSubmit={handlePasswordSubmit} className="space-y-6 max-w-md">
+        {/* 3. MESLEKİ DETAYLAR */}
+        <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+          <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
+            <i className="fa-solid fa-briefcase text-rejimde-purple"></i> Mesleki Detaylar
+          </h2>
+
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mevcut Şifre
-              </label>
-              <div className="relative">
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Özgeçmiş / Biyografi</label>
+              <textarea
+                value={formData.bio}
+                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-purple h-32 resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Uzmanlık Alanları (Branşlar)</label>
+              <input
+                type="text"
+                value={formData.branches}
+                onChange={(e) => setFormData({ ...formData, branches: e.target.value })}
+                placeholder="Virgülle ayırın: Keto, Sporcu Beslenmesi..."
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-purple"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Hizmetler</label>
                 <input
-                  type={showPasswords.current ? "text" : "password"}
-                  value={passwordData.currentPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                  className="w-full px-4 py-2.5 pr-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                  required
+                  type="text"
+                  value={formData.services}
+                  onChange={(e) => setFormData({ ...formData, services: e.target.value })}
+                  placeholder="Online Takip, Detoks..."
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-purple"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <i className={`fa-solid ${showPasswords.current ? "fa-eye-slash" : "fa-eye"}`}></i>
-                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Danışan Türü</label>
+                <input
+                  type="text"
+                  value={formData.client_types}
+                  onChange={(e) => setFormData({ ...formData, client_types: e.target.value })}
+                  placeholder="Kadın, Çocuk, Sporcu..."
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-purple"
+                />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Yeni Şifre
-              </label>
-              <div className="relative">
-                <input
-                  type={showPasswords.new ? "text" : "password"}
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  className="w-full px-4 py-2.5 pr-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                  required
-                  minLength={8}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <i className={`fa-solid ${showPasswords.new ? "fa-eye-slash" : "fa-eye"}`}></i>
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">En az 8 karakter</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Yeni Şifre (Tekrar)
-              </label>
-              <div className="relative">
-                <input
-                  type={showPasswords.confirm ? "text" : "password"}
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                  className="w-full px-4 py-2.5 pr-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <i className={`fa-solid ${showPasswords.confirm ? "fa-eye-slash" : "fa-eye"}`}></i>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-6 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Konsültasyon Tipi</label>
+              <select
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-purple cursor-pointer"
+                value={formData.consultation_types}
+                onChange={(e) => setFormData({ ...formData, consultation_types: e.target.value as FormData["consultation_types"] })}
               >
-                {saving ? (
-                  <>
-                    <i className="fa-solid fa-circle-notch animate-spin"></i>
-                    Değiştiriliyor...
-                  </>
-                ) : (
-                  <>
-                    <i className="fa-solid fa-lock"></i>
-                    Şifreyi Değiştir
-                  </>
-                )}
-              </button>
+                <option value="online">Sadece Online</option>
+                <option value="face">Sadece Yüz Yüze</option>
+                <option value="hybrid">Hibrit (İkisi de)</option>
+              </select>
             </div>
-          </form>
+          </div>
         </div>
-      )}
+
+        {/* 4. BELGELER & SERTİFİKA */}
+        <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+          <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
+            <i className="fa-solid fa-file-contract text-rejimde-yellow"></i> Belgeler
+          </h2>
+
+          <div
+            onClick={() => certInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-2xl p-8 cursor-pointer transition group text-center ${
+              formData.certificate_status === "approved"
+                ? "border-green-500 bg-green-900/10"
+                : "border-slate-600 hover:bg-slate-700 hover:border-rejimde-yellow"
+            }`}
+          >
+            {formData.certificate_status === "approved" ? (
+              <>
+                <i className="fa-solid fa-circle-check text-3xl text-green-500 mb-3"></i>
+                <p className="text-sm font-bold text-green-400">Belgeleriniz Onaylandı</p>
+                <p className="text-xs text-slate-400 mt-1">Profilinizde &quot;Onaylı Uzman&quot; rozeti görünüyor.</p>
+              </>
+            ) : formData.certificate_status === "pending" ? (
+              <>
+                <i className="fa-solid fa-clock text-3xl text-yellow-500 mb-3"></i>
+                <p className="text-sm font-bold text-yellow-400">Onay Bekliyor</p>
+                <p className="text-xs text-slate-400 mt-1">Belgeniz inceleniyor. Yeni dosya yüklemek için tıklayın.</p>
+              </>
+            ) : (
+              <>
+                <i className="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-3 group-hover:text-rejimde-yellow transition"></i>
+                <p className="text-sm font-bold text-slate-300">Sertifika / Diploma Yükle</p>
+                <p className="text-xs text-slate-500 mt-1 font-bold">PDF, JPG, PNG (Max 5MB)</p>
+              </>
+            )}
+
+            <input type="file" ref={certInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleCertificateChange} />
+          </div>
+        </div>
+
+        {/* NEW SECTIONS */}
+        <ProfessionalExperienceSection
+          formData={formData}
+          setFormData={setFormData}
+          calculateExperience={calculateExperience}
+          toggleTag={toggleTag}
+          addEducation={addEducation}
+          removeEducation={removeEducation}
+          updateEducation={updateEducation}
+          addCertificate={addCertificate}
+          removeCertificate={removeCertificate}
+          updateCertificate={updateCertificate}
+        />
+
+        <ExpertiseTagsSection formData={formData} setFormData={setFormData} toggleTag={toggleTag} calculateExperience={calculateExperience} />
+
+        <ExcludedCasesSection formData={formData} setFormData={setFormData} toggleTag={toggleTag} calculateExperience={calculateExperience} />
+
+        <WorkCommunicationSection formData={formData} setFormData={setFormData} toggleTag={toggleTag} calculateExperience={calculateExperience} />
+
+        <PrivacySettingsSection formData={formData} setFormData={setFormData} toggleTag={toggleTag} calculateExperience={calculateExperience} />
+
+        {/* KAYDET BUTONU */}
+        <div className="flex justify-end sticky bottom-6 z-30 pointer-events-none">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="pointer-events-auto bg-rejimde-green text-white px-8 py-3 rounded-xl font-extrabold text-lg shadow-btn shadow-rejimde-greenDark btn-game uppercase disabled:opacity-50 flex items-center gap-2 transform hover:scale-105 transition"
+          >
+            {saving && <i className="fa-solid fa-circle-notch animate-spin"></i>}
+            {saving ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
+          </button>
+        </div>
+
+        {/* 5. GÜVENLİK */}
+        <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 mt-8">
+          <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
+            <i className="fa-solid fa-lock text-slate-400"></i> Şifre Değiştir
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <input
+              type="password"
+              placeholder="Mevcut Şifre"
+              value={passwordData.current}
+              onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })}
+              className="bg-slate-900 border border-slate-600 rounded-xl px-4 py-2 font-bold text-white outline-none focus:border-rejimde-blue"
+            />
+            <input
+              type="password"
+              placeholder="Yeni Şifre"
+              value={passwordData.new}
+              onChange={(e) => setPasswordData({ ...passwordData, new: e.target.value })}
+              className="bg-slate-900 border border-slate-600 rounded-xl px-4 py-2 font-bold text-white outline-none focus:border-rejimde-blue"
+            />
+            <input
+              type="password"
+              placeholder="Şifre Tekrar"
+              value={passwordData.confirm}
+              onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
+              className="bg-slate-900 border border-slate-600 rounded-xl px-4 py-2 font-bold text-white outline-none focus:border-rejimde-blue"
+            />
+          </div>
+
+          <button onClick={handlePasswordChange} className="bg-slate-700 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-btn shadow-black btn-game">
+            Şifreyi Güncelle
+          </button>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="border-2 border-red-900/30 bg-red-900/10 rounded-3xl p-6 md:p-8 mt-8">
+          <h2 className="text-lg font-extrabold text-red-500 mb-2">Tehlikeli Bölge</h2>
+          <p className="text-xs font-bold text-red-400 mb-4">Hesabını sildiğinde tüm danışan verilerin, planların ve profilin kalıcı olarak silinir.</p>
+          <button className="bg-transparent border-2 border-red-900/50 text-red-500 px-6 py-2 rounded-xl font-extrabold text-sm shadow-none uppercase hover:bg-red-900/20 transition">
+            Hesabımı Sil
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
