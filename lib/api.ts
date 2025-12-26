@@ -921,7 +921,94 @@ export async function dispatchEvent(
     };
   }
 }
+// --- AI TİPLERİ ---
+export interface GenerateDietParams {
+  gender: string;
+  age: string | number;
+  height: string | number;
+  weight: string | number;
+  activity_level: string;
+  goal: string;
+  diet_type: string;
+  meals_count: string;
+  budget?: string;
+  allergies?: string;
+  days: string | number; // YENİ: Mutlaka eklenmeli
+  cuisine: string;       // YENİ: Mutlaka eklenmeli
+}
 
+export interface GenerateExerciseParams {
+  gender: string;
+  age: string | number;
+  weight: string | number;
+  height: string | number;
+  fitness_level: string;
+  goal: string;
+  equipment: string;
+  duration: string | number;
+  limitations?: string;
+}
+
+/**
+ * ==========================================
+ * YAPAY ZEKA (AI) SERVİSLERİ
+ * ==========================================
+ */
+
+/**
+ * AI Diyet Planı Oluştur
+ */
+export async function generateDiet(data: GenerateDietParams) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/ai/generate-diet`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      return { 
+        success: true, 
+        data: json.data, 
+        redirect_url: json.redirect_url 
+      };
+    }
+    
+    return { success: false, message: json.message || 'Diyet oluşturulamadı.' };
+  } catch (error: any) {
+    console.error("AI Diet Error:", error);
+    return { success: false, message: error.message || 'Sunucu hatası.' };
+  }
+}
+
+/**
+ * AI Egzersiz Planı Oluştur
+ */
+export async function generateExercise(data: GenerateExerciseParams) {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/ai/generate-exercise`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+
+    if (json.status === 'success') {
+      return { 
+        success: true, 
+        data: json.data 
+      };
+    }
+    
+    return { success: false, message: json.message || 'Egzersiz planı oluşturulamadı.' };
+  } catch (error: any) {
+    console.error("AI Exercise Error:", error);
+    return { success: false, message: error.message || 'Sunucu hatası.' };
+  }
+}
 /**
  * Get User Streak Information
  */
@@ -2113,6 +2200,8 @@ export const auth = {
     createPost,
     updatePost,
     deletePost,
+    generateDiet,      // YENİ
+    generateExercise,  // YENİ
     getProfileByUsername,  // Profile fetch by username
     saveCalculatorResult,  // Calculator results
 };
