@@ -828,6 +828,12 @@ export interface UserStreak {
   grace_remaining: number;
 }
 
+/**
+ * User Event Type
+ * Basic event structure returned by gamification system
+ * Used by getUserEvents()
+ * See also: ActivityItem (extended version with context and label)
+ */
 export interface UserEvent {
   id: number;
   event_type: string;
@@ -2178,6 +2184,12 @@ export interface NotificationPreferences {
   channel_email: boolean;
 }
 
+/**
+ * Activity Item Type
+ * Represents a user activity entry with full context
+ * Extended version of UserEvent with additional context and label fields
+ * Used by getUserActivity() and getUserPointsHistory()
+ */
 export interface ActivityItem {
   id: number;
   event_type: string;
