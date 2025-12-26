@@ -181,6 +181,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               setHasClaimed(true);
               
               // Backend returns earned points and new total in data
+              // Fallback to 50 points (standard blog reward) if not provided
               const earnedPoints = claimResult.data?.earned_points || claimResult.data?.points_earned || 50;
               const newTotal = claimResult.data?.new_total || claimResult.data?.total_score || 0;
               
@@ -192,7 +193,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
               });
               setShowRewardModal(true);
           } else {
-              // Check if already claimed
+              // Check if already claimed via explicit flag or message content
               if (claimResult.data?.already_claimed || claimResult.message?.includes('already') || claimResult.message?.includes('zaten')) {
                   setHasClaimed(true);
                   setRewardMessage({
