@@ -104,8 +104,8 @@ const mapSafeComment = (c: any): CommentData => {
     return {
         id: c.id || c.comment_ID,
         content: contentText,
-        date: c.date || c.comment_date,
-        timeAgo: c.human_date || c.timeAgo || 'Az önce',
+        date: c. date || c.comment_date,  // Raw date for sorting
+        timeAgo: c.timeAgo || c.human_date || 'Az önce',  // Human readable
         rating: c.rating,
         parent: parentId,
         likes_count: likes, 
@@ -130,11 +130,11 @@ const mapSafeComment = (c: any): CommentData => {
 
 export async function fetchComments(postId: number, context: string): Promise<{ comments: CommentData[], stats?: any }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/comments?post=${postId}&context=${context}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-store'
-    });
+  const res = await fetch(`${API_URL}/rejimde/v1/comments?post=${postId}&context=${context}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),  // Auth header eklendi
+    cache: 'no-store'
+  });
 
     if (!res.ok) {
         return { comments: [] }; 

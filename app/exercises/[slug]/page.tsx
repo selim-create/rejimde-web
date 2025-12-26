@@ -525,7 +525,7 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
     showAlert("Onaylıyor musun?", "Bu egzersiz planını 'Uzman Onaylı' olarak işaretlemek üzeresin.", "confirm", async () => {
       try {
           const result = await approveExercisePlan(plan.id);
-          if (result.success || result.status === "success") {
+            if (result. success) {  // result.status === "success" kaldırıldı
               // Approvers listesine ekle veya oluştur
               const newApprover: Approver = {
                   id: currentUser.id,
