@@ -5,44 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerUser, uploadAvatar, updateUser } from "@/lib/api";
 import { CITIES } from "@/lib/locations";
-
-// DETAYLI UZMANLIK KATEGORİLERİ
-const SPECIALTY_CATEGORIES = [
-    {
-        title: "Beslenme",
-        items: [{ id: "dietitian_spec", label: "Diyetisyen" }]
-    },
-    {
-        title: "Hareket",
-        items: [
-            { id: "pt", label: "PT / Fitness Koçu" },
-            { id: "yoga", label: "Yoga / Pilates" },
-            { id: "functional", label: "Fonksiyonel Antrenman" },
-            { id: "swim", label: "Yüzme Eğitmeni" },
-            { id: "run", label: "Koşu Eğitmeni" }
-        ]
-    },
-    {
-        title: "Zihin & Alışkanlık",
-        items: [
-            { id: "life_coach", label: "Yaşam Koçu" },
-            { id: "breath", label: "Nefes & Meditasyon" }
-        ]
-    },
-    {
-        title: "Sağlık Destek",
-        items: [
-            { id: "physio", label: "Fizyoterapist" }
-        ]
-    },
-    {
-        title: "Kardiyo & Güç",
-        items: [
-            { id: "box", label: "Boks / Kickboks" },
-            { id: "defense", label: "Savunma & Kondisyon" }
-        ]
-    }
-];
+import { PROFESSION_CATEGORIES } from "@/lib/constants";
 
 export default function ProRegisterPage() {
   const router = useRouter();
@@ -285,7 +248,7 @@ export default function ProRegisterPage() {
                             <div className="bg-white border-2 border-gray-100 rounded-3xl p-6 mb-8 shadow-sm animate-fadeIn">
                                 <h3 className="font-bold text-gray-400 text-xs uppercase mb-4">Detaylı Branş Seçimi</h3>
                                 <div className="space-y-6">
-                                    {SPECIALTY_CATEGORIES.map((cat, idx) => (
+                                    {PROFESSION_CATEGORIES.map((cat, idx) => (
                                         <div key={idx}>
                                             <h4 className="font-extrabold text-rejimde-blue text-sm mb-2">{cat.title}</h4>
                                             <div className="flex flex-wrap gap-2">
