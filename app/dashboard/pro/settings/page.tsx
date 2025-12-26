@@ -3,31 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faUser,
-  faLock,
-  faCamera,
-  faSpinner,
-  faCheck,
-  faTimes,
-  faEye,
-  faEyeSlash,
-  faUpload,
-  faFileAlt,
-  faTrash,
-  faBriefcase,
-  faGraduationCap,
-  faMapMarkerAlt,
-  faPhone,
-  faEnvelope,
-  faIdCard,
-  faCalendar,
-  faVenusMars,
-  faLanguage,
-  faCertificate,
-  faInfoCircle,
-} from "@fortawesome/free-solid-svg-icons";
 import { getMe, updateUser, changePassword, uploadAvatar, uploadCertificate } from "@/lib/api";
 import { CITIES } from "@/lib/locations";
 
@@ -397,7 +372,7 @@ export default function ProSettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <FontAwesomeIcon icon={faSpinner} className="w-8 h-8 animate-spin text-primary-600" />
+        <i className="fa-solid fa-circle-notch animate-spin text-primary-600 text-3xl"></i>
       </div>
     );
   }
@@ -416,7 +391,7 @@ export default function ProSettingsPage() {
               : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
-          <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
+          <i className="fa-solid fa-user"></i>
           Profil Bilgileri
         </button>
         <button
@@ -427,7 +402,7 @@ export default function ProSettingsPage() {
               : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
-          <FontAwesomeIcon icon={faBriefcase} className="w-4 h-4" />
+          <i className="fa-solid fa-briefcase"></i>
           Uzman Bilgileri
         </button>
         <button
@@ -438,7 +413,7 @@ export default function ProSettingsPage() {
               : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
         >
-          <FontAwesomeIcon icon={faLock} className="w-4 h-4" />
+          <i className="fa-solid fa-lock"></i>
           Güvenlik
         </button>
       </div>
@@ -452,10 +427,7 @@ export default function ProSettingsPage() {
               : "bg-red-50 text-red-800 border border-red-200"
           }`}
         >
-          <FontAwesomeIcon
-            icon={message.type === "success" ? faCheck : faTimes}
-            className="w-5 h-5"
-          />
+          <i className={`fa-solid ${message.type === "success" ? "fa-check" : "fa-times"}`}></i>
           {message.text}
         </div>
       )}
@@ -487,9 +459,9 @@ export default function ProSettingsPage() {
                 className="absolute bottom-0 right-0 w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center hover:bg-primary-700 transition-colors disabled:opacity-50"
               >
                 {avatarUploading ? (
-                  <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                  <i className="fa-solid fa-circle-notch animate-spin"></i>
                 ) : (
-                  <FontAwesomeIcon icon={faCamera} className="w-4 h-4" />
+                  <i className="fa-solid fa-camera"></i>
                 )}
               </button>
               <input
@@ -513,7 +485,7 @@ export default function ProSettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <FontAwesomeIcon icon={faUser} className="w-4 h-4 mr-2 text-gray-400" />
+                  <i className="fa-solid fa-user text-gray-400 mr-2"></i>
                   Ad
                 </label>
                 <input
@@ -526,7 +498,7 @@ export default function ProSettingsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <FontAwesomeIcon icon={faUser} className="w-4 h-4 mr-2 text-gray-400" />
+                  <i className="fa-solid fa-user text-gray-400 mr-2"></i>
                   Soyad
                 </label>
                 <input
@@ -541,7 +513,7 @@ export default function ProSettingsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <FontAwesomeIcon icon={faIdCard} className="w-4 h-4 mr-2 text-gray-400" />
+                <i className="fa-solid fa-id-card text-gray-400 mr-2"></i>
                 Görünen Ad
               </label>
               <input
@@ -555,7 +527,7 @@ export default function ProSettingsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 mr-2 text-gray-400" />
+                <i className="fa-solid fa-envelope text-gray-400 mr-2"></i>
                 E-posta
               </label>
               <input
@@ -571,7 +543,7 @@ export default function ProSettingsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <FontAwesomeIcon icon={faPhone} className="w-4 h-4 mr-2 text-gray-400" />
+                <i className="fa-solid fa-phone text-gray-400 mr-2"></i>
                 Telefon
               </label>
               <input
@@ -591,12 +563,12 @@ export default function ProSettingsPage() {
               >
                 {saving ? (
                   <>
-                    <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                    <i className="fa-solid fa-circle-notch animate-spin"></i>
                     Kaydediliyor...
                   </>
                 ) : (
                   <>
-                    <FontAwesomeIcon icon={faCheck} className="w-4 h-4" />
+                    <i className="fa-solid fa-check"></i>
                     Kaydet
                   </>
                 )}
@@ -613,7 +585,7 @@ export default function ProSettingsPage() {
             {/* Basic Expert Info */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FontAwesomeIcon icon={faInfoCircle} className="w-5 h-5 text-primary-600" />
+                <i className="fa-solid fa-info-circle text-primary-600"></i>
                 Temel Bilgiler
               </h3>
               <div className="space-y-4">
@@ -646,7 +618,7 @@ export default function ProSettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <FontAwesomeIcon icon={faVenusMars} className="w-4 h-4 mr-2 text-gray-400" />
+                      <i className="fa-solid fa-venus-mars text-gray-400 mr-2"></i>
                       Cinsiyet
                     </label>
                     <select
@@ -663,7 +635,7 @@ export default function ProSettingsPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <FontAwesomeIcon icon={faCalendar} className="w-4 h-4 mr-2 text-gray-400" />
+                      <i className="fa-solid fa-calendar text-gray-400 mr-2"></i>
                       Doğum Tarihi
                     </label>
                     <input
@@ -677,7 +649,7 @@ export default function ProSettingsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <FontAwesomeIcon icon={faIdCard} className="w-4 h-4 mr-2 text-gray-400" />
+                    <i className="fa-solid fa-id-card text-gray-400 mr-2"></i>
                     TC Kimlik No
                   </label>
                   <input
@@ -698,7 +670,7 @@ export default function ProSettingsPage() {
             {/* Specializations */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FontAwesomeIcon icon={faBriefcase} className="w-5 h-5 text-primary-600" />
+                <i className="fa-solid fa-briefcase text-primary-600"></i>
                 Uzmanlık Alanları
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -722,7 +694,7 @@ export default function ProSettingsPage() {
             {/* Education & Experience */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FontAwesomeIcon icon={faGraduationCap} className="w-5 h-5 text-primary-600" />
+                <i className="fa-solid fa-graduation-cap text-primary-600"></i>
                 Eğitim ve Deneyim
               </h3>
               <div className="space-y-4">
@@ -757,7 +729,7 @@ export default function ProSettingsPage() {
             {/* Certificates */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FontAwesomeIcon icon={faCertificate} className="w-5 h-5 text-primary-600" />
+                <i className="fa-solid fa-certificate text-primary-600"></i>
                 Sertifikalar ve Belgeler
               </h3>
               
@@ -770,7 +742,7 @@ export default function ProSettingsPage() {
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
                       >
                         <div className="flex items-center gap-3">
-                          <FontAwesomeIcon icon={faFileAlt} className="w-5 h-5 text-gray-400" />
+                          <i className="fa-solid fa-file-alt text-gray-400"></i>
                           <span className="text-sm text-gray-700 truncate max-w-[200px]">
                             Sertifika {index + 1}
                           </span>
@@ -780,7 +752,7 @@ export default function ProSettingsPage() {
                           onClick={() => removeCertificate(index)}
                           className="text-red-500 hover:text-red-700 transition-colors"
                         >
-                          <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
+                          <i className="fa-solid fa-trash"></i>
                         </button>
                       </div>
                     ))}
@@ -794,9 +766,9 @@ export default function ProSettingsPage() {
                   className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-primary-500 hover:text-primary-600 transition-colors disabled:opacity-50"
                 >
                   {certificateUploading ? (
-                    <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                    <i className="fa-solid fa-circle-notch animate-spin"></i>
                   ) : (
-                    <FontAwesomeIcon icon={faUpload} className="w-4 h-4" />
+                    <i className="fa-solid fa-upload"></i>
                   )}
                   Sertifika Yükle
                 </button>
@@ -816,7 +788,7 @@ export default function ProSettingsPage() {
             {/* Location */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FontAwesomeIcon icon={faMapMarkerAlt} className="w-5 h-5 text-primary-600" />
+                <i className="fa-solid fa-map-marker-alt text-primary-600"></i>
                 Konum
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -862,7 +834,7 @@ export default function ProSettingsPage() {
             {/* Languages */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FontAwesomeIcon icon={faLanguage} className="w-5 h-5 text-primary-600" />
+                <i className="fa-solid fa-language text-primary-600"></i>
                 Diller
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -886,7 +858,7 @@ export default function ProSettingsPage() {
             {/* Session Settings */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FontAwesomeIcon icon={faCalendar} className="w-5 h-5 text-primary-600" />
+                <i className="fa-solid fa-calendar text-primary-600"></i>
                 Seans Ayarları
               </h3>
               <div className="space-y-4">
@@ -954,12 +926,12 @@ export default function ProSettingsPage() {
               >
                 {saving ? (
                   <>
-                    <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                    <i className="fa-solid fa-circle-notch animate-spin"></i>
                     Kaydediliyor...
                   </>
                 ) : (
                   <>
-                    <FontAwesomeIcon icon={faCheck} className="w-4 h-4" />
+                    <i className="fa-solid fa-check"></i>
                     Kaydet
                   </>
                 )}
@@ -992,7 +964,7 @@ export default function ProSettingsPage() {
                   onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <FontAwesomeIcon icon={showPasswords.current ? faEyeSlash : faEye} className="w-5 h-5" />
+                  <i className={`fa-solid ${showPasswords.current ? "fa-eye-slash" : "fa-eye"}`}></i>
                 </button>
               </div>
             </div>
@@ -1015,7 +987,7 @@ export default function ProSettingsPage() {
                   onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <FontAwesomeIcon icon={showPasswords.new ? faEyeSlash : faEye} className="w-5 h-5" />
+                  <i className={`fa-solid ${showPasswords.new ? "fa-eye-slash" : "fa-eye"}`}></i>
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-1">En az 8 karakter</p>
@@ -1038,7 +1010,7 @@ export default function ProSettingsPage() {
                   onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <FontAwesomeIcon icon={showPasswords.confirm ? faEyeSlash : faEye} className="w-5 h-5" />
+                  <i className={`fa-solid ${showPasswords.confirm ? "fa-eye-slash" : "fa-eye"}`}></i>
                 </button>
               </div>
             </div>
@@ -1051,12 +1023,12 @@ export default function ProSettingsPage() {
               >
                 {saving ? (
                   <>
-                    <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                    <i className="fa-solid fa-circle-notch animate-spin"></i>
                     Değiştiriliyor...
                   </>
                 ) : (
                   <>
-                    <FontAwesomeIcon icon={faLock} className="w-4 h-4" />
+                    <i className="fa-solid fa-lock"></i>
                     Şifreyi Değiştir
                   </>
                 )}
