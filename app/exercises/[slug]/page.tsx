@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, getProgress, updateProgress, startProgress, completeProgress, toggleProgressItem } from "@/lib/api";
+import { getExercisePlanBySlug, getMe, earnPoints, approveExercisePlan, getProgress, updateProgress, startProgress, completeProgress, toggleProgressItem, toggleFavoriteAPI, checkFavoriteAPI } from "@/lib/api";
 import { getSafeAvatarUrl, getUserProfileUrl } from "@/lib/helpers";
 import CommentsSection from "@/components/CommentsSection";
-import AuthorCard from "@/components/AuthorCard"; // Import AuthorCard
+import AuthorCard from "@/components/AuthorCard";
 import SocialShare from "@/components/SocialShare";
 import PointsToast from "@/components/PointsToast";
 import { useGamification } from "@/hooks/useGamification";
@@ -48,6 +48,24 @@ interface DayPlan {
     dayNumber: number;
     exercises: Exercise[];
 }
+
+// Completed user type
+type CompletedUser = {
+  id?: number;
+  name?: string;
+  avatar?: string;
+  slug?: string;
+  is_expert?: boolean;
+};
+
+// Approver type
+type Approver = {
+  id?: number;
+  name: string;
+  avatar?: string;
+  slug: string;
+  profession?: string;
+};
 
 // --- MODAL BİLEŞENLERİ ---
 
@@ -227,6 +245,8 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   const [progress, setProgress] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [rewardClaimed, setRewardClaimed] = useState(false);
   
   // Modals
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'confirm' | 'warning' | 'info', onConfirm?: () => void, onCancel?: () => void }>({ isOpen: false, title: '', message: '', type: 'success' });
@@ -318,6 +338,13 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
                   setCompletedExercises(progressData.completed_items || []);
                   setIsStarted(progressData.is_started || progressData.started || false);
                   setIsCompleted(progressData.is_completed || progressData.completed || false);
+                  setRewardClaimed(progressData.reward_claimed || false);
+              }
+              
+              // Favorites check
+              const favoriteCheck = await checkFavoriteAPI('exercise', planData.id);
+              if (favoriteCheck.success) {
+                  setIsFavorited(favoriteCheck.is_favorited);
               }
           }
 
@@ -343,19 +370,18 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
       }
   }
   
+  const getTotalExercises = useCallback(() => {
+      return planData.reduce((acc, day) => acc + (Array.isArray(day.exercises) ? day.exercises.length : 0), 0);
+  }, [planData]);
+  
+  // Progress calculation - sadece progress güncelliyor, modal göstermiyor
   useEffect(() => {
     if (planData.length === 0) return;
     const totalExercises = getTotalExercises();
     if (totalExercises === 0) return;
-
     const currentProgress = Math.round((completedExercises.length / totalExercises) * 100);
     setProgress(currentProgress);
-
-    if (currentProgress === 100 && !isCompleted && completedExercises.length > 0) {
-        handleCompletePlan();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completedExercises, planData.length]); 
+  }, [completedExercises, planData.length, getTotalExercises]); 
 
   useEffect(() => {
     if (planData.length > 0 && activeDay > planData.length) {
@@ -363,13 +389,14 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
     }
   }, [planData.length, activeDay]);
 
-  const getTotalExercises = () => {
-      return planData.reduce((acc, day) => acc + (Array.isArray(day.exercises) ? day.exercises.length : 0), 0);
-  };
-
   const toggleExerciseCompletion = async (exerciseId: string) => {
       if (!currentUser) {
           showAlert("Giriş Yapmalısın", "Hareket takibi yapmak için lütfen giriş yap.", "error");
+          return;
+      }
+
+      if (!isStarted) {
+          showAlert("Dur Bakalım! 🏋️", "Önce 'Programa Başla' butonuna tıklamalısın. Isınmadan antrenman olmaz, başlamadan tamamlama da olmaz! 💪", "info");
           return;
       }
 
@@ -378,15 +405,24 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
           const result = await toggleProgressItem('exercise', plan.id, exerciseId);
           
           if (result.success) {
-              setCompletedExercises(result.completed_items || []);
+              const newCompletedExercises = result.completed_items || [];
+              setCompletedExercises(newCompletedExercises);
               
-              // Check if all exercises completed
-              if (result.is_completed) {
-                  setIsCompleted(true);
+              // Tüm hareketler tamamlandı mı kontrol et
+              const totalExercises = getTotalExercises();
+              const allCompleted = newCompletedExercises.length >= totalExercises && totalExercises > 0;
+              
+              if (allCompleted && !rewardClaimed) {
+                  // Sadece tüm hareketler bitince ve daha önce puan alınmadıysa
                   handleCompletePlan();
               }
           } else {
-              showAlert("Hata", result.message || "Hareket işaretlenemedi.", "error");
+              // Backend'den gelen hata mesajını Türkçeleştir
+              let errorMessage = result.message || "Hareket işaretlenemedi.";
+              if (errorMessage.includes("Content must be started")) {
+                  errorMessage = "Önce programa başlamalısın! \"Programa Başla\" butonuna tıkla.";
+              }
+              showAlert("Bir Dakika! ✋", errorMessage, "error");
           }
       } catch (e) {
           console.error('Exercise completion error:', e);
@@ -442,7 +478,11 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   };
 
   const handleCompletePlan = async () => {
+      if (rewardClaimed) return; // Zaten alındıysa tekrar verme
+      
       setIsCompleted(true);
+      setRewardClaimed(true);
+      
       if (currentUser) {
           try {
             const reward = parseInt(plan?.meta?.score_reward || "0");
@@ -481,22 +521,63 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   };
 
   // Uzman Onayı
-  const handleApprove = async () => {
-     try {
-         const res = await approveExercisePlan(plan.id);
-         if (res.success) {
-             setPlan((prev: any) => ({
-                 ...prev,
-                 meta: { ...prev.meta, is_verified: true },
-                 approved_by: currentUser?.id 
-             }));
-             showAlert("Onaylandı", "Bu egzersiz planı onaylandı ve güvenilir olarak işaretlendi.", "success");
-         } else {
-             showAlert("Hata", res.message || "Bir sorun oluştu.", "error");
-         }
-     } catch (e) {
-         showAlert("Hata", "Bağlantı hatası.", "error");
-     }
+  const handleApprove = () => {
+    showAlert("Onaylıyor musun?", "Bu egzersiz planını 'Uzman Onaylı' olarak işaretlemek üzeresin.", "confirm", async () => {
+      try {
+          const result = await approveExercisePlan(plan.id);
+          if (result.success || result.status === "success") {
+              // Approvers listesine ekle veya oluştur
+              const newApprover: Approver = {
+                  id: currentUser.id,
+                  name: currentUser.name || currentUser.display_name,
+                  avatar: currentUser.avatar_url,
+                  slug: currentUser.username || currentUser.slug,
+                  profession: currentUser.profession,
+              };
+
+              setPlan((prev: any) => {
+                  const existingApprovers = Array.isArray(prev.approvers) ? prev.approvers : [];
+                  const alreadyApproved = existingApprovers.some((a: Approver) => a.id === newApprover.id);
+
+                  return {
+                      ...prev,
+                      meta: { ...prev.meta, is_verified: true },
+                      approved_by: prev.approved_by || newApprover,
+                      approvers: alreadyApproved ? existingApprovers : [...existingApprovers, newApprover],
+                  };
+              });
+
+              showAlert("Onaylandı ✅", "Egzersiz planı onaylandı. Teşekkürler!", "success");
+          } else {
+              showAlert("Hata", result.message || "Onaylama işlemi başarısız.", "error");
+          }
+      } catch (e) {
+          showAlert("Hata", "Onaylama işlemi başarısız.", "error");
+      }
+    });
+  };
+
+  const toggleFavorite = async () => {
+      if (!currentUser) {
+          showAlert("Giriş Yapmalısın", "Favorilere eklemek için lütfen giriş yap.", "error");
+          return;
+      }
+
+      try {
+          const result = await toggleFavoriteAPI('exercise', plan.id);
+          if (result.success) {
+              setIsFavorited(result.is_favorited);
+              if (result.is_favorited) {
+                  showAlert("Favorilere Eklendi ❤️", "Bu egzersiz favorilerine eklendi!", "success");
+              } else {
+                  showAlert("Favorilerden Çıkarıldı", "Bu egzersiz favorilerinden kaldırıldı.", "info");
+              }
+          } else {
+              showAlert("Hata", result.message || "İşlem başarısız.", "error");
+          }
+      } catch (e) {
+          showAlert("Hata", "İşlem sırasında bir hata oluştu.", "error");
+      }
   };
 
   const handleExerciseClick = (exercise: Exercise) => {
@@ -521,10 +602,18 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
   
   const isAuthor = currentUser && (plan.author?.name === currentUser.name || currentUser.username === plan.author?.slug); 
   const isExpertUser = currentUser && Array.isArray(currentUser.roles) && (currentUser.roles.includes('rejimde_pro') || currentUser.roles.includes('administrator'));
+  const hasCurrentUserApproved = isExpertUser && Array.isArray(plan.approvers) && plan.approvers.some((a: Approver) => a.id === currentUser?.id);
   
   const currentDayData = planData.find((d: any) => d.dayNumber == activeDay) || planData[0] || { exercises: [] };
   const exercises = Array.isArray(currentDayData.exercises) ? currentDayData.exercises : (currentDayData.exercises ? Object.values(currentDayData.exercises) : []);
   const equipmentList = Array.isArray(plan.equipment_list) ? plan.equipment_list : (Array.isArray(plan.meta?.equipment_list) ? plan.meta.equipment_list : []);
+
+  // Approvers: backend'den gelen veya approved_by'dan oluşturulan liste
+  const approvers: Approver[] = Array.isArray(plan.approvers) ? plan.approvers : plan.approved_by ? [plan.approved_by] : [];
+
+  // Completed users
+  const completedUsers: CompletedUser[] = Array.isArray(plan.completed_users) ? plan.completed_users : [];
+  const completedCount: number = plan.completed_count || completedUsers.length || 0;
 
   // Yasal Uyarı Metni
   const disclaimerText = !plan.meta?.is_verified 
@@ -586,45 +675,9 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
                       
                       <h1 className="text-3xl md:text-4xl font-black text-gray-800 mb-2 leading-tight" dangerouslySetInnerHTML={{ __html: plan.title }}></h1>
                       
-                      {/* DURUM BİLDİRİMLERİ (Onay / Uyarı) */}
-                      {plan.meta?.is_verified ? (
-                        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-xl text-xs font-bold mb-4 flex items-center gap-2 w-fit animate-in fade-in">
-                            <i className="fa-solid fa-circle-check text-green-500 text-lg"></i>
-                            <span>Uzman Onaylı Egzersiz Planı</span>
-                        </div>
-                      ) : (
-                        <div className="bg-orange-50 border border-orange-200 text-orange-800 px-4 py-3 rounded-xl text-xs font-bold mb-4 flex items-center gap-3 animate-in fade-in">
-                            <i className="fa-solid fa-triangle-exclamation text-orange-500 text-lg"></i>
-                            <div className="flex-1">
-                                Bu egzersiz planı bir uzman tarafından onaylanmamıştır. <br/>
-                                <span className="opacity-80 font-medium">Başlamadan önce profesyonel destek alınız.</span>
-                            </div>
-                        </div>
-                      )}
-
-                      {/* UZMAN ONAY BUTONU */}
-                      {isExpertUser && !plan.meta?.is_verified && (
-                        <div className="bg-blue-50 border border-blue-200 p-4 rounded-2xl flex items-center justify-between gap-4 mb-4 shadow-sm animate-in slide-in-from-top-2">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-                                    <i className="fa-solid fa-user-doctor"></i>
-                                </div>
-                                <div>
-                                    <p className="text-blue-900 text-sm font-bold">Uzman Onayı Bekliyor</p>
-                                    <p className="text-blue-700/70 text-xs">Bu egzersizi inceleyip onaylamak ister misiniz?</p>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={handleApprove}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-lg transition"
-                            >
-                                Onayla
-                            </button>
-                        </div>
-                      )}
-
                       <p className="text-gray-500 font-bold text-lg mb-6 leading-relaxed" dangerouslySetInnerHTML={{ __html: plan.excerpt || plan.content?.substring(0, 150) + '...' || '' }}></p>
 
+                      {/* Stats Grid */}
                       <div className="grid grid-cols-3 gap-4 mb-8">
                           <div className="bg-orange-50 border-2 border-orange-100 rounded-2xl p-3 text-center">
                               <i className="fa-solid fa-gauge-high text-orange-500 text-xl mb-1"></i>
@@ -645,6 +698,71 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
                           </div>
                       </div>
 
+                      {/* Onaylanmamış Uyarısı */}
+                      {!plan.meta?.is_verified && !isExpertUser && (
+                        <div className="mb-6 bg-orange-50 border-2 border-orange-200 p-4 rounded-2xl flex items-center gap-3">
+                          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 shrink-0">
+                            <i className="fa-solid fa-triangle-exclamation"></i>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-orange-900">Bu egzersiz henüz uzman tarafından onaylanmadı</p>
+                            <p className="text-xs text-orange-700">Egzersize başlamadan önce bir uzmana danışmanızı öneririz.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Uzman Onay Paneli */}
+                      {isExpertUser && !plan.meta?.is_verified && (
+                        <div className="mb-6 bg-blue-50 border-2 border-blue-100 p-4 rounded-2xl flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                              <i className="fa-solid fa-user-doctor"></i>
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-blue-900">Uzman Onayı Bekliyor</p>
+                              <p className="text-xs text-blue-700">Bu egzersizi inceleyip onaylamak ister misiniz?</p>
+                            </div>
+                          </div>
+                          <button onClick={handleApprove} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-lg transition whitespace-nowrap">
+                            Onayla
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Onaylayanlar Listesi (Çoklu) */}
+                      {plan.meta?.is_verified && approvers.length > 0 && (
+                        <div className="mb-6 bg-green-50 border-2 border-green-100 p-3 rounded-2xl">
+                          <div className="flex items-center gap-2 mb-2">
+                            <i className="fa-solid fa-circle-check text-green-500"></i>
+                            <span className="text-xs font-bold text-green-800">Onaylayan Uzmanlar:</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {approvers.map((approver: Approver, idx: number) => (
+                              <Link
+                                key={approver.id || idx}
+                                href={getUserProfileUrl(approver.slug, true)}
+                                className="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border border-green-200 hover:border-green-400 transition"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={getSafeAvatarUrl(approver.avatar, approver.slug)} alt={approver.name} className="w-6 h-6 rounded-full object-cover border border-green-200" />
+                                <span className="text-xs font-bold text-green-800">{approver.name}</span>
+                              </Link>
+                            ))}
+
+                            {/* Uzman ise ve henüz onaylamamışsa + butonu */}
+                            {isExpertUser && !hasCurrentUserApproved && (
+                              <button
+                                onClick={handleApprove}
+                                className="flex items-center justify-center w-8 h-8 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg border-2 border-dashed border-green-300 transition"
+                                title="Sen de onayla"
+                              >
+                                <i className="fa-solid fa-plus text-sm"></i>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex flex-col gap-4">
                           <div className="flex gap-4">
                               {isStarted ? (
@@ -656,8 +774,13 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
                                       <i className="fa-solid fa-dumbbell group-hover:scale-110 transition"></i> Programa Başla
                                   </button>
                               )}
-                              <button className="bg-white border-2 border-gray-200 text-gray-500 px-6 rounded-2xl font-extrabold text-2xl shadow-btn shadow-gray-200 btn-game hover:text-rejimde-red hover:border-rejimde-red transition">
-                                  <i className="fa-regular fa-heart"></i>
+                              <button 
+                                onClick={toggleFavorite}
+                                className={`px-6 rounded-2xl font-extrabold text-2xl shadow-btn btn-game transition ${
+                                  isFavorited ? "bg-red-500 text-white border-2 border-red-500 hover:bg-red-600" : "bg-white border-2 border-gray-200 text-gray-500 hover:text-red-500 hover:border-red-200"
+                                }`}
+                              >
+                                <i className={`${isFavorited ? "fa-solid" : "fa-regular"} fa-heart`}></i>
                               </button>
                           </div>
 
@@ -786,33 +909,91 @@ export default function ExerciseDetailPage({ params }: { params: Promise<{ slug:
 
               {/* YENİ: ORTAK AUTHOR CARD */}
               {authorDetail && (
-                  <div className="sticky top-24 z-10">
+                  <div className="sticky top-24 z-30 space-y-6">
                       <AuthorCard author={authorDetail} context={authorDetail.isExpert ? 'Hazırlayan' : 'Paylaşan'} />
-                  </div>
-              )}
 
-               {/* Completed Users */}
-               {plan.completed_users && plan.completed_users.length > 0 && (
-                  <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-sm">
-                      <h4 className="font-extrabold text-gray-700 mb-4 flex items-center gap-2">
-                          <i className="fa-solid fa-users text-blue-600"></i> Tamamlayanlar
-                      </h4>
-                      <div className="flex -space-x-3 overflow-hidden mb-2 pl-2">
-                          {plan.completed_users.slice(0, 5).map((u: any, i: number) => (
-                              <Link key={i} href={getUserProfileUrl(u.slug || '#', false)} className="w-10 h-10 rounded-full border-2 border-white relative block hover:scale-110 transition-transform" title={u.name}>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={getSafeAvatarUrl(u.avatar, u.slug)} alt={u.name} className="w-full h-full object-cover rounded-full" />
-                              </Link>
-                          ))}
-                          {plan.completed_count > 5 && (
-                              <div className="w-10 h-10 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
-                                  +{plan.completed_count - 5}
-                              </div>
+                      {/* Formuna Kavuşanlar */}
+                      <div className="bg-white rounded-3xl border-2 border-gray-200 shadow-[0_4px_0_#E5E5E5] overflow-hidden relative">
+                        <div className="bg-blue-50 p-4 border-b-2 border-gray-100 text-center relative overflow-hidden">
+                          <i className="fa-solid fa-trophy text-blue-200 text-6xl absolute -left-2 top-2 rotate-12"></i>
+                          <div className="relative z-10">
+                            <div className="text-xs font-bold text-blue-600 uppercase tracking-wide">Bu Antrenmanla</div>
+                            <div className="text-2xl font-black text-gray-800">{completedCount} Kişi</div>
+                            <div className="text-xs font-bold text-blue-600 uppercase tracking-wide">Formuna Kavuştu! 💪</div>
+                          </div>
+                        </div>
+
+                        <div className="p-5 text-center">
+                          {completedUsers.length > 0 ? (
+                            <div className="flex justify-center items-center -space-x-4 mb-4">
+                              {completedUsers.slice(0, 3).map((u: CompletedUser, i: number) => {
+                                // Slug oluştur - boş/undefined durumunda fallback
+                                const userName = u.name || u.slug || `user-${u.id || i}`;
+                                const userSlug = u.slug || String(userName).toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]+/g, "") || `user-${i}`;
+                                const isExpert = Boolean(u.is_expert);
+                                
+                                // Avatar: önce user meta'dan gelen, sonra getSafeAvatarUrl fallback
+                                const avatarUrl = getSafeAvatarUrl(u.avatar, userSlug);
+
+                                return (
+                                  <Link
+                                    key={u.id || `completed-${i}`}
+                                    href={getUserProfileUrl(userSlug, isExpert)}
+                                    className="relative transition-transform duration-200 hover:-translate-y-1 hover:scale-110 z-0 hover:z-10 block"
+                                    title={userName}
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      className="w-12 h-12 rounded-full border-4 border-white object-cover shadow-sm bg-gray-200"
+                                      src={avatarUrl}
+                                      alt={userName}
+                                      onError={(e) => {
+                                        // Fallback: eğer resim yüklenemezse dicebear kullan
+                                        e.currentTarget.src = `https://api.dicebear.com/9.x/personas/svg?seed=${userSlug}`;
+                                      }}
+                                    />
+                                    {i === 1 && (
+                                      <div className="absolute -bottom-1 -right-1 bg-orange-500 text-white text-[10px] font-bold px-1.5 rounded-full border-2 border-white flex items-center gap-0.5">
+                                        <i className="fa-solid fa-fire"></i>
+                                      </div>
+                                    )}
+                                  </Link>
+                                );
+                              })}
+                              {completedCount > 3 && (
+                                <div className="w-12 h-12 rounded-full border-4 border-white bg-gray-100 flex items-center justify-center text-xs font-black text-gray-500 z-0 shadow-sm">
+                                  +{completedCount - 3}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="mb-4 text-gray-400 text-xs font-bold">Henüz kimse tamamlamadı. İlk sen ol!</div>
                           )}
+
+                          <p className="text-sm text-gray-600 font-bold mb-4">
+                            Sen de bu <span className="text-blue-600">{planData.length} günlük</span> maceraya katıl!
+                          </p>
+
+                          <button
+                            onClick={handleStartPlan}
+                            disabled={isStarted}
+                            className={`w-full font-black py-3 rounded-2xl border-b-4 flex items-center justify-center gap-2 group transition-all active:border-b-0 active:translate-y-1 ${
+                              isStarted
+                                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-default"
+                                : "bg-blue-600 hover:bg-blue-700 text-white border-blue-700 shadow-blue-200"
+                            }`}
+                          >
+                            <span>{isStarted ? "Takip Ediliyor" : "Ben de Başlıyorum!"}</span>
+                            {!isStarted && <i className="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>}
+                            {isStarted && <i className="fa-solid fa-check"></i>}
+                          </button>
+
+                          <div className="mt-3 flex items-center justify-center gap-1 text-[10px] text-gray-400 font-bold">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_0_4px_rgba(59,130,246,0.2)]"></div>
+                            Şu an {Math.floor(Math.random() * 20) + 5} kişi aktif çalışıyor
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-xs font-bold text-gray-400">
-                          Toplam {plan.completed_count} kişi bu egzersizi başarıyla tamamladı.
-                      </p>
                   </div>
               )}
 
