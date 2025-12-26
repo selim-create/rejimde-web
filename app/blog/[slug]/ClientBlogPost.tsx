@@ -8,9 +8,7 @@ import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 
 import SocialShare from "@/components/SocialShare";
-import PointsToast from "@/components/PointsToast";
 import { getUserProfileUrl, getSafeAvatarUrl } from "@/lib/helpers";
-import { useGamification } from "@/hooks/useGamification";
 
 interface ClientBlogPostProps {
   post: any;
@@ -54,9 +52,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
   const [isFavorited, setIsFavorited] = useState(false);
   const [infoModal, setInfoModal] = useState<{show: boolean, title: string, message: string, type: 'error' | 'success' | 'info'}>({ show: false, title: "", message: "", type: "info" });
   const [currentUser, setCurrentUser] = useState<{ role: string, name: string, id: number, avatar: string } | null>(null);
-  
-  // Gamification Hook
-  const { dispatchAction, lastResult, showToast, closeToast } = useGamification();
 
   // Yazar Detayları
   const [authorDetail, setAuthorDetail] = useState<any>({
@@ -178,39 +173,31 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
       }
       
       try {
-          // Use claimReward API to mark as claimed
+          // Backend's claimReward already dispatches 'blog_points_claimed' event
+          // No need to call dispatchAction separately
           const claimResult = await claimReward('blog', post.id);
           
           if (claimResult.success) {
               setHasClaimed(true);
               
-              // Dispatch gamification event
-              const eventResult = await dispatchAction(
-                'blog_points_claimed',
-                'blog',
-                post.id,
-                { is_sticky: false }
-              );
+              // Backend returns earned points and new total in data
+              const earnedPoints = claimResult.data?.earned_points || claimResult.data?.points_earned || 50;
+              const newTotal = claimResult.data?.new_total || claimResult.data?.total_score || 0;
               
-              if (eventResult.success && !eventResult.already_earned) {
-                  // Points earned - toast will be shown automatically by useGamification hook
-                  setClaiming(false);
-                  return;
-              } else if (eventResult.already_earned) {
-                  setRewardMessage({
-                      title: "Daha Önce Aldın 😎",
-                      desc: "Bu yazının puanını zaten kapmışsın. Başka yazılara göz at!",
-                      points: 0
-                  });
-                  setShowRewardModal(true);
-              }
+              // Show success message
+              setRewardMessage({
+                  title: "Tebrikler! 🎉",
+                  desc: `${earnedPoints} puan kazandın! Toplam puanın: ${newTotal}`,
+                  points: earnedPoints
+              });
+              setShowRewardModal(true);
           } else {
               // Check if already claimed
-              if (claimResult.message?.includes('already') || claimResult.message?.includes('zaten')) {
+              if (claimResult.data?.already_claimed || claimResult.message?.includes('already') || claimResult.message?.includes('zaten')) {
                   setHasClaimed(true);
                   setRewardMessage({
                       title: "Daha Önce Aldın 😎",
-                      desc: "Bu yazının puanını zaten kapmışsın.",
+                      desc: "Bu yazının puanını zaten kapmışsın. Başka yazılara göz at!",
                       points: 0
                   });
                   setShowRewardModal(true);
@@ -429,17 +416,6 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                    )}
               </div>
           </div>
-      )}
-      
-      {/* Points Toast Notification */}
-      {showToast && lastResult && (
-        <PointsToast
-          points={lastResult.points_earned}
-          message={lastResult.message}
-          streak={lastResult.streak}
-          milestone={lastResult.milestone}
-          onClose={closeToast}
-        />
       )}
     </>
   );
