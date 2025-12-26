@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { fetchComments, postComment, toggleLikeComment, CommentData } from '@/lib/comment-service';
+import { fetchComments, postComment, toggleLikeComment, reportComment, CommentData } from '@/lib/comment-service';
 import { dispatchEvent } from '@/lib/api';
 import PointsToast from '@/components/PointsToast';
 import { useGamification } from '@/hooks/useGamification';
@@ -196,6 +196,22 @@ export default function CommentsSection({
     }
   }, [user, dispatchAction]);
 
+  const handleReport = useCallback(async (commentId: number) => {
+    if (!user?.isLoggedIn) {
+        alert("Şikayet etmek için giriş yapmalısın.");
+        return;
+    }
+    
+    if (confirm("Bu yorumu şikayet etmek istediğinize emin misiniz?")) {
+        try {
+            await reportComment(commentId);
+            alert("Şikayetiniz alındı. Teşekkürler!");
+        } catch (error: any) {
+            alert(error.message || "Şikayet gönderilirken hata oluştu.");
+        }
+    }
+  }, [user]);
+
   const updateCommentLikeInTree = (list: CommentData[], targetId: number): CommentData[] => {
     return list.map(c => {
       if (c.id === targetId) {
@@ -304,6 +320,7 @@ export default function CommentsSection({
                         user={user}
                         onLike={handleLike}
                         onReply={(id, name) => setReplyTo({id, authorName: name})}
+                        onReport={handleReport}
                         replyTo={replyTo}
                         onCancelReply={() => setReplyTo(null)}
                         onFormSubmit={handlePostComment}
@@ -378,7 +395,7 @@ const CommentForm = ({ user, onSubmit, allowRating, isReply = false, autoFocus =
                     />
                     {user?.isLoggedIn && !isReply && (
                         <div className="text-[10px] font-black text-center text-purple-600 mt-1 bg-purple-50 rounded-md py-0.5">
-                            {user.role === 'rejimde_pro' ? `${user.score || 0} XP` : `RANK ${user.rank || 1}`}
+                            {user.role === 'rejimde_pro' ? '⭐ UZMAN' : `RANK ${user.rank || 1}`}
                         </div>
                     )}
                 </div>
@@ -459,6 +476,7 @@ interface CommentItemProps {
     user: any;
     onLike: (id: number) => void;
     onReply: (id: number, name: string) => void;
+    onReport: (id: number) => void;
     replyTo: {id: number, authorName: string} | null;
     onCancelReply: () => void;
     onFormSubmit: (content: string, rating: number) => void;
@@ -470,6 +488,7 @@ const CommentItem = ({
     user, 
     onLike, 
     onReply, 
+    onReport,
     replyTo, 
     onCancelReply,
     onFormSubmit
@@ -510,7 +529,7 @@ const CommentItem = ({
 
     const containerClass = isReply ? "flex gap-4 ml-16 group mt-4" : "flex gap-4 group mb-6";
     const profileLink = author.slug ? (isExpert ? `/experts/${author.slug}` : `/profile/${author.slug}`) : null;
-    const showVerifiedIcon = isExpert && author.is_verified;
+    const showVerifiedIcon = isExpert && author.is_verified === true;
 
     return (
       <div className={containerClass}>
@@ -616,7 +635,11 @@ const CommentItem = ({
                     </div>
                 </div>
                 
-                <button className="text-gray-300 hover:text-red-400 transition bg-transparent hover:bg-red-50 w-6 h-6 rounded-lg flex items-center justify-center">
+                <button 
+                    onClick={() => onReport(comment.id)}
+                    className="text-gray-300 hover:text-red-400 transition bg-transparent hover:bg-red-50 w-6 h-6 rounded-lg flex items-center justify-center"
+                    title="Şikayet Et"
+                >
                     <i className="fa-solid fa-flag text-[10px]"></i>
                 </button>
               </div>
@@ -688,6 +711,7 @@ const CommentItem = ({
                     user={user}
                     onLike={onLike}
                     onReply={onReply}
+                    onReport={onReport}
                     replyTo={replyTo}
                     onCancelReply={onCancelReply}
                     onFormSubmit={onFormSubmit}

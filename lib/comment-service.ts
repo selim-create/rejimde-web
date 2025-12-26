@@ -243,3 +243,17 @@ export async function toggleLikeComment(commentId: number) {
     return null;
   }
 }
+
+export async function reportComment(commentId: number) {
+  const res = await fetch(`${API_URL}/rejimde/v1/comments/${commentId}/report`, {
+    method: 'POST',
+    headers: getAuthHeaders()
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Şikayet gönderilemedi');
+  }
+  
+  return await res.json();
+}
