@@ -55,7 +55,7 @@ export default function DatePickerRejimde({ value, onChange, label, maxDate, min
   const renderCalendar = () => {
     const daysInMonth = getDaysInMonth(viewMonth, viewYear);
     const firstDay = getFirstDayOfMonth(viewMonth, viewYear);
-    const days: JSX.Element[] = [];
+    const days: React.ReactElement[] = [];
 
     // Empty cells for days before month starts
     for (let i = 0; i < firstDay; i++) {
