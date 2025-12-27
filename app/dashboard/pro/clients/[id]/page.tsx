@@ -3,8 +3,10 @@
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { getProClient, addClientNote, deleteClientNote, getClientPlans, ClientDetail } from "@/lib/api";
+import { useToast } from "@/components/ui/Toast";
 
 export default function ClientManagementPage({ params }: { params: Promise<{ id: string }> }) {
+  const { showToast } = useToast();
   const { id } = use(params);
   const clientId = parseInt(id);
   
@@ -61,7 +63,11 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
 
   const handleAddNote = async () => {
     if (!newNote.content.trim()) {
-      alert('Lütfen not içeriği girin.');
+      showToast({
+        type: 'warning',
+        title: 'Uyarı',
+        message: 'Not içeriği boş olamaz.'
+      });
       return;
     }
     
@@ -74,9 +80,17 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
         notes: [...prev.notes, result.data!]
       } : null);
       setNewNote({ type: 'general', content: '', is_pinned: false });
-      alert('Not başarıyla eklendi!');
+      showToast({
+        type: 'success',
+        title: 'Not Eklendi',
+        message: 'Danışan notu başarıyla kaydedildi.'
+      });
     } else {
-      alert(result.message || 'Not eklenemedi.');
+      showToast({
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Not eklenemedi.'
+      });
     }
     setSavingNote(false);
   };
@@ -93,9 +107,16 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
         ...prev,
         notes: prev.notes.filter(n => n.id !== noteId)
       } : null);
-      alert('Not silindi.');
+      showToast({
+        type: 'success',
+        title: 'Not Silindi'
+      });
     } else {
-      alert(result.message || 'Not silinemedi.');
+      showToast({
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Not silinemedi.'
+      });
     }
   };
 

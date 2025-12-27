@@ -11,6 +11,22 @@
     box-shadow: 0 0px 0 0 !important; 
 }
 
+/* Toast Animation */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
+}
+
 /* Blog İçerik Stilleri */
 .prose h2 { font-size: 1.5rem; margin-top: 2rem; margin-bottom: 1rem; }
 .prose h3 { font-size: 1.25rem; margin-top: 1.5rem; margin-bottom: 0.75rem; }

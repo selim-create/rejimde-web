@@ -3054,6 +3054,36 @@ export async function createClientInvite(data: {
   }
 }
 
+/**
+ * Accept client invite (for clients accepting expert's invite)
+ */
+export async function acceptClientInvite(token: string): Promise<{
+  success: boolean;
+  expert?: { id: number; name: string; avatar: string };
+  message?: string;
+}> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/accept-invite`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ token }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { 
+        success: true, 
+        expert: json.data.expert 
+      };
+    }
+
+    return { success: false, message: json.message || 'Davet kabul edilemedi.' };
+  } catch (error) {
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
 // Danışan durumu güncelle
 export async function updateClientStatus(clientId: number, status: string, reason?: string): Promise<{ success: boolean; message?: string }> {
   try {
