@@ -3342,7 +3342,7 @@ export async function sendInboxMessage(threadId: number, data: {
   content_type?: string;
 }): Promise<{ success: boolean; message?: InboxMessage; error?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/${threadId}/messages`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/${threadId}/reply`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -3377,7 +3377,7 @@ export async function createInboxThread(data: {
   content: string;
 }): Promise<{ success: boolean; thread_id?: number; error?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/threads`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/new`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -3408,7 +3408,7 @@ export async function createInboxThread(data: {
 // Thread'i okundu işaretle
 export async function markThreadAsRead(threadId: number): Promise<boolean> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/${threadId}/read`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/${threadId}/mark-read`, {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -3456,7 +3456,7 @@ export async function archiveInboxThread(threadId: number): Promise<boolean> {
 // Şablonları getir
 export async function getMessageTemplates(): Promise<MessageTemplate[]> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/message-templates`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/templates`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -3483,7 +3483,7 @@ export async function createMessageTemplate(data: {
   category?: string;
 }): Promise<{ success: boolean; template?: MessageTemplate }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/message-templates`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/templates`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -3508,7 +3508,7 @@ export async function createMessageTemplate(data: {
 // Şablon sil
 export async function deleteMessageTemplate(templateId: number): Promise<boolean> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/message-templates/${templateId}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/templates/${templateId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -3655,7 +3655,7 @@ export async function getCalendarAppointments(startDate: string, endDate: string
       ...(status ? { status } : {})
     });
 
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/appointments?${params}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar?${params}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -3768,7 +3768,7 @@ export async function createAppointment(data: {
 export async function updateAppointment(appointmentId: number, data: Partial<Appointment>): Promise<{ success: boolean; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/appointments/${appointmentId}`, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
@@ -3940,7 +3940,7 @@ export async function blockTime(data: {
   reason?: string;
 }): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/block-time`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/block`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -3961,7 +3961,7 @@ export async function blockTime(data: {
 
 export async function unblockTime(blockId: number): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/block-time/${blockId}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/block/${blockId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -3986,7 +3986,7 @@ export async function getExpertAvailableSlots(expertId: number, date: string): P
   slot_duration: number;
 }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/experts/${expertId}/available-slots?date=${date}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/experts/${expertId}/availability?date=${date}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -4014,7 +4014,7 @@ export async function getExpertAvailableSlotsRange(expertId: number, startDate: 
   slot_duration: number;
 }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/experts/${expertId}/available-slots?start_date=${startDate}&end_date=${endDate}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/experts/${expertId}/availability?start_date=${startDate}&end_date=${endDate}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -4050,7 +4050,7 @@ export async function requestAppointment(data: {
   message?: string;
 }): Promise<{ success: boolean; request_id?: number; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/appointment-requests`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/appointments/request`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -4184,7 +4184,7 @@ export async function getFinanceDashboard(period?: string, startDate?: string, e
     if (endDate) params.append('end_date', endDate);
 
     const queryString = params.toString();
-    const url = `${API_URL}/rejimde/v1/finance/dashboard${queryString ? '?' + queryString : ''}`;
+    const url = `${API_URL}/rejimde/v1/pro/finance/dashboard${queryString ? '?' + queryString : ''}`;
 
     const res = await fetch(url, {
       method: 'GET',
@@ -4227,7 +4227,7 @@ export async function getPayments(options?: {
     if (options?.offset) params.append('offset', options.offset.toString());
 
     const queryString = params.toString();
-    const url = `${API_URL}/rejimde/v1/finance/payments${queryString ? '?' + queryString : ''}`;
+    const url = `${API_URL}/rejimde/v1/pro/finance/payments${queryString ? '?' + queryString : ''}`;
 
     const res = await fetch(url, {
       method: 'GET',
@@ -4263,7 +4263,7 @@ export async function createPayment(data: {
   notes?: string;
 }): Promise<{ success: boolean; payment?: Payment; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/payments`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/payments`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -4288,8 +4288,8 @@ export async function createPayment(data: {
 
 export async function updatePayment(paymentId: number, data: Partial<Payment>): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/payments/${paymentId}`, {
-      method: 'PUT',
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/payments/${paymentId}`, {
+      method: 'PATCH',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
@@ -4309,7 +4309,7 @@ export async function updatePayment(paymentId: number, data: Partial<Payment>): 
 
 export async function deletePayment(paymentId: number): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/payments/${paymentId}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/payments/${paymentId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -4333,7 +4333,7 @@ export async function markPaymentAsPaid(paymentId: number, data: {
   payment_date?: string;
 }): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/payments/${paymentId}/mark-paid`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/payments/${paymentId}/mark-paid`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -4354,7 +4354,7 @@ export async function markPaymentAsPaid(paymentId: number, data: {
 
 export async function recordPartialPayment(paymentId: number, amount: number, method: string): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/payments/${paymentId}/partial-payment`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/payments/${paymentId}/partial`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ amount, payment_method: method }),
@@ -4376,7 +4376,7 @@ export async function recordPartialPayment(paymentId: number, amount: number, me
 // Hizmetler
 export async function getServices(): Promise<Service[]> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/services`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -4409,7 +4409,7 @@ export async function createService(data: {
   color?: string;
 }): Promise<{ success: boolean; service?: Service; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/services`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -4434,8 +4434,8 @@ export async function createService(data: {
 
 export async function updateService(serviceId: number, data: Partial<Service>): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/services/${serviceId}`, {
-      method: 'PUT',
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services/${serviceId}`, {
+      method: 'PATCH',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
@@ -4455,7 +4455,7 @@ export async function updateService(serviceId: number, data: Partial<Service>): 
 
 export async function deleteService(serviceId: number): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/services/${serviceId}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services/${serviceId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -4476,7 +4476,7 @@ export async function deleteService(serviceId: number): Promise<{ success: boole
 // Raporlar
 export async function getMonthlyReport(year: number, month: number): Promise<MonthlyReport> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/reports/monthly?year=${year}&month=${month}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/reports/monthly?year=${year}&month=${month}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -4500,7 +4500,7 @@ export async function getMonthlyReport(year: number, month: number): Promise<Mon
 
 export async function getYearlyReport(year: number): Promise<any> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/reports/yearly?year=${year}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/reports/yearly?year=${year}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -4524,7 +4524,7 @@ export async function getYearlyReport(year: number): Promise<any> {
 
 export async function exportFinanceData(format: 'csv' | 'excel', startDate: string, endDate: string, type: string): Promise<Blob> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/finance/export?format=${format}&start_date=${startDate}&end_date=${endDate}&type=${type}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/export?format=${format}&start_date=${startDate}&end_date=${endDate}&type=${type}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
