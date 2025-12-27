@@ -13,7 +13,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
   const [error, setError] = useState<string | null>(null);
   
   const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'requests' | 'notes'>('overview');
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<unknown[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
 
   // Notes state
@@ -23,18 +23,6 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
     is_pinned: false 
   });
   const [savingNote, setSavingNote] = useState(false);
-
-  // Fetch client data
-  useEffect(() => {
-    fetchClient();
-  }, [clientId]);
-
-  // Fetch plans when tab is active
-  useEffect(() => {
-    if (activeTab === 'plans' && client) {
-      fetchPlans();
-    }
-  }, [activeTab, client]);
 
   const fetchClient = async () => {
     setLoading(true);
@@ -56,6 +44,20 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
     setPlans(data);
     setPlansLoading(false);
   };
+
+  // Fetch client data
+  useEffect(() => {
+    fetchClient();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  // Fetch plans when tab is active
+  useEffect(() => {
+    if (activeTab === 'plans' && client) {
+      fetchPlans();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, client]);
 
   const handleAddNote = async () => {
     if (!newNote.content.trim()) {
@@ -273,7 +275,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                         </div>
                     ) : plans.length > 0 ? (
                         <div className="space-y-4">
-                            {plans.map((plan) => (
+                            {plans.map((plan: any) => (
                                 <div key={plan.id} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card hover:border-slate-600 transition">
                                     <h4 className="font-extrabold text-white text-lg mb-2">{plan.title}</h4>
                                     <p className="text-slate-400 text-sm">{plan.description}</p>

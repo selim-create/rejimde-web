@@ -9,12 +9,10 @@ export default function ProClientsPage() {
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [meta, setMeta] = useState({ total: 0, active: 0, pending: 0, archived: 0 });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
   const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'archived'>('active');
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
 
   // Form states for adding client
   const [formData, setFormData] = useState({
@@ -33,13 +31,8 @@ export default function ProClientsPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
 
   // Fetch clients
-  useEffect(() => {
-    fetchClients();
-  }, [activeTab]);
-
   const fetchClients = async () => {
     setLoading(true);
-    setError(null);
     
     const result = await getProClients({
       status: activeTab,
@@ -51,6 +44,11 @@ export default function ProClientsPage() {
     setLoading(false);
   };
 
+  useEffect(() => {
+    fetchClients();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   // Search with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -59,6 +57,7 @@ export default function ProClientsPage() {
       }
     }, 300);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
   const handleAddClient = async () => {
