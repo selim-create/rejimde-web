@@ -5067,6 +5067,290 @@ export async function updateMyPlanProgress(planId: number, data: {
 }
 
 // ==========================================
+// USER DASHBOARD API FUNCTIONS (Mirror Logic)
+// ==========================================
+
+// --- MY EXPERTS ---
+export interface MyExpert {
+  id: number;
+  relationship_id: number;
+  expert: {
+    id: number;
+    name: string;
+    title: string;
+    avatar: string;
+    profession: string;
+  };
+  status: 'pending' | 'active' | 'paused' | 'expired';
+  package: {
+    name: string;
+    type: string;
+    total: number;
+    used: number;
+    remaining: number;
+    progress_percent: number;
+    expiry_date: string | null;
+  } | null;
+  next_appointment: {
+    date: string;
+    time: string;
+    title: string;
+  } | null;
+  unread_messages: number;
+  started_at: string;
+}
+
+// GET /me/experts - Kullanıcının uzmanları
+export async function getMyExperts(): Promise<MyExpert[]> {
+  try {
+    const response = await fetch(`${API_URL}/rejimde/v1/me/experts`, {
+      headers: getAuthHeaders(),
+    });
+    const json = await response.json();
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getMyExperts error:', error);
+    return [];
+  }
+}
+
+// --- MY PACKAGES ---
+export interface MyPackage {
+  id: number;
+  relationship_id: number;
+  expert: {
+    id: number;
+    name: string;
+    avatar: string;
+  };
+  name: string;
+  type: 'session' | 'duration' | 'unlimited';
+  total: number | null;
+  used: number;
+  remaining: number | null;
+  progress_percent: number;
+  start_date: string;
+  expiry_date: string | null;
+  status: 'active' | 'expired' | 'cancelled';
+}
+
+// GET /me/packages - Kullanıcının paketleri
+export async function getMyPackages(): Promise<MyPackage[]> {
+  try {
+    const response = await fetch(`${API_URL}/rejimde/v1/me/packages`, {
+      headers: getAuthHeaders(),
+    });
+    const json = await response.json();
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getMyPackages error:', error);
+    return [];
+  }
+}
+
+// --- MY TRANSACTIONS ---
+export interface MyTransaction {
+  id: number;
+  date: string;
+  expert: {
+    id: number;
+    name: string;
+  };
+  description: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  status: 'pending' | 'completed' | 'failed';
+}
+
+// GET /me/transactions - Kullanıcının işlem geçmişi
+export async function getMyTransactions(): Promise<MyTransaction[]> {
+  try {
+    const response = await fetch(`${API_URL}/rejimde/v1/me/transactions`, {
+      headers: getAuthHeaders(),
+    });
+    const json = await response.json();
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getMyTransactions error:', error);
+    return [];
+  }
+}
+
+// --- MY APPOINTMENTS ---
+export interface MyAppointment {
+  id: number;
+  expert: {
+    id: number;
+    name: string;
+    title: string;
+    avatar: string;
+  };
+  title: string;
+  description?: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  duration: number;
+  type: 'online' | 'offline';
+  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+  location?: string;
+  meeting_link?: string;
+  notes?: string;
+  can_cancel: boolean;
+  can_reschedule: boolean;
+}
+
+// GET /me/appointments - Kullanıcının randevuları
+export async function getMyAppointments(options?: {
+  status?: string;
+  limit?: number;
+}): Promise<MyAppointment[]> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.status) params.append('status', options.status);
+    if (options?.limit) params.append('limit', String(options.limit));
+
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    
+    const response = await fetch(`${API_URL}/rejimde/v1/me/appointments${queryString}`, {
+      headers: getAuthHeaders(),
+    });
+    const json = await response.json();
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getMyAppointments error:', error);
+    return [];
+  }
+}
+
+// POST /me/appointments/{id}/cancel - Randevu iptali
+export async function cancelMyAppointment(appointmentId: number, reason: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const response = await fetch(`${API_URL}/rejimde/v1/me/appointments/${appointmentId}/cancel`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ reason }),
+    });
+    const json = await response.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+    
+    return { success: false, message: json.message || 'Randevu iptal edilemedi.' };
+  } catch (error) {
+    console.error('cancelMyAppointment error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// --- MY INBOX ---
+export interface MyInboxThread {
+  id: number;
+  expert: {
+    id: number;
+    name: string;
+    avatar: string;
+    status: 'online' | 'offline';
+  };
+  subject: string;
+  last_message: string;
+  last_message_time: string;
+  is_read: boolean;
+  message_count: number;
+  messages?: MyInboxMessage[];
+}
+
+export interface MyInboxMessage {
+  id: number;
+  sender: 'user' | 'expert';
+  content: string;
+  content_type: 'text' | 'image' | 'file';
+  attachments?: any[];
+  created_at: string;
+  is_read: boolean;
+}
+
+// GET /me/inbox - Kullanıcının thread'leri
+export async function getMyInboxThreads(): Promise<MyInboxThread[]> {
+  try {
+    const response = await fetch(`${API_URL}/rejimde/v1/me/inbox`, {
+      headers: getAuthHeaders(),
+    });
+    const json = await response.json();
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getMyInboxThreads error:', error);
+    return [];
+  }
+}
+
+// GET /me/inbox/{id} - Thread detayı
+export async function getMyInboxThread(threadId: number): Promise<MyInboxThread | null> {
+  try {
+    const response = await fetch(`${API_URL}/rejimde/v1/me/inbox/${threadId}`, {
+      headers: getAuthHeaders(),
+    });
+    const json = await response.json();
+    if (json.status === 'success') {
+      return json.data;
+    }
+    return null;
+  } catch (error) {
+    console.error('getMyInboxThread error:', error);
+    return null;
+  }
+}
+
+// POST /me/inbox/{id}/reply - Mesaj gönder
+export async function sendMyInboxMessage(threadId: number, content: string, attachments?: any[]): Promise<{ success: boolean; message_id?: number }> {
+  try {
+    const response = await fetch(`${API_URL}/rejimde/v1/me/inbox/${threadId}/reply`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ content, content_type: 'text', attachments }),
+    });
+    const json = await response.json();
+    return { success: json.status === 'success', message_id: json.data?.message_id };
+  } catch (error) {
+    console.error('sendMyInboxMessage error:', error);
+    return { success: false };
+  }
+}
+
+// POST /me/inbox/new - Yeni thread oluştur
+export async function createMyInboxThread(expertId: number, subject: string, content: string): Promise<{ success: boolean; thread_id?: number }> {
+  try {
+    const response = await fetch(`${API_URL}/rejimde/v1/me/inbox/new`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ expert_id: expertId, subject, content }),
+    });
+    const json = await response.json();
+    return { success: json.status === 'success', thread_id: json.data?.thread_id };
+  } catch (error) {
+    console.error('createMyInboxThread error:', error);
+    return { success: false };
+  }
+}
+
+// ==========================================
 // MEDIA LIBRARY API FUNCTIONS
 // ==========================================
 
