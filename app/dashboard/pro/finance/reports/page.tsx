@@ -173,7 +173,7 @@ export default function ReportsPage() {
                       borderRadius: '8px'
                     }}
                     labelStyle={{ color: '#fff' }}
-                    formatter={(value: any) => [`${formatCurrency(value)}`, 'Gelir']}
+                    formatter={(value: number) => [`${formatCurrency(value)}`, 'Gelir']}
                   />
                   <Bar dataKey="revenue" fill="#3b82f6" radius={[8, 8, 0, 0]} />
                 </BarChart>
@@ -206,7 +206,7 @@ export default function ReportsPage() {
                       borderRadius: '8px'
                     }}
                     labelStyle={{ color: '#fff' }}
-                    formatter={(value: any) => formatCurrency(value)}
+                    formatter={(value: number) => formatCurrency(value)}
                   />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                 </PieChart>

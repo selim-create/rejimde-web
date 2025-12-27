@@ -165,7 +165,7 @@ export default function NewPaymentModal({ onClose, onSuccess }: NewPaymentModalP
             </label>
             <select
               value={formData.payment_method}
-              onChange={(e) => setFormData({ ...formData, payment_method: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, payment_method: e.target.value as Payment['payment_method'] })}
               className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
             >
               <option value="cash">Nakit</option>
@@ -183,7 +183,7 @@ export default function NewPaymentModal({ onClose, onSuccess }: NewPaymentModalP
             </label>
             <select
               value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as Payment['status'] })}
               className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
             >
               <option value="pending">Bekliyor</option>

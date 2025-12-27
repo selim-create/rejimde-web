@@ -22,7 +22,14 @@ export default function PaymentsPage() {
   const loadPayments = async () => {
     setLoading(true);
     try {
-      const options: any = {};
+      const options: {
+        status?: string;
+        client_id?: number;
+        start_date?: string;
+        end_date?: string;
+        limit?: number;
+        offset?: number;
+      } = {};
       if (statusFilter !== 'all') {
         options.status = statusFilter;
       }

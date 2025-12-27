@@ -119,7 +119,7 @@ export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalP
               </label>
               <select
                 value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value as Service['type'] })}
                 className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="session">Seans</option>
