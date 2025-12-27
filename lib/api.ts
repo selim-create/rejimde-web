@@ -215,7 +215,48 @@ export async function getMe() {
       client_types: json.client_types || '',
       consultation_types: json.consultation_types || '',
       certificate_status: json.certificate_status || 'none',
-      certificate_url: json.certificate_url || ''
+      certificate_url: json.certificate_url || '',
+      
+      // Kimlik & Profil (YENİ)
+      motto: json.motto || '',
+      
+      // Lokasyon (country eksikti)
+      country: json.country || 'TR',
+      
+      // Hizmet & Dil (YENİ)
+      service_languages: safeParse(json.service_languages, ['tr']),
+      
+      // Mesleki Deneyim (YENİ)
+      career_start_date: json.career_start_date || '',
+      education: safeParse(json.education, []),
+      certificates: safeParse(json.certificates, []),
+      
+      // Uzmanlık & Etiketler (YENİ)
+      expertise_tags: safeParse(json.expertise_tags, []),
+      goal_tags: safeParse(json.goal_tags, []),
+      level_suitability: safeParse(json.level_suitability, []),
+      age_groups: safeParse(json.age_groups, []),
+      
+      // Danışan Bilgileri (YENİ)
+      client_type: json.client_type || '',
+      
+      // Çalışmadığı Durumlar (YENİ)
+      excluded_cases: safeParse(json.excluded_cases, []),
+      referral_note: json.referral_note || '',
+      
+      // Çalışma & İletişim (YENİ)
+      working_hours: safeParse(json.working_hours, { weekday: '', weekend: '' }),
+      response_time: json.response_time || '24h',
+      communication_preference: safeParse(json.communication_preference, ['both']),
+      
+      // Görünürlük & Mahremiyet (YENİ)
+      privacy_settings: safeParse(json.privacy_settings, {
+        show_phone: false,
+        show_address: false,
+        show_location: true,
+      }),
+      kvkk_consent: Boolean(json.kvkk_consent),
+      emergency_disclaimer: Boolean(json.emergency_disclaimer),
     };
   } catch (error) {
     console.error('getMe error:', error);
@@ -228,7 +269,7 @@ export async function getMe() {
  */
 export async function updateUser(data: any) {
   try {
-    const payload = {
+    const payload: any = {
         name: data.name,
         description: data.description,
         email: data.email,
@@ -257,8 +298,52 @@ export async function updateUser(data: any) {
         client_types: data.client_types,
         consultation_types: data.consultation_types,
         certificate_url: data.certificate_url,
-        certificate_status: data.certificate_status
+        certificate_status: data.certificate_status,
+        
+        // Kimlik & Profil
+        motto: data.motto,
+        
+        // Lokasyon (country eksikti)
+        country: data.country,
+        
+        // Hizmet & Dil
+        service_languages: data.service_languages,
+        
+        // Mesleki Deneyim
+        career_start_date: data.career_start_date,
+        education: data.education,
+        certificates: data.certificates,
+        
+        // Uzmanlık & Etiketler
+        expertise_tags: data.expertise_tags,
+        goal_tags: data.goal_tags,
+        level_suitability: data.level_suitability,
+        age_groups: data.age_groups,
+        
+        // Danışan Bilgileri
+        client_type: data.client_type,
+        
+        // Çalışmadığı Durumlar
+        excluded_cases: data.excluded_cases,
+        referral_note: data.referral_note,
+        
+        // Çalışma & İletişim
+        working_hours: data.working_hours,
+        response_time: data.response_time,
+        communication_preference: data.communication_preference,
+        
+        // Görünürlük & Mahremiyet
+        privacy_settings: data.privacy_settings,
+        kvkk_consent: data.kvkk_consent,
+        emergency_disclaimer: data.emergency_disclaimer,
     };
+
+    // undefined değerleri temizle (sadece gönderilen alanları güncelle)
+    Object.keys(payload).forEach(key => {
+      if (payload[key] === undefined) {
+        delete payload[key];
+      }
+    });
 
     const res = await fetch(`${API_URL}/wp/v2/users/me`, {
       method: 'POST', 
