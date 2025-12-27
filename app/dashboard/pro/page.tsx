@@ -1,10 +1,17 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { getMe as getRealMe } from "@/lib/api";
+import { getProClients, ClientListItem } from "@/lib/api";
 // import Link from "next/link"; // Hata verdiği için kaldırıldı, <a> etiketi kullanılacak.
 
 // --- MOCK API (Bağımlılığı kaldırmak için) ---
 const getMe = async () => {
+    // Try real API first
+    const realUser = await getRealMe();
+    if (realUser) return realUser;
+    
+    // Fallback to mock
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve({
@@ -183,6 +190,7 @@ export default function ProDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [clientsPreview, setClientsPreview] = useState<ClientListItem[]>([]);
 
   // Dashboard'da sadece bugünün veya yaklaşan randevuları gösterelim (son 2 kayıt)
   const upcomingAppointments = MOCK_APPOINTMENTS.slice(0, 2);
@@ -214,6 +222,13 @@ export default function ProDashboardPage() {
         }
     }
     loadData();
+    
+    // Fetch clients preview
+    async function fetchClientsPreview() {
+        const result = await getProClients({ limit: 3, status: 'active' });
+        setClientsPreview(result.clients);
+    }
+    fetchClientsPreview();
   }, []);
 
   const handleGiveBadge = (badgeLabel: string) => {
@@ -459,24 +474,31 @@ export default function ProDashboardPage() {
                             <a href="/dashboard/pro/clients" className="text-blue-400 font-bold text-xs hover:text-blue-300 uppercase tracking-wide">Tümünü Gör</a>
                         </div>
                         <div className="space-y-3">
-                            {MOCK_CLIENTS.slice(0, 3).map((client) => (
-                                <div key={client.id} className="flex items-center gap-4 p-3 rounded-2xl bg-slate-900/50 border border-slate-700 hover:border-slate-600 transition cursor-pointer">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={client.avatar} className="w-10 h-10 rounded-xl" alt={client.name} />
-                                    <div className="flex-1">
-                                        <h4 className="font-extrabold text-white text-sm">{client.name}</h4>
-                                        <p className={`text-xs font-bold flex items-center gap-1 ${
-                                            client.status === 'danger' ? 'text-red-400' : 'text-slate-400'
-                                        }`}>
-                                            <i className={`fa-solid ${client.status === 'danger' ? 'fa-triangle-exclamation' : 'fa-circle-info'}`}></i> {client.statusText}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-[10px] font-black text-slate-500 block uppercase">Skor</span>
-                                        <span className="text-lg font-black text-white">{client.score}</span>
-                                    </div>
+                            {clientsPreview.length > 0 ? (
+                                clientsPreview.map((client) => (
+                                    <a key={client.id} href={`/dashboard/pro/clients/${client.relationship_id}`} className="flex items-center gap-4 p-3 rounded-2xl bg-slate-900/50 border border-slate-700 hover:border-slate-600 transition cursor-pointer">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={client.client.avatar} className="w-10 h-10 rounded-xl" alt={client.client.name} />
+                                        <div className="flex-1">
+                                            <h4 className="font-extrabold text-white text-sm">{client.client.name}</h4>
+                                            <p className={`text-xs font-bold flex items-center gap-1 ${
+                                                client.risk_status === 'danger' ? 'text-red-400' : 'text-slate-400'
+                                            }`}>
+                                                <i className={`fa-solid ${client.risk_status === 'danger' ? 'fa-triangle-exclamation' : 'fa-circle-info'}`}></i> {client.risk_reason || 'Normal'}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[10px] font-black text-slate-500 block uppercase">Skor</span>
+                                            <span className="text-lg font-black text-white">{client.score}</span>
+                                        </div>
+                                    </a>
+                                ))
+                            ) : (
+                                <div className="text-center py-8">
+                                    <i className="fa-solid fa-users text-2xl text-slate-600 mb-2"></i>
+                                    <p className="text-slate-500 text-sm font-bold">Henüz danışan yok</p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
                 </div>
