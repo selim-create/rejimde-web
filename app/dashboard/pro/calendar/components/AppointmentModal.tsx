@@ -5,8 +5,7 @@ import {
   getStatusLabel, 
   getStatusColor, 
   getTypeLabel, 
-  getTypeIcon,
-  getTypeColor 
+  getTypeIcon
 } from '@/lib/calendar-utils';
 import { cancelAppointment, completeAppointment, markNoShow } from '@/lib/api';
 import { useState } from 'react';
@@ -177,7 +176,7 @@ export default function AppointmentModal({ appointment, onClose, onUpdate }: App
           {appointment.notes && (
             <div>
               <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Notlar</h3>
-              <p className="text-slate-300 text-sm italic">"{appointment.notes}"</p>
+              <p className="text-slate-300 text-sm italic">&quot;{appointment.notes}&quot;</p>
             </div>
           )}
 

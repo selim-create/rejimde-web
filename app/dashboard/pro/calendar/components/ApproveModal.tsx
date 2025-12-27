@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { approveAppointmentRequest } from '@/lib/api';
 import type { AppointmentRequest } from '@/lib/api';
-import { generateTimeSlots, toISODateString } from '@/lib/calendar-utils';
+import { generateTimeSlots } from '@/lib/calendar-utils';
 
 interface ApproveModalProps {
   request: AppointmentRequest;

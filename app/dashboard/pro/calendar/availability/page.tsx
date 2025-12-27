@@ -1,9 +1,6 @@
-'use client';
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getAvailabilitySettings, updateAvailabilitySettings } from '@/lib/api';
-import type { AvailabilitySettings, AvailabilitySlot } from '@/lib/api';
 
 const WEEK_DAYS = [
   { value: 1, name: 'Pazartesi' },
@@ -34,11 +31,7 @@ export default function AvailabilityPage() {
     }))
   );
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     setLoading(true);
     const settings = await getAvailabilitySettings();
     
@@ -60,7 +53,11 @@ export default function AvailabilityPage() {
     }
     
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const toggleDay = (day: number) => {
     setSchedule(schedule.map(s => 

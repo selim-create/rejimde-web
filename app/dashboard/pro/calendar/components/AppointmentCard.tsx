@@ -1,5 +1,5 @@
 import type { Appointment } from '@/lib/api';
-import { getStatusColor, getTypeIcon, getTypeLabel, getTypeColor } from '@/lib/calendar-utils';
+import { getStatusColor, getTypeIcon } from '@/lib/calendar-utils';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -10,8 +10,6 @@ interface AppointmentCardProps {
 export default function AppointmentCard({ appointment, style, onClick }: AppointmentCardProps) {
   const statusColor = getStatusColor(appointment.status);
   const typeIcon = getTypeIcon(appointment.type);
-  const typeLabel = getTypeLabel(appointment.type);
-  const typeColor = getTypeColor(appointment.type);
 
   return (
     <div

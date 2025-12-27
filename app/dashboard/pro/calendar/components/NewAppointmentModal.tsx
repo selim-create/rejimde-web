@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createAppointment, getProClients } from '@/lib/api';
-import type { Appointment } from '@/lib/api';
+import type { Appointment, ClientListItem } from '@/lib/api';
 import { generateTimeSlots, toISODateString } from '@/lib/calendar-utils';
 
 interface NewAppointmentModalProps {
@@ -11,7 +11,7 @@ interface NewAppointmentModalProps {
 
 export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }: NewAppointmentModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [clients, setClients] = useState<any[]>([]);
+  const [clients, setClients] = useState<ClientListItem[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -27,18 +27,16 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
     notes: ''
   });
 
-  useEffect(() => {
-    loadClients();
-  }, []);
-
-  const loadClients = async () => {
+  const loadClients = useCallback(async () => {
     setLoadingClients(true);
     const result = await getProClients();
-    if (result.success && result.clients) {
-      setClients(result.clients);
-    }
+    setClients(result.clients || []);
     setLoadingClients(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    loadClients();
+  }, [loadClients]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
