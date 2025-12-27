@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { 
   getMe, 
   getInboxThreads, 
@@ -13,9 +14,16 @@ import {
 import ThreadList from "./components/ThreadList";
 import NewThreadModal from "./components/NewThreadModal";
 
+interface UserProfile {
+  id: number;
+  name: string;
+  avatar_url: string;
+  [key: string]: unknown;
+}
+
 export default function ProInboxPage() {
   const router = useRouter();
-  const [pro, setPro] = useState<any>(null);
+  const [pro, setPro] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   
   // Inbox State
@@ -29,7 +37,9 @@ export default function ProInboxPage() {
   // Fetch user info
   useEffect(() => {
     getMe().then((user) => {
-        setPro(user);
+        if (user) {
+          setPro(user as UserProfile);
+        }
     });
   }, []);
 
@@ -106,9 +116,9 @@ export default function ProInboxPage() {
       {/* Header */}
       <div className="bg-slate-800 border-b border-slate-700 sticky top-0 z-40 px-6 py-4 flex justify-between items-center shadow-md">
          <div className="flex items-center gap-3">
-            <a href="/" className="block lg:hidden">
+            <Link href="/" className="block lg:hidden">
                 <i className="fa-solid fa-arrow-left text-slate-400 hover:text-white transition"></i>
-            </a>
+            </Link>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                 <span className="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase border border-blue-500/20 tracking-wider">
                     PRO PANEL
@@ -128,58 +138,58 @@ export default function ProInboxPage() {
 
         {/* SIDEBAR NAV (Tam Liste) */}
         <div className="hidden lg:block lg:col-span-2 space-y-2 h-full overflow-y-auto custom-scrollbar pr-2">
-            <a href="/dashboard/pro" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            <Link href="/dashboard/pro" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-gauge-high w-6 text-center group-hover:text-blue-400"></i> Panel
-            </a>
+            </Link>
             
             <p className="text-[10px] font-bold text-slate-500 uppercase px-4 pt-2">Yönetim</p>
-            <a href="/dashboard/pro/notifications" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            <Link href="/dashboard/pro/notifications" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-bell w-6 text-center group-hover:text-blue-400"></i> Bildirimler
-            </a>
-            <a href="/dashboard/pro/activity" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            </Link>
+            <Link href="/dashboard/pro/activity" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-chart-line w-6 text-center group-hover:text-purple-400"></i> Aktiviteler
-            </a>
-            <a href="/dashboard/pro/inbox" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600 text-white font-extrabold shadow-btn shadow-blue-800 btn-game transition-transform hover:scale-105">
+            </Link>
+            <Link href="/dashboard/pro/inbox" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600 text-white font-extrabold shadow-btn shadow-blue-800 btn-game transition-transform hover:scale-105">
                 <i className="fa-solid fa-envelope w-6 text-center"></i> Gelen Kutusu
-            </a>
-            <a href="/dashboard/pro/clients" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            </Link>
+            <Link href="/dashboard/pro/clients" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-users w-6 text-center group-hover:text-blue-400"></i> Danışanlar
-            </a>
-            <a href="/dashboard/pro/calendar" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            </Link>
+            <Link href="/dashboard/pro/calendar" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-calendar-check w-6 text-center group-hover:text-green-400"></i> Takvim
-            </a>
-            <a href="/dashboard/pro/earnings" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            </Link>
+            <Link href="/dashboard/pro/earnings" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-wallet w-6 text-center group-hover:text-yellow-400"></i> Gelirler
-            </a>
-            <a href="/dashboard/pro/services" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            </Link>
+            <Link href="/dashboard/pro/services" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-list w-6 text-center group-hover:text-teal-400"></i> Paketlerim
-            </a>
-            <a href="/dashboard/pro/reviews" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            </Link>
+            <Link href="/dashboard/pro/reviews" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-star w-6 text-center group-hover:text-yellow-400"></i> Değerlendirmeler
-            </a>
+            </Link>
             
             <p className="text-[10px] font-bold text-slate-500 uppercase px-4 pt-2">İçerik & Araçlar</p>
-            <a href="/dashboard/pro/diets/create" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            <Link href="/dashboard/pro/diets/create" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-utensils w-6 text-center group-hover:text-orange-400"></i> Diyet Yaz
-            </a>
-            <a href="/dashboard/pro/exercises/create" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            </Link>
+            <Link href="/dashboard/pro/exercises/create" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-dumbbell w-6 text-center group-hover:text-red-400"></i> Egzersiz Yaz
-            </a>
-            <a href="/dashboard/pro/blog/create" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            </Link>
+            <Link href="/dashboard/pro/blog/create" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-pen-nib w-6 text-center group-hover:text-pink-400"></i> Blog Yazısı
-            </a>
-            <a href="/dashboard/pro/dictionary/create" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            </Link>
+            <Link href="/dashboard/pro/dictionary/create" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-book-open w-6 text-center group-hover:text-teal-400"></i> Sözlük Ekle
-            </a>
+            </Link>
             
             <div className="h-px bg-slate-800 my-2"></div>
             
-            <a href="/dashboard/pro/planner" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            <Link href="/dashboard/pro/planner" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-wand-magic-sparkles w-6 text-center text-purple-500"></i> AI Asistan
-            </a>
-            <a href="/dashboard/pro/settings" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            </Link>
+            <Link href="/dashboard/pro/settings" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-gear w-6 text-center group-hover:text-gray-300"></i> Ayarlar
-            </a>
+            </Link>
         </div>
 
         {/* INBOX CONTENT */}

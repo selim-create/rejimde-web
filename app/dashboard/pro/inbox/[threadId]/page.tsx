@@ -19,13 +19,20 @@ import MessageBubble from "../components/MessageBubble";
 import MessageInput from "../components/MessageInput";
 import { useToast } from "@/components/ui/Toast";
 
+interface UserProfile {
+  id: number;
+  name: string;
+  avatar_url: string;
+  [key: string]: unknown;
+}
+
 export default function ThreadDetailPage() {
   const router = useRouter();
   const params = useParams();
   const threadId = Number(params.threadId);
   const { showToast } = useToast();
   
-  const [pro, setPro] = useState<any>(null);
+  const [pro, setPro] = useState<UserProfile | null>(null);
   const [thread, setThread] = useState<InboxThread | null>(null);
   const [messages, setMessages] = useState<InboxMessage[]>([]);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
@@ -41,7 +48,11 @@ export default function ThreadDetailPage() {
 
   // Fetch user info
   useEffect(() => {
-    getMe().then((user) => setPro(user));
+    getMe().then((user) => {
+      if (user) {
+        setPro(user as UserProfile);
+      }
+    });
   }, []);
 
   // Fetch thread data
