@@ -3221,3 +3221,349 @@ export async function getClientPlans(clientId: number): Promise<any[]> {
     return [];
   }
 }
+
+// ==========================================
+// INBOX API FUNCTIONS
+// ==========================================
+
+export interface InboxThread {
+  id: number;
+  relationship_id: number;
+  client: {
+    id: number;
+    name: string;
+    avatar: string;
+  };
+  subject: string | null;
+  status: 'open' | 'closed' | 'archived';
+  last_message: {
+    content: string;
+    sender_type: 'expert' | 'client';
+    created_at: string;
+    is_read: boolean;
+  } | null;
+  unread_count: number;
+  created_at: string;
+}
+
+export interface InboxMessage {
+  id: number;
+  sender_id: number;
+  sender_type: 'expert' | 'client';
+  sender_name: string;
+  sender_avatar: string;
+  content: string;
+  content_type: 'text' | 'image' | 'file' | 'voice' | 'plan_link';
+  attachments: any[] | null;
+  is_read: boolean;
+  is_ai_generated: boolean;
+  created_at: string;
+}
+
+export interface MessageTemplate {
+  id: number;
+  title: string;
+  content: string;
+  category: string;
+  usage_count: number;
+}
+
+// Thread listesi
+export async function getInboxThreads(options?: {
+  status?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ threads: InboxThread[]; meta: { total: number; unread_total: number } }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.status) params.append('status', options.status);
+    if (options?.search) params.append('search', options.search);
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox?${params.toString()}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      return { threads: [], meta: { total: 0, unread_total: 0 } };
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        threads: json.data?.threads || [],
+        meta: json.data?.meta || { total: 0, unread_total: 0 }
+      };
+    }
+
+    return { threads: [], meta: { total: 0, unread_total: 0 } };
+  } catch (error) {
+    console.error('getInboxThreads error:', error);
+    return { threads: [], meta: { total: 0, unread_total: 0 } };
+  }
+}
+
+// Thread detayı ve mesajları
+export async function getInboxThread(threadId: number): Promise<{
+  thread: InboxThread;
+  messages: InboxMessage[];
+} | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/${threadId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        thread: json.data?.thread || null,
+        messages: json.data?.messages || []
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('getInboxThread error:', error);
+    return null;
+  }
+}
+
+// Mesaj gönder
+export async function sendInboxMessage(threadId: number, data: {
+  content: string;
+  content_type?: string;
+}): Promise<{ success: boolean; message?: InboxMessage; error?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/${threadId}/messages`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        success: true,
+        message: json.data?.message
+      };
+    }
+
+    return {
+      success: false,
+      error: json.message || 'Mesaj gönderilemedi'
+    };
+  } catch (error) {
+    console.error('sendInboxMessage error:', error);
+    return {
+      success: false,
+      error: 'Sunucu hatası'
+    };
+  }
+}
+
+// Yeni thread başlat
+export async function createInboxThread(data: {
+  client_id: number;
+  subject?: string;
+  content: string;
+}): Promise<{ success: boolean; thread_id?: number; error?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/threads`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        success: true,
+        thread_id: json.data?.thread_id
+      };
+    }
+
+    return {
+      success: false,
+      error: json.message || 'Thread oluşturulamadı'
+    };
+  } catch (error) {
+    console.error('createInboxThread error:', error);
+    return {
+      success: false,
+      error: 'Sunucu hatası'
+    };
+  }
+}
+
+// Thread'i okundu işaretle
+export async function markThreadAsRead(threadId: number): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/${threadId}/read`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (error) {
+    console.error('markThreadAsRead error:', error);
+    return false;
+  }
+}
+
+// Thread'i kapat
+export async function closeInboxThread(threadId: number): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/${threadId}/close`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (error) {
+    console.error('closeInboxThread error:', error);
+    return false;
+  }
+}
+
+// Thread'i arşivle
+export async function archiveInboxThread(threadId: number): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/${threadId}/archive`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (error) {
+    console.error('archiveInboxThread error:', error);
+    return false;
+  }
+}
+
+// Şablonları getir
+export async function getMessageTemplates(): Promise<MessageTemplate[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/message-templates`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data?.templates || [];
+    }
+
+    return [];
+  } catch (error) {
+    console.error('getMessageTemplates error:', error);
+    return [];
+  }
+}
+
+// Şablon ekle
+export async function createMessageTemplate(data: {
+  title: string;
+  content: string;
+  category?: string;
+}): Promise<{ success: boolean; template?: MessageTemplate }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/message-templates`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        success: true,
+        template: json.data?.template
+      };
+    }
+
+    return { success: false };
+  } catch (error) {
+    console.error('createMessageTemplate error:', error);
+    return { success: false };
+  }
+}
+
+// Şablon sil
+export async function deleteMessageTemplate(templateId: number): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/message-templates/${templateId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (error) {
+    console.error('deleteMessageTemplate error:', error);
+    return false;
+  }
+}
+
+// AI taslak oluştur
+export async function generateAIDraft(threadId: number): Promise<{ success: boolean; draft?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/${threadId}/ai-draft`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        success: true,
+        draft: json.data?.draft
+      };
+    }
+
+    return { success: false };
+  } catch (error) {
+    console.error('generateAIDraft error:', error);
+    return { success: false };
+  }
+}
+
+// Okunmamış mesaj sayısı
+export async function getUnreadInboxCount(): Promise<number> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/unread-count`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return 0;
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data?.count || 0;
+    }
+
+    return 0;
+  } catch (error) {
+    console.error('getUnreadInboxCount error:', error);
+    return 0;
+  }
+}
