@@ -3222,6 +3222,28 @@ export async function getClientPlans(clientId: number): Promise<any[]> {
   }
 }
 
+// Award badge to client
+export async function awardClientBadge(clientId: number, badgeId: string, message?: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/${clientId}/award-badge`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ badge_id: badgeId, message }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Rozet verilemedi.' };
+  } catch (error) {
+    console.error('awardClientBadge error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
 // ==========================================
 // INBOX API FUNCTIONS
 // ==========================================
@@ -4614,7 +4636,7 @@ export async function getProService(serviceId: number): Promise<ProService | nul
 export async function createProService(data: {
   name: string;
   description?: string;
-  type: string;
+  type: 'session' | 'package' | 'duration' | 'subscription' | 'one_time';
   price: number;
   currency?: string;
   duration_minutes?: number;
@@ -4838,11 +4860,11 @@ export async function getPrivatePlan(planId: number): Promise<PrivatePlan | null
 // POST /pro/plans
 export async function createPrivatePlan(data: {
   title: string;
-  type: string;
+  type: 'diet' | 'workout' | 'flow' | 'rehab' | 'habit';
   client_id?: number;
   plan_data: any;
   notes?: string;
-  status?: string;
+  status?: 'draft' | 'ready' | 'assigned' | 'in_progress' | 'completed';
 }): Promise<{ success: boolean; plan?: PrivatePlan; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/rejimde/v1/pro/plans`, {
@@ -4952,7 +4974,7 @@ export async function duplicatePrivatePlan(planId: number, newTitle?: string): P
 }
 
 // PATCH /pro/plans/{id}/status
-export async function updatePrivatePlanStatus(planId: number, status: string): Promise<{ success: boolean; message?: string }> {
+export async function updatePrivatePlanStatus(planId: number, status: 'draft' | 'ready' | 'assigned' | 'in_progress' | 'completed'): Promise<{ success: boolean; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/rejimde/v1/pro/plans/${planId}/status`, {
       method: 'PATCH',
@@ -5140,7 +5162,7 @@ export async function getMediaItem(mediaId: number): Promise<MediaItem | null> {
 export async function addMediaItem(data: {
   title: string;
   description?: string;
-  type: string;
+  type: 'youtube' | 'instagram' | 'spotify' | 'vimeo' | 'custom_link';
   url: string;
   folder_id?: number;
   tags?: string[];
@@ -5655,27 +5677,5 @@ export async function getAIUsage(): Promise<AIUsageStats> {
       remaining: 0,
       reset_date: new Date().toISOString()
     };
-  }
-}
-
-// Award badge to client
-export async function awardClientBadge(clientId: number, badgeId: string, message?: string): Promise<{ success: boolean; message?: string }> {
-  try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/${clientId}/award-badge`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ badge_id: badgeId, message }),
-    });
-
-    const json = await res.json();
-    
-    if (json.status === 'success') {
-      return { success: true };
-    }
-
-    return { success: false, message: json.message || 'Rozet verilemedi.' };
-  } catch (error) {
-    console.error('awardClientBadge error:', error);
-    return { success: false, message: 'Sunucu hatası.' };
   }
 }
