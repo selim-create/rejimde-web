@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getProClients, addProClient, createClientInvite, ClientListItem } from "@/lib/api";
 import { MOCK_SERVICES } from "../../../../lib/mock-data-pro";
+import { useToast } from "@/components/ui/Toast";
 
 export default function ProClientsPage() {
+  const { showToast } = useToast();
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [meta, setMeta] = useState({ total: 0, active: 0, pending: 0, archived: 0 });
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,11 @@ export default function ProClientsPage() {
 
   const handleAddClient = async () => {
     if (!formData.client_name || !formData.client_email || !formData.package_name || !formData.start_date) {
-      alert('Lütfen tüm alanları doldurun.');
+      showToast({
+        type: 'warning',
+        title: 'Eksik Bilgi',
+        message: 'Lütfen tüm alanları doldurun.'
+      });
       return;
     }
 
@@ -70,7 +76,13 @@ export default function ProClientsPage() {
     const result = await addProClient(formData);
     
     if (result.success) {
-      alert('Danışan başarıyla eklendi!');
+      showToast({
+        type: 'success',
+        title: 'Danışan Eklendi',
+        message: result.data?.reactivated 
+          ? 'Danışan yeniden aktifleştirildi.' 
+          : 'Yeni danışan başarıyla eklendi.'
+      });
       setShowAddModal(false);
       setFormData({
         client_name: '',
@@ -83,14 +95,22 @@ export default function ProClientsPage() {
       });
       fetchClients();
     } else {
-      alert(result.message || 'Danışan eklenemedi.');
+      showToast({
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Danışan eklenemedi.'
+      });
     }
     setSubmitting(false);
   };
 
   const handleCreateInvite = async () => {
     if (!formData.package_name) {
-      alert('Lütfen bir paket seçin.');
+      showToast({
+        type: 'warning',
+        title: 'Eksik Bilgi',
+        message: 'Lütfen bir paket seçin.'
+      });
       return;
     }
 
@@ -105,9 +125,17 @@ export default function ProClientsPage() {
     if (result.success && result.invite_url) {
       setInviteUrl(result.invite_url);
       await navigator.clipboard.writeText(result.invite_url);
-      alert('Davet linki kopyalandı!');
+      showToast({
+        type: 'success',
+        title: 'Link Kopyalandı!',
+        message: 'Davet linki panoya kopyalandı. Danışana gönderebilirsiniz.'
+      });
     } else {
-      alert(result.message || 'Davet linki oluşturulamadı.');
+      showToast({
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Davet linki oluşturulamadı.'
+      });
     }
     setInviteLoading(false);
   };

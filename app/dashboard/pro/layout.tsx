@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getMe } from '@/lib/api';
+import { ToastProvider } from '@/components/ui/Toast';
 
 export default function ProDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -69,5 +70,9 @@ export default function ProDashboardLayout({ children }: { children: React.React
     );
   }
 
-  return <>{children}</>;
+  return (
+    <ToastProvider>
+      {children}
+    </ToastProvider>
+  );
 }
