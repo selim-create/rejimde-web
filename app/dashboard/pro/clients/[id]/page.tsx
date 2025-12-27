@@ -1,33 +1,127 @@
 'use client';
 
-import { useState, use } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
-// Alias kullanımı en temiz yöntemdir. Eğer derleme hatası alıyorsanız tsconfig.json paths ayarınızı kontrol etmelisiniz.
-// Ancak burada garanti çözüm için mock datayı doğrudan import ediyoruz.
-import { MOCK_CLIENTS } from "@/lib/mock-data-pro";
+import { getProClient, addClientNote, deleteClientNote, getClientPlans, ClientDetail } from "@/lib/api";
 
 export default function ClientManagementPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  // id string olarak gelir, parseInt ile number'a çevirip eşleştiriyoruz.
   const clientId = parseInt(id);
-  const client = MOCK_CLIENTS.find(c => c.id === clientId);
+  
+  const [client, setClient] = useState<ClientDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'requests' | 'notes'>('overview');
+  const [plans, setPlans] = useState<unknown[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
 
-  if (!client) {
+  // Notes state
+  const [newNote, setNewNote] = useState({ 
+    type: 'general' as 'general' | 'health' | 'progress' | 'reminder', 
+    content: '', 
+    is_pinned: false 
+  });
+  const [savingNote, setSavingNote] = useState(false);
+
+  const fetchClient = async () => {
+    setLoading(true);
+    setError(null);
+    
+    const data = await getProClient(clientId);
+    
+    if (data) {
+      setClient(data);
+    } else {
+      setError('Danışan bulunamadı.');
+    }
+    setLoading(false);
+  };
+
+  const fetchPlans = async () => {
+    setPlansLoading(true);
+    const data = await getClientPlans(clientId);
+    setPlans(data);
+    setPlansLoading(false);
+  };
+
+  // Fetch client data
+  useEffect(() => {
+    fetchClient();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  // Fetch plans when tab is active
+  useEffect(() => {
+    if (activeTab === 'plans' && client) {
+      fetchPlans();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, client]);
+
+  const handleAddNote = async () => {
+    if (!newNote.content.trim()) {
+      alert('Lütfen not içeriği girin.');
+      return;
+    }
+    
+    setSavingNote(true);
+    const result = await addClientNote(clientId, newNote);
+    
+    if (result.success && result.data) {
+      setClient(prev => prev ? {
+        ...prev,
+        notes: [...prev.notes, result.data!]
+      } : null);
+      setNewNote({ type: 'general', content: '', is_pinned: false });
+      alert('Not başarıyla eklendi!');
+    } else {
+      alert(result.message || 'Not eklenemedi.');
+    }
+    setSavingNote(false);
+  };
+
+  const handleDeleteNote = async (noteId: number) => {
+    if (!confirm('Bu notu silmek istediğinize emin misiniz?')) {
+      return;
+    }
+
+    const result = await deleteClientNote(clientId, noteId);
+    
+    if (result.success) {
+      setClient(prev => prev ? {
+        ...prev,
+        notes: prev.notes.filter(n => n.id !== noteId)
+      } : null);
+      alert('Not silindi.');
+    } else {
+      alert(result.message || 'Not silinemedi.');
+    }
+  };
+
+  if (loading) {
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+        </div>
+      );
+  }
+
+  if (error || !client) {
       return (
         <div className="min-h-screen bg-slate-900 flex items-center justify-center">
             <div className="text-center">
                 <i className="fa-solid fa-user-xmark text-4xl text-slate-600 mb-4"></i>
-                <h2 className="text-xl font-bold text-white">Danışan Bulunamadı</h2>
-                <Link href="/dashboard/pro/clients" className="text-blue-400 mt-2 block hover:underline">Listeye Dön</Link>
+                <h2 className="text-xl font-bold text-white mb-2">Danışan Bulunamadı</h2>
+                <p className="text-slate-400 mb-4">{error}</p>
+                <Link href="/dashboard/pro/clients" className="text-blue-400 hover:underline">Listeye Dön</Link>
             </div>
         </div>
       );
   }
 
-  // Bekleyen talep sayısı
-  const pendingRequestsCount = client.requests ? client.requests.filter(r => r.status === 'pending').length : 0;
+  // Bekleyen talep sayısı - requests varsa göster, yoksa 0
+  const pendingRequestsCount = 0; // Will be implemented in Phase 2 with inbox
 
   return (
     <div className="min-h-screen bg-slate-900 pb-20 font-sans text-slate-200">
@@ -41,12 +135,12 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                     </Link>
                     <div className="flex items-center gap-4">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={client.avatar} className="w-12 h-12 rounded-xl bg-slate-700 border-2 border-slate-600 object-cover" alt={client.name} />
+                        <img src={client.client.avatar} className="w-12 h-12 rounded-xl bg-slate-700 border-2 border-slate-600 object-cover" alt={client.client.name} />
                         <div>
-                            <h1 className="font-extrabold text-white text-xl tracking-tight leading-tight">{client.name}</h1>
+                            <h1 className="font-extrabold text-white text-xl tracking-tight leading-tight">{client.client.name}</h1>
                             <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                                <span className={`w-2 h-2 rounded-full animate-pulse ${client.status === 'danger' ? 'bg-red-500' : 'bg-green-500'}`}></span>
-                                {client.packageInfo?.name || 'Paket Yok'}
+                                <span className={`w-2 h-2 rounded-full animate-pulse ${client.risk_status === 'danger' ? 'bg-red-500' : client.risk_status === 'warning' ? 'bg-yellow-500' : 'bg-green-500'}`}></span>
+                                {client.package?.name || 'Paket Yok'}
                             </div>
                         </div>
                     </div>
@@ -112,20 +206,20 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                         <div className="space-y-4 relative z-10">
                             <div className="flex justify-between border-b border-slate-700/50 pb-3 border-dashed">
                                 <span className="text-slate-500 text-xs font-bold uppercase tracking-wide">Paket</span>
-                                <span className="text-white text-sm font-black text-right">{client.agreement?.type || client.packageInfo?.name}</span>
+                                <span className="text-white text-sm font-black text-right">{client.agreement?.package_name || client.package?.name || '-'}</span>
                             </div>
                             <div className="flex justify-between border-b border-slate-700/50 pb-3 border-dashed">
                                 <span className="text-slate-500 text-xs font-bold uppercase tracking-wide">Başlangıç</span>
-                                <span className="text-white text-sm font-bold">{client.agreement?.startDate || '-'}</span>
+                                <span className="text-white text-sm font-bold">{client.agreement?.start_date || '-'}</span>
                             </div>
                             <div className="flex justify-between border-b border-slate-700/50 pb-3 border-dashed">
                                 <span className="text-slate-500 text-xs font-bold uppercase tracking-wide">Bitiş</span>
-                                <span className="text-white text-sm font-bold">{client.agreement?.endDate || '-'}</span>
+                                <span className="text-white text-sm font-bold">{client.agreement?.end_date || '-'}</span>
                             </div>
                             <div className="flex justify-between pt-1">
                                 <span className="text-slate-500 text-xs font-bold uppercase tracking-wide">Kalan Hak</span>
                                 <span className="text-green-400 text-sm font-black bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
-                                    {client.packageInfo?.remaining} / {client.packageInfo?.total}
+                                    {client.package?.remaining || 0} / {client.package?.total || 0}
                                 </span>
                             </div>
                         </div>
@@ -142,17 +236,17 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-slate-900 rounded-2xl p-4 text-center border border-slate-700 transition hover:border-slate-600">
                                 <span className="block text-slate-500 text-[10px] font-black uppercase mb-1 tracking-wide">Toplam Skor</span>
-                                <span className="text-3xl font-black text-white">{client.score}</span>
+                                <span className="text-3xl font-black text-white">{client.stats?.score || client.score || 0}</span>
                             </div>
                             <div className="bg-slate-900 rounded-2xl p-4 text-center border border-slate-700 transition hover:border-slate-600">
-                                <span className="block text-slate-500 text-[10px] font-black uppercase mb-1 tracking-wide">Devamlılık</span>
-                                <span className="text-3xl font-black text-green-400">%85</span>
+                                <span className="block text-slate-500 text-[10px] font-black uppercase mb-1 tracking-wide">Streak</span>
+                                <span className="text-3xl font-black text-green-400">{client.stats?.streak || 0}</span>
                             </div>
                         </div>
                         <div className="mt-4 p-4 bg-slate-900/50 rounded-2xl border border-slate-700/50 flex items-start gap-3">
                             <i className="fa-solid fa-circle-info text-blue-400 mt-0.5"></i>
                             <p className="text-xs font-bold text-slate-400 leading-relaxed">
-                                {client.statusText || 'Durum normal, herhangi bir risk görünmüyor.'}
+                                {client.risk_reason || 'Durum normal, herhangi bir risk görünmüyor.'}
                             </p>
                         </div>
                     </div>
@@ -161,93 +255,166 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
 
             {/* 2. REQUESTS TAB */}
             {activeTab === 'requests' && (
-                <div className="space-y-4 animate-fadeIn">
-                    {client.requests && client.requests.length > 0 ? (
-                        client.requests.map((req) => (
-                            <div key={req.id} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card hover:border-slate-600 transition">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm ${
-                                            req.type === 'diet' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 
-                                            req.type === 'new_plan' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                                            'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                                        }`}>
-                                            <i className={`fa-solid ${
-                                                req.type === 'diet' ? 'fa-utensils' : 
-                                                req.type === 'new_plan' ? 'fa-file-medical' :
-                                                'fa-video'
-                                            }`}></i>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-extrabold text-white text-lg">{req.title}</h4>
-                                            <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                                                <i className="fa-regular fa-clock"></i> {req.date}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide ${
-                                        req.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' : 
-                                        'bg-green-500/10 text-green-400 border border-green-500/20'
-                                    }`}>
-                                        {req.status === 'pending' ? 'Bekliyor' : 'Tamamlandı'}
-                                    </span>
+                <div className="text-center py-20 bg-slate-800 rounded-3xl border-2 border-dashed border-slate-700 animate-fadeIn">
+                    <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i className="fa-solid fa-inbox text-3xl text-slate-500"></i>
+                    </div>
+                    <h3 className="text-white font-extrabold text-xl mb-2">Talepler (Yakında)</h3>
+                    <p className="text-slate-500 text-sm font-bold mb-8 max-w-sm mx-auto">
+                        Danışan talepleri Faz 2&apos;de Inbox modülü ile gelecek.
+                    </p>
+                </div>
+            )}
+
+            {/* 3. PLANS TAB */}
+            {activeTab === 'plans' && (
+                <div className="animate-fadeIn">
+                    {plansLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+                        </div>
+                    ) : plans.length > 0 ? (
+                        <div className="space-y-4">
+                            {plans.map((plan: any) => (
+                                <div key={plan.id} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card hover:border-slate-600 transition">
+                                    <h4 className="font-extrabold text-white text-lg mb-2">{plan.title}</h4>
+                                    <p className="text-slate-400 text-sm">{plan.description}</p>
                                 </div>
-                                <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 mb-6 relative">
-                                    <i className="fa-solid fa-quote-left absolute top-3 left-3 text-slate-700 text-2xl opacity-50"></i>
-                                    <p className="text-sm text-slate-300 font-medium leading-relaxed pl-6 relative z-10">
-                                        {req.desc}
-                                    </p>
-                                </div>
-                                {req.status === 'pending' && (
-                                    <div className="flex gap-3">
-                                        <button className="flex-1 bg-green-600 text-white py-3 rounded-xl font-extrabold text-xs shadow-btn shadow-green-900/20 btn-game hover:bg-green-500 transition flex items-center justify-center gap-2">
-                                            <i className="fa-solid fa-check"></i> İsteği Onayla
-                                        </button>
-                                        <button className="flex-1 bg-slate-700 text-white py-3 rounded-xl font-bold text-xs shadow-sm hover:bg-slate-600 transition flex items-center justify-center gap-2">
-                                            <i className="fa-solid fa-reply"></i> Cevap Yaz
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        ))
+                            ))}
+                        </div>
                     ) : (
                         <div className="text-center py-20 bg-slate-800 rounded-3xl border-2 border-dashed border-slate-700">
-                            <i className="fa-solid fa-inbox text-4xl text-slate-600 mb-4"></i>
-                            <p className="text-slate-500 font-bold">Henüz bekleyen bir talep yok.</p>
+                            <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i className="fa-solid fa-clipboard-list text-3xl text-slate-500"></i>
+                            </div>
+                            <h3 className="text-white font-extrabold text-xl mb-2">Henüz Plan Yok</h3>
+                            <p className="text-slate-500 text-sm font-bold mb-8 max-w-sm mx-auto">
+                                Bu danışana atanmış diyet veya egzersiz planı bulunmuyor.
+                            </p>
+                            <button className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-extrabold shadow-btn shadow-blue-900/50 btn-game hover:bg-blue-500 transition flex items-center gap-2 mx-auto">
+                                <i className="fa-solid fa-plus"></i> Yeni Plan Ata
+                            </button>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* 3. PLANS TAB (Placeholder) */}
-            {activeTab === 'plans' && (
-                <div className="text-center py-20 bg-slate-800 rounded-3xl border-2 border-dashed border-slate-700 animate-fadeIn">
-                    <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <i className="fa-solid fa-clipboard-list text-3xl text-slate-500"></i>
-                    </div>
-                    <h3 className="text-white font-extrabold text-xl mb-2">Aktif Planlar</h3>
-                    <p className="text-slate-500 text-sm font-bold mb-8 max-w-sm mx-auto">Bu danışana atanmış diyet veya egzersiz planlarını buradan yönetebilirsin.</p>
-                    <button className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-extrabold shadow-btn shadow-blue-900/50 btn-game hover:bg-blue-500 transition flex items-center gap-2 mx-auto">
-                        <i className="fa-solid fa-plus"></i> Yeni Plan Ata
-                    </button>
-                </div>
-            )}
-
-            {/* 4. NOTES TAB (Placeholder) */}
+            {/* 4. NOTES TAB */}
             {activeTab === 'notes' && (
-                <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 animate-fadeIn shadow-card">
-                    <h3 className="font-extrabold text-white mb-4 flex items-center gap-2">
-                        <i className="fa-solid fa-lock text-yellow-500"></i> Özel Notlar (Sadece sen görürsün)
-                    </h3>
-                    <textarea 
-                        className="w-full bg-slate-900 border border-slate-600 rounded-2xl p-5 text-white text-sm font-medium focus:border-blue-500 focus:outline-none min-h-[200px] leading-relaxed resize-none"
-                        placeholder="Danışanla ilgili gelişim notları, sakatlık durumu veya hatırlatmalar..."
-                        defaultValue={client.agreement?.notes}
-                    ></textarea>
-                    <div className="mt-4 text-right">
-                        <button className="bg-slate-700 text-white px-8 py-3 rounded-xl font-bold text-sm hover:bg-slate-600 transition shadow-sm">
-                            <i className="fa-solid fa-save mr-2"></i> Kaydet
-                        </button>
+                <div className="space-y-6 animate-fadeIn">
+                    {/* Add Note Form */}
+                    <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card">
+                        <h3 className="font-extrabold text-white mb-4 flex items-center gap-2">
+                            <i className="fa-solid fa-plus text-blue-500"></i> Yeni Not Ekle
+                        </h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Not Tipi</label>
+                                <select 
+                                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
+                                    value={newNote.type}
+                                    onChange={(e) => setNewNote({...newNote, type: e.target.value as any})}
+                                >
+                                    <option value="general">Genel</option>
+                                    <option value="health">Sağlık</option>
+                                    <option value="progress">İlerleme</option>
+                                    <option value="reminder">Hatırlatma</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Not İçeriği</label>
+                                <textarea 
+                                    className="w-full bg-slate-900 border border-slate-600 rounded-2xl p-4 text-white text-sm font-medium focus:border-blue-500 focus:outline-none min-h-[120px] leading-relaxed resize-none"
+                                    placeholder="Danışanla ilgili notlarınızı buraya yazın..."
+                                    value={newNote.content}
+                                    onChange={(e) => setNewNote({...newNote, content: e.target.value})}
+                                ></textarea>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="pin-note"
+                                    className="w-4 h-4 rounded border-slate-600 text-blue-600 focus:ring-blue-500"
+                                    checked={newNote.is_pinned}
+                                    onChange={(e) => setNewNote({...newNote, is_pinned: e.target.checked})}
+                                />
+                                <label htmlFor="pin-note" className="text-sm font-bold text-slate-400">
+                                    <i className="fa-solid fa-thumbtack text-yellow-500 mr-1"></i> Üste sabitle
+                                </label>
+                            </div>
+                            <div className="text-right">
+                                <button 
+                                    onClick={handleAddNote}
+                                    disabled={savingNote}
+                                    className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-sm hover:bg-blue-500 transition shadow-btn shadow-blue-800 disabled:opacity-50"
+                                >
+                                    {savingNote ? 'Kaydediliyor...' : 'Notu Kaydet'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Notes List */}
+                    <div className="space-y-4">
+                        {client.notes && client.notes.length > 0 ? (
+                            client.notes.map((note) => (
+                                <div key={note.id} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card relative">
+                                    {note.is_pinned && (
+                                        <div className="absolute top-4 right-4">
+                                            <i className="fa-solid fa-thumbtack text-yellow-500"></i>
+                                        </div>
+                                    )}
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm ${
+                                            note.type === 'health' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                            note.type === 'progress' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                                            note.type === 'reminder' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' :
+                                            'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                        }`}>
+                                            <i className={`fa-solid ${
+                                                note.type === 'health' ? 'fa-heart-pulse' :
+                                                note.type === 'progress' ? 'fa-chart-line' :
+                                                note.type === 'reminder' ? 'fa-bell' :
+                                                'fa-note-sticky'
+                                            }`}></i>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${
+                                                    note.type === 'health' ? 'bg-red-500/10 text-red-400' :
+                                                    note.type === 'progress' ? 'bg-green-500/10 text-green-400' :
+                                                    note.type === 'reminder' ? 'bg-yellow-500/10 text-yellow-400' :
+                                                    'bg-blue-500/10 text-blue-400'
+                                                }`}>
+                                                    {note.type === 'health' ? 'Sağlık' :
+                                                     note.type === 'progress' ? 'İlerleme' :
+                                                     note.type === 'reminder' ? 'Hatırlatma' : 'Genel'}
+                                                </span>
+                                                <span className="text-xs text-slate-500 font-bold">
+                                                    {new Date(note.created_at).toLocaleDateString('tr-TR')}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-slate-300 font-medium leading-relaxed">
+                                                {note.content}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <button 
+                                            onClick={() => handleDeleteNote(note.id)}
+                                            className="text-xs text-red-400 hover:text-red-300 font-bold flex items-center gap-1"
+                                        >
+                                            <i className="fa-solid fa-trash"></i> Sil
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-20 bg-slate-800 rounded-3xl border-2 border-dashed border-slate-700">
+                                <i className="fa-solid fa-note-sticky text-4xl text-slate-600 mb-4"></i>
+                                <p className="text-slate-500 font-bold">Henüz not eklenmemiş.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

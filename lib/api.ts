@@ -2848,3 +2848,346 @@ export async function checkFavoriteAPI(contentType: string, contentId: number) {
     return { success: false, is_favorited: false };
   }
 }
+
+// ==========================================
+// PRO CRM API FUNCTIONS
+// ==========================================
+
+export interface ClientListItem {
+  id: number;
+  relationship_id: number;
+  client: {
+    id: number;
+    name: string;
+    avatar: string;
+    email: string;
+  };
+  status: 'pending' | 'active' | 'paused' | 'archived' | 'blocked';
+  source: 'marketplace' | 'invite' | 'manual';
+  started_at: string | null;
+  package: {
+    name: string;
+    type: 'session' | 'duration' | 'unlimited';
+    total: number;
+    used: number;
+    remaining: number;
+    progress_percent: number;
+  } | null;
+  last_activity: string | null;
+  risk_status: 'normal' | 'warning' | 'danger';
+  risk_reason: string | null;
+  score: number;
+  created_at: string;
+}
+
+export interface ClientDetail extends ClientListItem {
+  client: {
+    id: number;
+    name: string;
+    avatar: string;
+    email: string;
+    phone?: string;
+    birth_date?: string;
+    gender?: string;
+  };
+  agreement: {
+    start_date: string;
+    end_date: string | null;
+    package_name: string;
+    total_sessions: number | null;
+    used_sessions: number;
+    remaining_sessions: number | null;
+    price: number;
+  };
+  stats: {
+    score: number;
+    streak: number;
+    completed_plans: number;
+    last_activity: string | null;
+  };
+  notes: ClientNote[];
+  recent_activity: any[];
+  assigned_plans: any[];
+}
+
+export interface ClientNote {
+  id: number;
+  type: 'general' | 'health' | 'progress' | 'reminder';
+  content: string;
+  is_pinned: boolean;
+  created_at: string;
+}
+
+export interface ClientsListResponse {
+  clients: ClientListItem[];
+  meta: {
+    total: number;
+    active: number;
+    pending: number;
+    archived: number;
+  };
+}
+
+// Danışan listesi
+export async function getProClients(options?: {
+  status?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<ClientsListResponse> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.status) params.append('status', options.status);
+    if (options?.search) params.append('search', options.search);
+    if (options?.limit) params.append('limit', String(options.limit));
+    if (options?.offset) params.append('offset', String(options.offset));
+
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients${queryString}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      return { clients: [], meta: { total: 0, active: 0, pending: 0, archived: 0 } };
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        clients: json.data || [],
+        meta: json.meta || { total: 0, active: 0, pending: 0, archived: 0 }
+      };
+    }
+
+    return { clients: [], meta: { total: 0, active: 0, pending: 0, archived: 0 } };
+  } catch (error) {
+    console.error('getProClients error:', error);
+    return { clients: [], meta: { total: 0, active: 0, pending: 0, archived: 0 } };
+  }
+}
+
+// Danışan detayı
+export async function getProClient(clientId: number): Promise<ClientDetail | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/${clientId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('getProClient error:', error);
+    return null;
+  }
+}
+
+// Yeni danışan ekle
+export async function addProClient(data: {
+  client_email: string;
+  client_name: string;
+  package_name: string;
+  package_type: 'session' | 'duration' | 'unlimited';
+  total_sessions?: number;
+  start_date: string;
+  end_date?: string;
+  price?: number;
+  notes?: string;
+}): Promise<{ success: boolean; data?: any; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, data: json.data };
+    }
+
+    return { success: false, message: json.message || 'Danışan eklenemedi.' };
+  } catch (error) {
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// Davet linki oluştur
+export async function createClientInvite(data: {
+  package_name: string;
+  package_type: 'session' | 'duration' | 'unlimited';
+  total_sessions?: number;
+  duration_months?: number;
+  price?: number;
+}): Promise<{ success: boolean; invite_url?: string; invite_token?: string; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/invite`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { 
+        success: true, 
+        invite_url: json.data.invite_url,
+        invite_token: json.data.invite_token
+      };
+    }
+
+    return { success: false, message: json.message || 'Davet linki oluşturulamadı.' };
+  } catch (error) {
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// Danışan durumu güncelle
+export async function updateClientStatus(clientId: number, status: string, reason?: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/${clientId}/status`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status, reason }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Durum güncellenemedi.' };
+  } catch (error) {
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// Paket güncelle
+export async function updateClientPackage(clientId: number, data: {
+  action: 'renew' | 'extend' | 'cancel';
+  package_name?: string;
+  total_sessions?: number;
+  start_date?: string;
+  price?: number;
+}): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/${clientId}/package`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Paket güncellenemedi.' };
+  } catch (error) {
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// Not ekle
+export async function addClientNote(clientId: number, data: {
+  type: 'general' | 'health' | 'progress' | 'reminder';
+  content: string;
+  is_pinned?: boolean;
+}): Promise<{ success: boolean; data?: ClientNote; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/${clientId}/notes`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, data: json.data };
+    }
+
+    return { success: false, message: json.message || 'Not eklenemedi.' };
+  } catch (error) {
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// Not sil
+export async function deleteClientNote(clientId: number, noteId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/${clientId}/notes/${noteId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Not silinemedi.' };
+  } catch (error) {
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// Danışan aktivitesi
+export async function getClientActivity(clientId: number, limit?: number): Promise<any[]> {
+  try {
+    const params = limit ? `?limit=${limit}` : '';
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/${clientId}/activity${params}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+
+    return [];
+  } catch (error) {
+    return [];
+  }
+}
+
+// Danışana atanmış planlar
+export async function getClientPlans(clientId: number): Promise<any[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/${clientId}/plans`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+
+    return [];
+  } catch (error) {
+    return [];
+  }
+}

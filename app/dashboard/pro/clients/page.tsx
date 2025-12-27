@@ -1,21 +1,116 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { MOCK_CLIENTS, MOCK_SERVICES } from "../../../../lib/mock-data-pro";
+import { getProClients, addProClient, createClientInvite, ClientListItem } from "@/lib/api";
+import { MOCK_SERVICES } from "../../../../lib/mock-data-pro";
 
 export default function ProClientsPage() {
+  const [clients, setClients] = useState<ClientListItem[]>([]);
+  const [meta, setMeta] = useState({ total: 0, active: 0, pending: 0, archived: 0 });
+  const [loading, setLoading] = useState(true);
+  
   const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'archived'>('active');
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // Filtreleme Mantığı
-  const filteredClients = MOCK_CLIENTS.filter(client => {
-      if (searchTerm && !client.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-          return false;
-      }
-      return true;
+  // Form states for adding client
+  const [formData, setFormData] = useState({
+    client_name: '',
+    client_email: '',
+    package_name: '',
+    package_type: 'session' as 'session' | 'duration' | 'unlimited',
+    total_sessions: 10,
+    start_date: '',
+    price: 0,
   });
+  const [submitting, setSubmitting] = useState(false);
+
+  // Invite link state
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
+
+  // Fetch clients
+  const fetchClients = async () => {
+    setLoading(true);
+    
+    const result = await getProClients({
+      status: activeTab,
+      search: searchTerm || undefined
+    });
+    
+    setClients(result.clients);
+    setMeta(result.meta);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchClients();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm !== '') {
+        fetchClients();
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
+
+  const handleAddClient = async () => {
+    if (!formData.client_name || !formData.client_email || !formData.package_name || !formData.start_date) {
+      alert('Lütfen tüm alanları doldurun.');
+      return;
+    }
+
+    setSubmitting(true);
+    const result = await addProClient(formData);
+    
+    if (result.success) {
+      alert('Danışan başarıyla eklendi!');
+      setShowAddModal(false);
+      setFormData({
+        client_name: '',
+        client_email: '',
+        package_name: '',
+        package_type: 'session',
+        total_sessions: 10,
+        start_date: '',
+        price: 0,
+      });
+      fetchClients();
+    } else {
+      alert(result.message || 'Danışan eklenemedi.');
+    }
+    setSubmitting(false);
+  };
+
+  const handleCreateInvite = async () => {
+    if (!formData.package_name) {
+      alert('Lütfen bir paket seçin.');
+      return;
+    }
+
+    setInviteLoading(true);
+    const result = await createClientInvite({
+      package_name: formData.package_name,
+      package_type: formData.package_type,
+      total_sessions: formData.total_sessions,
+      price: formData.price,
+    });
+    
+    if (result.success && result.invite_url) {
+      setInviteUrl(result.invite_url);
+      await navigator.clipboard.writeText(result.invite_url);
+      alert('Davet linki kopyalandı!');
+    } else {
+      alert(result.message || 'Davet linki oluşturulamadı.');
+    }
+    setInviteLoading(false);
+  };
 
   return (
     <div className="min-h-screen bg-slate-900 pb-20 font-sans text-slate-200">
@@ -48,19 +143,19 @@ export default function ProClientsPage() {
                     onClick={() => setActiveTab('active')}
                     className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'active' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                    Aktif ({filteredClients.length})
+                    Aktif ({meta.active})
                 </button>
                 <button 
                     onClick={() => setActiveTab('pending')}
                     className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'pending' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                    Bekleyen
+                    Bekleyen ({meta.pending})
                 </button>
                 <button 
                     onClick={() => setActiveTab('archived')}
                     className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'archived' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                    Arşiv
+                    Arşiv ({meta.archived})
                 </button>
             </div>
             <div className="relative flex-1">
@@ -75,7 +170,34 @@ export default function ProClientsPage() {
             </div>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && clients.length === 0 && (
+          <div className="text-center py-20 bg-slate-800/50 border-2 border-dashed border-slate-700 rounded-3xl">
+            <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <i className="fa-solid fa-users text-3xl text-slate-500"></i>
+            </div>
+            <h3 className="text-white font-extrabold text-xl mb-2">Henüz Danışanın Yok</h3>
+            <p className="text-slate-500 text-sm font-bold mb-8 max-w-sm mx-auto">
+              Yeni danışan ekleyerek veya davet linki göndererek başlayabilirsin.
+            </p>
+            <button 
+              onClick={() => setShowAddModal(true)}
+              className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-extrabold shadow-btn shadow-blue-900/50 btn-game hover:bg-blue-500 transition"
+            >
+              <i className="fa-solid fa-user-plus mr-2"></i> İlk Danışanını Ekle
+            </button>
+          </div>
+        )}
+
         {/* Client Grid */}
+        {!loading && clients.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
             {/* Invite Card */}
@@ -92,33 +214,33 @@ export default function ProClientsPage() {
                 </p>
             </div>
 
-            {/* Mock Clients */}
-            {filteredClients.map((client) => (
+            {/* Clients */}
+            {clients.map((client) => (
                 <div key={client.id} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 hover:border-slate-600 transition group relative overflow-hidden flex flex-col">
                     {/* Status Strip */}
                     <div className={`absolute top-0 left-0 w-1.5 h-full ${
-                        client.status === 'danger' ? 'bg-red-500' :
-                        client.status === 'warning' ? 'bg-yellow-500' :
+                        client.risk_status === 'danger' ? 'bg-red-500' :
+                        client.risk_status === 'warning' ? 'bg-yellow-500' :
                         'bg-green-500'
                     }`}></div>
 
                     <div className="flex items-start justify-between mb-6 pl-2">
                         <div className="flex items-center gap-4">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={client.avatar} className="w-14 h-14 rounded-2xl bg-slate-700 object-cover border-2 border-slate-600" alt={client.name} />
+                            <img src={client.client.avatar} className="w-14 h-14 rounded-2xl bg-slate-700 object-cover border-2 border-slate-600" alt={client.client.name} />
                             <div>
-                                <h3 className="font-extrabold text-white text-lg leading-tight">{client.name}</h3>
+                                <h3 className="font-extrabold text-white text-lg leading-tight">{client.client.name}</h3>
                                 <div className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded mt-1 ${
-                                    client.status === 'danger' ? 'bg-red-500/10 text-red-400' :
-                                    client.status === 'warning' ? 'bg-yellow-500/10 text-yellow-400' :
+                                    client.risk_status === 'danger' ? 'bg-red-500/10 text-red-400' :
+                                    client.risk_status === 'warning' ? 'bg-yellow-500/10 text-yellow-400' :
                                     'bg-green-500/10 text-green-400'
                                 }`}>
                                     <i className={`fa-solid ${
-                                        client.status === 'danger' ? 'fa-triangle-exclamation' :
-                                        client.status === 'warning' ? 'fa-bell' :
+                                        client.risk_status === 'danger' ? 'fa-triangle-exclamation' :
+                                        client.risk_status === 'warning' ? 'fa-bell' :
                                         'fa-check-circle'
                                     }`}></i>
-                                    {client.statusText}
+                                    {client.risk_reason || 'Normal'}
                                 </div>
                             </div>
                         </div>
@@ -128,33 +250,21 @@ export default function ProClientsPage() {
                     </div>
 
                     {/* Progress Bar (Package Tracking) */}
-                    {client.packageInfo && (
+                    {client.package && (
                         <div className="mb-6 pl-2">
                             <div className="flex justify-between items-end mb-2">
-                                <span className="text-[10px] font-black text-slate-400 uppercase">{client.packageInfo.name}</span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase">{client.package.name}</span>
                                 <span className="text-xs font-bold text-white">
-                                    <span className="text-blue-400">{client.packageInfo.used}</span> / {client.packageInfo.total} Ders
+                                    <span className="text-blue-400">{client.package.used}</span> / {client.package.total} Ders
                                 </span>
                             </div>
                             <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
                                 <div 
                                     className={`h-full rounded-full transition-all duration-500 ${
-                                        (client.packageInfo.used / client.packageInfo.total) >= 1 ? 'bg-green-500' : 'bg-blue-500'
+                                        client.package.progress_percent >= 100 ? 'bg-green-500' : 'bg-blue-500'
                                     }`} 
-                                    style={{ width: `${(client.packageInfo.used / client.packageInfo.total) * 100}%` }}
+                                    style={{ width: `${Math.min(client.package.progress_percent, 100)}%` }}
                                 ></div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Bekleyen Talepler Uyarısı (Yeni) */}
-                    {client.requests && client.requests.some(r => r.status === 'pending') && (
-                        <div className="mb-4 pl-2">
-                            <div className="bg-yellow-500/10 border border-yellow-500/20 p-2 rounded-xl flex items-center gap-2">
-                                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                                <span className="text-xs font-bold text-yellow-400">
-                                    {client.requests.filter(r => r.status === 'pending').length} yeni talep var
-                                </span>
                             </div>
                         </div>
                     )}
@@ -167,12 +277,12 @@ export default function ProClientsPage() {
                              </div>
                              <div className="bg-slate-900/50 p-2 rounded-lg text-center border border-slate-700/30">
                                 <span className="block text-[10px] text-slate-500 font-bold uppercase">Kalan</span>
-                                <span className="font-black text-white">{client.packageInfo?.remaining || 0}</span>
+                                <span className="font-black text-white">{client.package?.remaining || 0}</span>
                              </div>
                         </div>
 
                         <div className="flex gap-2">
-                            <Link href={`/dashboard/pro/clients/${client.id}`} className="flex-1 bg-white text-slate-900 py-2.5 rounded-xl font-extrabold text-xs uppercase text-center hover:bg-slate-200 transition shadow-sm">
+                            <Link href={`/dashboard/pro/clients/${client.relationship_id}`} className="flex-1 bg-white text-slate-900 py-2.5 rounded-xl font-extrabold text-xs uppercase text-center hover:bg-slate-200 transition shadow-sm">
                                 Yönet
                             </Link>
                             <button className="w-10 h-10 bg-slate-700 rounded-xl flex items-center justify-center text-white hover:bg-green-600 transition shadow-sm" title="WhatsApp">
@@ -183,6 +293,7 @@ export default function ProClientsPage() {
                 </div>
             ))}
         </div>
+        )}
       </div>
 
       {/* ADD CLIENT MODAL (Updated) */}
@@ -200,11 +311,23 @@ export default function ProClientsPage() {
                       <div className="grid grid-cols-2 gap-4">
                           <div>
                               <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Ad Soyad</label>
-                              <input type="text" className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" placeholder="Ahmet Yılmaz" />
+                              <input 
+                                type="text" 
+                                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" 
+                                placeholder="Ahmet Yılmaz"
+                                value={formData.client_name}
+                                onChange={(e) => setFormData({...formData, client_name: e.target.value})}
+                              />
                           </div>
                           <div>
                               <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">E-posta</label>
-                              <input type="email" className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" placeholder="ornek@email.com" />
+                              <input 
+                                type="email" 
+                                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" 
+                                placeholder="ornek@email.com"
+                                value={formData.client_email}
+                                onChange={(e) => setFormData({...formData, client_email: e.target.value})}
+                              />
                           </div>
                       </div>
 
@@ -213,10 +336,21 @@ export default function ProClientsPage() {
 
                       <div>
                           <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Paket / Hizmet Seç</label>
-                          <select className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold appearance-none">
+                          <select 
+                            className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold appearance-none"
+                            value={formData.package_name}
+                            onChange={(e) => {
+                              const service = MOCK_SERVICES.find(s => s.title === e.target.value);
+                              setFormData({
+                                ...formData, 
+                                package_name: e.target.value,
+                                price: service?.price || 0
+                              });
+                            }}
+                          >
                               <option value="">Paket Seçiniz</option>
                               {MOCK_SERVICES.map(s => (
-                                  <option key={s.id} value={s.id}>{s.title} - {s.price} TL</option>
+                                  <option key={s.id} value={s.title}>{s.title} - {s.price} TL</option>
                               ))}
                           </select>
                       </div>
@@ -224,28 +358,53 @@ export default function ProClientsPage() {
                       <div className="grid grid-cols-2 gap-4">
                           <div>
                               <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Başlangıç Tarihi</label>
-                              <input type="date" className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" />
+                              <input 
+                                type="date" 
+                                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
+                                value={formData.start_date}
+                                onChange={(e) => setFormData({...formData, start_date: e.target.value})}
+                              />
                           </div>
                           <div>
-                              <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Süre / Bitiş</label>
-                              <select className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold appearance-none">
-                                  <option>1 Ay</option>
-                                  <option>3 Ay</option>
-                                  <option>6 Ay</option>
-                                  <option>10 Ders</option>
-                                  <option>20 Ders</option>
-                              </select>
+                              <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Toplam Seans</label>
+                              <input 
+                                type="number" 
+                                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
+                                placeholder="10"
+                                value={formData.total_sessions}
+                                onChange={(e) => setFormData({...formData, total_sessions: parseInt(e.target.value) || 0})}
+                              />
                           </div>
                       </div>
                       
                       <div className="pt-2 flex gap-3">
-                          <button className="flex-1 bg-slate-700 text-white py-3 rounded-xl font-bold hover:bg-slate-600 transition">
-                              Davet Linki Kopyala
+                          <button 
+                            onClick={handleCreateInvite}
+                            disabled={inviteLoading}
+                            className="flex-1 bg-slate-700 text-white py-3 rounded-xl font-bold hover:bg-slate-600 transition disabled:opacity-50"
+                          >
+                            {inviteLoading ? 'Oluşturuluyor...' : 'Davet Linki Kopyala'}
                           </button>
-                          <button className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-extrabold shadow-btn btn-game hover:bg-blue-500 transition">
-                              Danışanı Ekle
+                          <button 
+                            onClick={handleAddClient}
+                            disabled={submitting}
+                            className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-extrabold shadow-btn btn-game hover:bg-blue-500 transition disabled:opacity-50"
+                          >
+                            {submitting ? 'Ekleniyor...' : 'Danışanı Ekle'}
                           </button>
                       </div>
+
+                      {inviteUrl && (
+                        <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
+                          <p className="text-xs font-bold text-green-400 mb-2">Davet linki oluşturuldu ve kopyalandı!</p>
+                          <input 
+                            type="text" 
+                            value={inviteUrl} 
+                            readOnly 
+                            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white font-mono"
+                          />
+                        </div>
+                      )}
                   </div>
               </div>
           </div>
