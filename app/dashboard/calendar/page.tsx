@@ -1,59 +1,45 @@
 'use client';
 
-import { useState } from "react";
-// import Link from "next/link"; 
-
-// --- MOCK DATA ---
-const MOCK_USER_APPOINTMENTS = [
-  {
-    id: 1,
-    expertName: "Dr. Selim",
-    expertTitle: "Uzman Diyetisyen",
-    expertAvatar: "https://api.dicebear.com/9.x/personas/svg?seed=Selim",
-    title: "Haftalık Kontrol",
-    date: "2025-12-28", // Varsayılan seçili gün (Demo için)
-    time: "14:00",
-    duration: 30,
-    type: "online",
-    status: "confirmed",
-    link: "https://meet.google.com/abc-defg-hij"
-  },
-  {
-    id: 2,
-    expertName: "Selin Hoca",
-    expertTitle: "Yoga Eğitmeni",
-    expertAvatar: "https://api.dicebear.com/9.x/personas/svg?seed=Selin",
-    title: "Yoga 101 - Ders 4",
-    date: "2025-12-30",
-    time: "10:00",
-    duration: 60,
-    type: "online",
-    status: "confirmed",
-    link: "https://zoom.us/j/123456789"
-  },
-  {
-    id: 3,
-    expertName: "Selin Hoca",
-    expertTitle: "Yoga Eğitmeni",
-    expertAvatar: "https://api.dicebear.com/9.x/personas/svg?seed=Selin",
-    title: "Stüdyo Dersi",
-    date: "2025-12-27",
-    time: "18:00",
-    duration: 60,
-    type: "offline",
-    status: "completed",
-    location: "Nişantaşı Stüdyo"
-  }
-];
+import { useState, useEffect } from "react";
+import { getMyAppointments, cancelMyAppointment, MyAppointment } from "@/lib/api";
 
 export default function UserCalendarPage() {
-  // Demo için 28 Aralık 2025'i varsayılan seçili gün yapıyoruz
-  const [selectedDate, setSelectedDate] = useState("2025-12-28");
+  const [appointments, setAppointments] = useState<MyAppointment[]>([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const data = await getMyAppointments();
+        setAppointments(data);
+      } catch (error) {
+        console.error("Randevular yüklenemedi:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const handleCancelAppointment = async (appointmentId: number) => {
+    if (!confirm('Randevuyu iptal etmek istediğinize emin misiniz?')) return;
+    
+    const result = await cancelMyAppointment(appointmentId, 'Kullanıcı tarafından iptal edildi');
+    if (result.success) {
+      // Reload appointments
+      const data = await getMyAppointments();
+      setAppointments(data);
+      alert('Randevu iptal edildi.');
+    } else {
+      alert(result.message || 'Randevu iptal edilemedi.');
+    }
+  };
 
   // Basit bir sonraki 7 günü oluşturma fonksiyonu
   const generateDays = () => {
     const days = [];
-    const start = new Date("2025-12-27"); 
+    const start = new Date(); 
     
     for (let i = 0; i < 7; i++) {
       const d = new Date(start);
@@ -69,7 +55,46 @@ export default function UserCalendarPage() {
   };
 
   const days = generateDays();
-  const dailyAppointments = MOCK_USER_APPOINTMENTS.filter(apt => apt.date === selectedDate);
+  const dailyAppointments = appointments.filter(apt => apt.date === selectedDate);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+      case 'scheduled':
+        return 'bg-green-500';
+      case 'completed':
+        return 'bg-gray-400';
+      case 'cancelled':
+        return 'bg-red-500';
+      case 'no_show':
+        return 'bg-orange-500';
+      default:
+        return 'bg-yellow-500';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pb-24 font-sans text-gray-800">
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-40 px-6 py-4 flex justify-between items-center shadow-sm">
+          <div className="flex items-center gap-4">
+              <a href="/dashboard" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition">
+                  <i className="fa-solid fa-arrow-left"></i>
+              </a>
+              <div>
+                  <h1 className="font-extrabold text-gray-800 text-xl tracking-tight">Takvimim</h1>
+                  <p className="text-xs font-bold text-gray-500">Randevularını takip et</p>
+              </div>
+          </div>
+        </div>
+        <div className="max-w-3xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-24 font-sans text-gray-800">
@@ -121,14 +146,11 @@ export default function UserCalendarPage() {
                 dailyAppointments.map((apt) => (
                     <div key={apt.id} className="bg-white border-2 border-gray-100 rounded-3xl p-5 hover:border-blue-200 transition group flex flex-col sm:flex-row gap-5 items-start sm:items-center relative overflow-hidden shadow-sm">
                         {/* Status Line */}
-                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-                            apt.status === 'confirmed' ? 'bg-green-500' : 
-                            apt.status === 'completed' ? 'bg-gray-400' : 'bg-yellow-500'
-                        }`}></div>
+                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${getStatusColor(apt.status)}`}></div>
 
                         {/* Time Column */}
                         <div className="flex flex-row sm:flex-col items-center sm:items-start gap-2 sm:gap-0 min-w-[80px] pl-3">
-                            <span className="text-xl font-black text-gray-800">{apt.time}</span>
+                            <span className="text-xl font-black text-gray-800">{apt.start_time}</span>
                             <span className="text-xs font-bold text-gray-400">{apt.duration} dk</span>
                         </div>
 
@@ -147,32 +169,50 @@ export default function UserCalendarPage() {
                                         <i className="fa-solid fa-check-circle"></i> Tamamlandı
                                     </span>
                                 )}
+                                {apt.status === 'cancelled' && (
+                                    <span className="text-[10px] font-bold text-red-500 flex items-center gap-1">
+                                        <i className="fa-solid fa-times-circle"></i> İptal Edildi
+                                    </span>
+                                )}
                             </div>
                             
                             <h4 className="font-extrabold text-gray-800 text-lg leading-tight mb-2">{apt.title}</h4>
                             
                             <div className="flex items-center gap-3">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={apt.expertAvatar} className="w-8 h-8 rounded-full border border-gray-100" alt={apt.expertName} />
+                                <img src={apt.expert.avatar} className="w-8 h-8 rounded-full border border-gray-100" alt={apt.expert.name} />
                                 <div>
-                                    <p className="text-xs font-bold text-gray-700">{apt.expertName}</p>
-                                    <p className="text-[10px] text-gray-400 font-bold">{apt.expertTitle}</p>
+                                    <p className="text-xs font-bold text-gray-700">{apt.expert.name}</p>
+                                    <p className="text-[10px] text-gray-400 font-bold">{apt.expert.title}</p>
                                 </div>
                             </div>
+                            
+                            {apt.description && (
+                                <p className="text-xs text-gray-500 mt-2">{apt.description}</p>
+                            )}
                         </div>
 
                         {/* Actions */}
                         <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                            {apt.status === 'confirmed' && (
+                            {(apt.status === 'confirmed' || apt.status === 'scheduled') && (
                                 <>
-                                    {apt.type === 'online' ? (
-                                        <a href={apt.link} target="_blank" className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-extrabold text-xs shadow-btn btn-game flex items-center justify-center gap-2 transition">
+                                    {apt.type === 'online' && apt.meeting_link ? (
+                                        <a href={apt.meeting_link} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-extrabold text-xs shadow-btn btn-game flex items-center justify-center gap-2 transition">
                                             <i className="fa-solid fa-video"></i> Katıl
                                         </a>
-                                    ) : (
+                                    ) : apt.type === 'offline' && apt.location ? (
                                         <div className="flex-1 sm:flex-none bg-gray-50 border border-gray-200 text-gray-500 px-4 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-2">
                                             <i className="fa-solid fa-location-dot"></i> {apt.location}
                                         </div>
+                                    ) : null}
+                                    
+                                    {apt.can_cancel && (
+                                        <button 
+                                            onClick={() => handleCancelAppointment(apt.id)}
+                                            className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-3 rounded-xl font-bold text-xs transition border border-red-100"
+                                        >
+                                            <i className="fa-solid fa-times"></i>
+                                        </button>
                                     )}
                                 </>
                             )}
@@ -185,7 +225,7 @@ export default function UserCalendarPage() {
                         <i className="fa-regular fa-calendar-xmark text-2xl text-gray-400"></i>
                     </div>
                     <h3 className="font-bold text-gray-700 text-lg">Boş Gün</h3>
-                    <p className="text-gray-500 text-xs mt-1">Bugün için planlanmış bir randevun yok.</p>
+                    <p className="text-gray-500 text-xs mt-1">Bu tarih için planlanmış bir randevun yok.</p>
                     <a href="/experts" className="inline-block mt-4 text-blue-600 font-bold text-sm hover:underline">
                         + Randevu Al
                     </a>
