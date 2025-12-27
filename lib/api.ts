@@ -4539,3 +4539,1143 @@ export async function exportFinanceData(format: 'csv' | 'excel', startDate: stri
     throw error;
   }
 }
+
+// ==========================================
+// SERVICES API FUNCTIONS
+// ==========================================
+
+export interface ProService {
+  id: number;
+  name: string;
+  description?: string;
+  type: 'session' | 'package' | 'duration' | 'subscription' | 'one_time';
+  price: number;
+  currency: string;
+  duration_minutes: number;
+  session_count?: number;
+  validity_days?: number;
+  is_active: boolean;
+  is_featured: boolean;
+  is_public: boolean;
+  booking_enabled: boolean;
+  color: string;
+  sort_order: number;
+  usage_count: number;
+  created_at: string;
+}
+
+// GET /pro/services
+export async function getProServices(): Promise<ProService[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/services`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+
+    return [];
+  } catch (error) {
+    console.error('getProServices error:', error);
+    return [];
+  }
+}
+
+// GET /pro/services/{id}
+export async function getProService(serviceId: number): Promise<ProService | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/services/${serviceId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('getProService error:', error);
+    return null;
+  }
+}
+
+// POST /pro/services
+export async function createProService(data: {
+  name: string;
+  description?: string;
+  type: string;
+  price: number;
+  currency?: string;
+  duration_minutes?: number;
+  session_count?: number;
+  validity_days?: number;
+  is_public?: boolean;
+  booking_enabled?: boolean;
+  color?: string;
+}): Promise<{ success: boolean; service?: ProService; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/services`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, service: json.data };
+    }
+
+    return { success: false, message: json.message || 'Hizmet oluşturulamadı.' };
+  } catch (error) {
+    console.error('createProService error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// PATCH /pro/services/{id}
+export async function updateProService(serviceId: number, data: Partial<ProService>): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/services/${serviceId}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Hizmet güncellenemedi.' };
+  } catch (error) {
+    console.error('updateProService error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// DELETE /pro/services/{id}
+export async function deleteProService(serviceId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/services/${serviceId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Hizmet silinemedi.' };
+  } catch (error) {
+    console.error('deleteProService error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// PATCH /pro/services/{id}/toggle
+export async function toggleProServiceStatus(serviceId: number): Promise<{ success: boolean; is_active?: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/services/${serviceId}/toggle`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, is_active: json.data?.is_active };
+    }
+
+    return { success: false, message: json.message || 'Durum değiştirilemedi.' };
+  } catch (error) {
+    console.error('toggleProServiceStatus error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// POST /pro/services/reorder
+export async function reorderProServices(serviceIds: number[]): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/services/reorder`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ service_ids: serviceIds }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Sıralama güncellenemedi.' };
+  } catch (error) {
+    console.error('reorderProServices error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// ==========================================
+// PRIVATE PLANS API FUNCTIONS
+// ==========================================
+
+export interface PrivatePlan {
+  id: number;
+  expert_id: number;
+  client_id?: number;
+  client?: {
+    id: number;
+    name: string;
+    avatar: string;
+  };
+  title: string;
+  type: 'diet' | 'workout' | 'flow' | 'rehab' | 'habit';
+  status: 'draft' | 'ready' | 'assigned' | 'in_progress' | 'completed';
+  plan_data: any;
+  notes?: string;
+  assigned_at?: string;
+  completed_at?: string;
+  created_at: string;
+}
+
+export interface MyPrivatePlan {
+  id: number;
+  expert: {
+    id: number;
+    name: string;
+    avatar: string;
+  };
+  title: string;
+  type: string;
+  status: string;
+  plan_data: any;
+  progress_percent: number;
+  completed_items: string[];
+  assigned_at: string;
+}
+
+// GET /pro/plans
+export async function getPrivatePlans(options?: {
+  type?: string;
+  status?: string;
+  client_id?: number;
+  limit?: number;
+  offset?: number;
+}): Promise<{ plans: PrivatePlan[]; meta: { total: number } }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.type) params.append('type', options.type);
+    if (options?.status) params.append('status', options.status);
+    if (options?.client_id) params.append('client_id', String(options.client_id));
+    if (options?.limit) params.append('limit', String(options.limit));
+    if (options?.offset) params.append('offset', String(options.offset));
+
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/plans${queryString}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      return { plans: [], meta: { total: 0 } };
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        plans: json.data || [],
+        meta: json.meta || { total: 0 }
+      };
+    }
+
+    return { plans: [], meta: { total: 0 } };
+  } catch (error) {
+    console.error('getPrivatePlans error:', error);
+    return { plans: [], meta: { total: 0 } };
+  }
+}
+
+// GET /pro/plans/{id}
+export async function getPrivatePlan(planId: number): Promise<PrivatePlan | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/plans/${planId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('getPrivatePlan error:', error);
+    return null;
+  }
+}
+
+// POST /pro/plans
+export async function createPrivatePlan(data: {
+  title: string;
+  type: string;
+  client_id?: number;
+  plan_data: any;
+  notes?: string;
+  status?: string;
+}): Promise<{ success: boolean; plan?: PrivatePlan; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/plans`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, plan: json.data };
+    }
+
+    return { success: false, message: json.message || 'Plan oluşturulamadı.' };
+  } catch (error) {
+    console.error('createPrivatePlan error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// PATCH /pro/plans/{id}
+export async function updatePrivatePlan(planId: number, data: Partial<PrivatePlan>): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/plans/${planId}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Plan güncellenemedi.' };
+  } catch (error) {
+    console.error('updatePrivatePlan error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// DELETE /pro/plans/{id}
+export async function deletePrivatePlan(planId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/plans/${planId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Plan silinemedi.' };
+  } catch (error) {
+    console.error('deletePrivatePlan error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// POST /pro/plans/{id}/assign
+export async function assignPrivatePlan(planId: number, clientId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/plans/${planId}/assign`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ client_id: clientId }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Plan atanamadı.' };
+  } catch (error) {
+    console.error('assignPrivatePlan error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// POST /pro/plans/{id}/duplicate
+export async function duplicatePrivatePlan(planId: number, newTitle?: string): Promise<{ success: boolean; plan?: PrivatePlan; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/plans/${planId}/duplicate`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ new_title: newTitle }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, plan: json.data };
+    }
+
+    return { success: false, message: json.message || 'Plan kopyalanamadı.' };
+  } catch (error) {
+    console.error('duplicatePrivatePlan error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// PATCH /pro/plans/{id}/status
+export async function updatePrivatePlanStatus(planId: number, status: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/plans/${planId}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Durum güncellenemedi.' };
+  } catch (error) {
+    console.error('updatePrivatePlanStatus error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// GET /me/private-plans (Client side)
+export async function getMyPrivatePlans(): Promise<MyPrivatePlan[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/me/private-plans`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+
+    return [];
+  } catch (error) {
+    console.error('getMyPrivatePlans error:', error);
+    return [];
+  }
+}
+
+// GET /me/private-plans/{id}
+export async function getMyPrivatePlan(planId: number): Promise<MyPrivatePlan | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/me/private-plans/${planId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('getMyPrivatePlan error:', error);
+    return null;
+  }
+}
+
+// POST /me/private-plans/{id}/progress
+export async function updateMyPlanProgress(planId: number, data: {
+  completed_items: string[];
+  progress_percent?: number;
+}): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/me/private-plans/${planId}/progress`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'İlerleme güncellenemedi.' };
+  } catch (error) {
+    console.error('updateMyPlanProgress error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// ==========================================
+// MEDIA LIBRARY API FUNCTIONS
+// ==========================================
+
+export interface MediaItem {
+  id: number;
+  title: string;
+  description?: string;
+  type: 'youtube' | 'instagram' | 'spotify' | 'vimeo' | 'custom_link';
+  url: string;
+  thumbnail_url?: string;
+  folder_id?: number;
+  tags: string[];
+  usage_count: number;
+  created_at: string;
+}
+
+export interface MediaFolder {
+  id: number;
+  name: string;
+  parent_id?: number;
+  sort_order: number;
+  item_count: number;
+}
+
+// GET /pro/media
+export async function getMediaLibrary(options?: {
+  type?: string;
+  search?: string;
+  folder_id?: number;
+  limit?: number;
+  offset?: number;
+}): Promise<{ items: MediaItem[]; folders: MediaFolder[]; meta: { total: number } }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.type) params.append('type', options.type);
+    if (options?.search) params.append('search', options.search);
+    if (options?.folder_id) params.append('folder_id', String(options.folder_id));
+    if (options?.limit) params.append('limit', String(options.limit));
+    if (options?.offset) params.append('offset', String(options.offset));
+
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/media${queryString}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      return { items: [], folders: [], meta: { total: 0 } };
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        items: json.data?.items || [],
+        folders: json.data?.folders || [],
+        meta: json.meta || { total: 0 }
+      };
+    }
+
+    return { items: [], folders: [], meta: { total: 0 } };
+  } catch (error) {
+    console.error('getMediaLibrary error:', error);
+    return { items: [], folders: [], meta: { total: 0 } };
+  }
+}
+
+// GET /pro/media/{id}
+export async function getMediaItem(mediaId: number): Promise<MediaItem | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/media/${mediaId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('getMediaItem error:', error);
+    return null;
+  }
+}
+
+// POST /pro/media
+export async function addMediaItem(data: {
+  title: string;
+  description?: string;
+  type: string;
+  url: string;
+  folder_id?: number;
+  tags?: string[];
+}): Promise<{ success: boolean; item?: MediaItem; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/media`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, item: json.data };
+    }
+
+    return { success: false, message: json.message || 'Medya eklenemedi.' };
+  } catch (error) {
+    console.error('addMediaItem error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// PATCH /pro/media/{id}
+export async function updateMediaItem(mediaId: number, data: Partial<MediaItem>): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/media/${mediaId}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Medya güncellenemedi.' };
+  } catch (error) {
+    console.error('updateMediaItem error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// DELETE /pro/media/{id}
+export async function deleteMediaItem(mediaId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/media/${mediaId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Medya silinemedi.' };
+  } catch (error) {
+    console.error('deleteMediaItem error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// POST /pro/media/folders
+export async function createMediaFolder(data: {
+  name: string;
+  parent_id?: number;
+}): Promise<{ success: boolean; folder?: MediaFolder; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/media/folders`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, folder: json.data };
+    }
+
+    return { success: false, message: json.message || 'Klasör oluşturulamadı.' };
+  } catch (error) {
+    console.error('createMediaFolder error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// DELETE /pro/media/folders/{id}
+export async function deleteMediaFolder(folderId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/media/folders/${folderId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Klasör silinemedi.' };
+  } catch (error) {
+    console.error('deleteMediaFolder error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// ==========================================
+// FAQ API FUNCTIONS
+// ==========================================
+
+export interface FAQItem {
+  id: number;
+  question: string;
+  answer: string;
+  category: string;
+  is_public: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+// GET /pro/faq
+export async function getProFAQ(): Promise<FAQItem[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/faq`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+
+    return [];
+  } catch (error) {
+    console.error('getProFAQ error:', error);
+    return [];
+  }
+}
+
+// GET /pro/faq/{id}
+export async function getProFAQItem(faqId: number): Promise<FAQItem | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/faq/${faqId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('getProFAQItem error:', error);
+    return null;
+  }
+}
+
+// POST /pro/faq
+export async function createProFAQ(data: {
+  question: string;
+  answer: string;
+  category?: string;
+  is_public?: boolean;
+}): Promise<{ success: boolean; item?: FAQItem; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/faq`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, item: json.data };
+    }
+
+    return { success: false, message: json.message || 'Soru eklenemedi.' };
+  } catch (error) {
+    console.error('createProFAQ error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// PATCH /pro/faq/{id}
+export async function updateProFAQ(faqId: number, data: Partial<FAQItem>): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/faq/${faqId}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Soru güncellenemedi.' };
+  } catch (error) {
+    console.error('updateProFAQ error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// DELETE /pro/faq/{id}
+export async function deleteProFAQ(faqId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/faq/${faqId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Soru silinemedi.' };
+  } catch (error) {
+    console.error('deleteProFAQ error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// POST /pro/faq/reorder
+export async function reorderProFAQ(faqIds: number[]): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/faq/reorder`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ faq_ids: faqIds }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Sıralama güncellenemedi.' };
+  } catch (error) {
+    console.error('reorderProFAQ error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// GET /experts/{expertId}/faq (Public)
+export async function getExpertPublicFAQ(expertId: number): Promise<FAQItem[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/experts/${expertId}/faq`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+
+    return [];
+  } catch (error) {
+    console.error('getExpertPublicFAQ error:', error);
+    return [];
+  }
+}
+
+// ==========================================
+// ANNOUNCEMENTS API FUNCTIONS
+// ==========================================
+
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  type: 'info' | 'warning' | 'promo' | 'update';
+  priority: number;
+  start_date: string;
+  end_date?: string;
+  is_dismissible: boolean;
+  action_url?: string;
+  action_text?: string;
+  created_at: string;
+}
+
+// GET /announcements
+export async function getAnnouncements(): Promise<Announcement[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/announcements`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+
+    return [];
+  } catch (error) {
+    console.error('getAnnouncements error:', error);
+    return [];
+  }
+}
+
+// GET /announcements/{id}
+export async function getAnnouncement(announcementId: number): Promise<Announcement | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/announcements/${announcementId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('getAnnouncement error:', error);
+    return null;
+  }
+}
+
+// POST /announcements/{id}/dismiss
+export async function dismissAnnouncement(announcementId: number): Promise<{ success: boolean }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/announcements/${announcementId}/dismiss`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false };
+  } catch (error) {
+    console.error('dismissAnnouncement error:', error);
+    return { success: false };
+  }
+}
+
+// ==========================================
+// AI PLANNER API FUNCTIONS
+// ==========================================
+
+export interface AIGeneratePlanRequest {
+  client_id?: number;
+  plan_type: 'diet' | 'workout' | 'flow' | 'rehab' | 'habit';
+  parameters: {
+    goal?: string;
+    duration_days?: number;
+    restrictions?: string[];
+    preferences?: Record<string, any>;
+    additional_notes?: string;
+  };
+}
+
+export interface AIGeneratePlanResponse {
+  draft_plan: any;
+  suggestions: string[];
+  tokens_used: number;
+}
+
+export interface AIUsageStats {
+  total_requests: number;
+  tokens_used: number;
+  limit: number;
+  remaining: number;
+  reset_date: string;
+}
+
+// POST /pro/ai/generate-plan
+export async function generateAIPlan(data: AIGeneratePlanRequest): Promise<{ success: boolean; data?: AIGeneratePlanResponse; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/ai/generate-plan`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, data: json.data };
+    }
+
+    return { success: false, message: json.message || 'Plan oluşturulamadı.' };
+  } catch (error) {
+    console.error('generateAIPlan error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// POST /pro/ai/generate-draft
+export async function generateAIDraftMessage(data: {
+  thread_id?: number;
+  client_id?: number;
+  context: string;
+  tone?: 'professional' | 'friendly' | 'motivational';
+}): Promise<{ success: boolean; draft?: string; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/ai/generate-draft`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, draft: json.data?.draft };
+    }
+
+    return { success: false, message: json.message || 'Taslak oluşturulamadı.' };
+  } catch (error) {
+    console.error('generateAIDraftMessage error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// POST /pro/ai/analyze-progress
+export async function analyzeClientProgress(clientId: number): Promise<{ success: boolean; analysis?: { summary: string; recommendations: string[]; risk_level: string }; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/ai/analyze-progress`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ client_id: clientId }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, analysis: json.data };
+    }
+
+    return { success: false, message: json.message || 'Analiz oluşturulamadı.' };
+  } catch (error) {
+    console.error('analyzeClientProgress error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// GET /pro/ai/usage
+export async function getAIUsage(): Promise<AIUsageStats> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/ai/usage`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      return {
+        total_requests: 0,
+        tokens_used: 0,
+        limit: 0,
+        remaining: 0,
+        reset_date: new Date().toISOString()
+      };
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return {
+      total_requests: 0,
+      tokens_used: 0,
+      limit: 0,
+      remaining: 0,
+      reset_date: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('getAIUsage error:', error);
+    return {
+      total_requests: 0,
+      tokens_used: 0,
+      limit: 0,
+      remaining: 0,
+      reset_date: new Date().toISOString()
+    };
+  }
+}
+
+// Award badge to client
+export async function awardClientBadge(clientId: number, badgeId: string, message?: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/${clientId}/award-badge`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ badge_id: badgeId, message }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Rozet verilemedi.' };
+  } catch (error) {
+    console.error('awardClientBadge error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
