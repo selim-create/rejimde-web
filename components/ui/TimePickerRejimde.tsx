@@ -114,7 +114,7 @@ export default function TimePickerRejimde({ startTime, endTime, onChange, label 
               <button
                 type="button"
                 onClick={handleApply}
-                className="flex-1 bg-rejimde-teal text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-teal-600 transition"
+                className="flex-1 bg-rejimde-teal text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-rejimde-tealDark transition"
               >
                 Uygula
               </button>
