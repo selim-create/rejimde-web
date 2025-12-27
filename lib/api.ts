@@ -4072,3 +4072,470 @@ export async function requestAppointment(data: {
     return { success: false, message: 'Talep gönderilemedi.' };
   }
 }
+
+// ==========================================
+// FINANCE API TYPES & FUNCTIONS
+// ==========================================
+
+export interface FinanceDashboard {
+  summary: {
+    total_revenue: number;
+    total_pending: number;
+    total_overdue: number;
+    paid_count: number;
+    pending_count: number;
+    overdue_count: number;
+  };
+  monthly_comparison: {
+    current: number;
+    previous: number;
+    change_percent: number;
+  };
+  revenue_by_service: {
+    service_id: number;
+    service_name: string;
+    total: number;
+    count: number;
+  }[];
+  revenue_chart: {
+    date: string;
+    amount: number;
+  }[];
+  recent_payments: Payment[];
+}
+
+export interface Payment {
+  id: number;
+  client: {
+    id: number;
+    name: string;
+    avatar: string;
+  };
+  service?: {
+    id: number;
+    name: string;
+  };
+  amount: number;
+  paid_amount: number;
+  currency: string;
+  payment_method: 'cash' | 'bank_transfer' | 'credit_card' | 'online' | 'other';
+  payment_date: string;
+  due_date?: string;
+  status: 'pending' | 'paid' | 'partial' | 'overdue' | 'cancelled' | 'refunded';
+  description?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface Service {
+  id: number;
+  name: string;
+  description?: string;
+  type: 'session' | 'package' | 'subscription' | 'one_time';
+  price: number;
+  currency: string;
+  duration_minutes: number;
+  session_count?: number;
+  validity_days?: number;
+  is_active: boolean;
+  is_featured: boolean;
+  color: string;
+  usage_count: number;
+}
+
+export interface MonthlyReport {
+  period: string;
+  summary: {
+    total_revenue: number;
+    total_sessions: number;
+    unique_clients: number;
+    average_per_client: number;
+  };
+  by_week: {
+    week: number;
+    revenue: number;
+    sessions: number;
+  }[];
+  by_service: {
+    service_id: number;
+    name: string;
+    revenue: number;
+    count: number;
+  }[];
+  by_payment_method: {
+    method: string;
+    amount: number;
+    count: number;
+  }[];
+  top_clients: {
+    client_id: number;
+    name: string;
+    avatar?: string;
+    total: number;
+  }[];
+}
+
+// Dashboard
+export async function getFinanceDashboard(period?: string, startDate?: string, endDate?: string): Promise<FinanceDashboard> {
+  try {
+    const params = new URLSearchParams();
+    if (period) params.append('period', period);
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    const queryString = params.toString();
+    const url = `${API_URL}/rejimde/v1/finance/dashboard${queryString ? '?' + queryString : ''}`;
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch finance dashboard');
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    throw new Error(json.message || 'Failed to fetch finance dashboard');
+  } catch (error) {
+    console.error('getFinanceDashboard error:', error);
+    throw error;
+  }
+}
+
+// Ödemeler
+export async function getPayments(options?: {
+  status?: string;
+  client_id?: number;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ payments: Payment[]; meta: { total: number; total_amount: number; paid_amount: number; pending_amount: number } }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.status) params.append('status', options.status);
+    if (options?.client_id) params.append('client_id', options.client_id.toString());
+    if (options?.start_date) params.append('start_date', options.start_date);
+    if (options?.end_date) params.append('end_date', options.end_date);
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+
+    const queryString = params.toString();
+    const url = `${API_URL}/rejimde/v1/finance/payments${queryString ? '?' + queryString : ''}`;
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch payments');
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    throw new Error(json.message || 'Failed to fetch payments');
+  } catch (error) {
+    console.error('getPayments error:', error);
+    throw error;
+  }
+}
+
+export async function createPayment(data: {
+  client_id: number;
+  service_id?: number;
+  amount: number;
+  payment_method: string;
+  payment_date: string;
+  due_date?: string;
+  status?: string;
+  description?: string;
+  notes?: string;
+}): Promise<{ success: boolean; payment?: Payment; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/payments`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        success: true,
+        payment: json.data?.payment,
+        message: json.message
+      };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('createPayment error:', error);
+    return { success: false, message: 'Ödeme oluşturulamadı.' };
+  }
+}
+
+export async function updatePayment(paymentId: number, data: Partial<Payment>): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/payments/${paymentId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('updatePayment error:', error);
+    return { success: false, message: 'Ödeme güncellenemedi.' };
+  }
+}
+
+export async function deletePayment(paymentId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/payments/${paymentId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('deletePayment error:', error);
+    return { success: false, message: 'Ödeme silinemedi.' };
+  }
+}
+
+export async function markPaymentAsPaid(paymentId: number, data: {
+  paid_amount?: number;
+  payment_method?: string;
+  payment_date?: string;
+}): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/payments/${paymentId}/mark-paid`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('markPaymentAsPaid error:', error);
+    return { success: false, message: 'Ödeme tahsil edilemedi.' };
+  }
+}
+
+export async function recordPartialPayment(paymentId: number, amount: number, method: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/payments/${paymentId}/partial-payment`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ amount, payment_method: method }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('recordPartialPayment error:', error);
+    return { success: false, message: 'Kısmi ödeme kaydedilemedi.' };
+  }
+}
+
+// Hizmetler
+export async function getServices(): Promise<Service[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/services`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch services');
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data?.services || [];
+    }
+
+    throw new Error(json.message || 'Failed to fetch services');
+  } catch (error) {
+    console.error('getServices error:', error);
+    return [];
+  }
+}
+
+export async function createService(data: {
+  name: string;
+  description?: string;
+  type: string;
+  price: number;
+  duration_minutes?: number;
+  session_count?: number;
+  validity_days?: number;
+  color?: string;
+}): Promise<{ success: boolean; service?: Service; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/services`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        success: true,
+        service: json.data?.service,
+        message: json.message
+      };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('createService error:', error);
+    return { success: false, message: 'Hizmet oluşturulamadı.' };
+  }
+}
+
+export async function updateService(serviceId: number, data: Partial<Service>): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/services/${serviceId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('updateService error:', error);
+    return { success: false, message: 'Hizmet güncellenemedi.' };
+  }
+}
+
+export async function deleteService(serviceId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/services/${serviceId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('deleteService error:', error);
+    return { success: false, message: 'Hizmet silinemedi.' };
+  }
+}
+
+// Raporlar
+export async function getMonthlyReport(year: number, month: number): Promise<MonthlyReport> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/reports/monthly?year=${year}&month=${month}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch monthly report');
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    throw new Error(json.message || 'Failed to fetch monthly report');
+  } catch (error) {
+    console.error('getMonthlyReport error:', error);
+    throw error;
+  }
+}
+
+export async function getYearlyReport(year: number): Promise<any> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/reports/yearly?year=${year}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch yearly report');
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    throw new Error(json.message || 'Failed to fetch yearly report');
+  } catch (error) {
+    console.error('getYearlyReport error:', error);
+    throw error;
+  }
+}
+
+export async function exportFinanceData(format: 'csv' | 'excel', startDate: string, endDate: string, type: string): Promise<Blob> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/finance/export?format=${format}&start_date=${startDate}&end_date=${endDate}&type=${type}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to export data');
+    }
+
+    return await res.blob();
+  } catch (error) {
+    console.error('exportFinanceData error:', error);
+    throw error;
+  }
+}
