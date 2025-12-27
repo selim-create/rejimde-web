@@ -3567,3 +3567,508 @@ export async function getUnreadInboxCount(): Promise<number> {
     return 0;
   }
 }
+
+// ==========================================
+// CALENDAR API FUNCTIONS
+// ==========================================
+
+export interface Appointment {
+  id: number;
+  client: {
+    id: number;
+    name: string;
+    avatar: string;
+    email?: string;
+    phone?: string;
+  };
+  service?: {
+    id: number;
+    name: string;
+  };
+  title: string;
+  description?: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  duration: number;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
+  type: 'online' | 'in_person' | 'phone';
+  location?: string;
+  meeting_link?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface AppointmentRequest {
+  id: number;
+  requester: {
+    id?: number;
+    name: string;
+    email: string;
+    phone?: string;
+    avatar?: string;
+    is_member: boolean;
+  };
+  service?: {
+    id: number;
+    name: string;
+  };
+  preferred_date: string;
+  preferred_time: string;
+  alternative_date?: string;
+  alternative_time?: string;
+  message?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
+  created_at: string;
+}
+
+export interface BlockedTime {
+  id: number;
+  date: string;
+  start_time?: string;
+  end_time?: string;
+  reason?: string;
+  is_all_day: boolean;
+}
+
+export interface AvailabilitySlot {
+  day: number;
+  day_name: string;
+  slots: { start: string; end: string }[];
+}
+
+export interface AvailabilitySettings {
+  slot_duration: number;
+  buffer_time: number;
+  schedule: AvailabilitySlot[];
+}
+
+// Takvim görünümü
+export async function getCalendarAppointments(startDate: string, endDate: string, status?: string): Promise<{
+  appointments: Appointment[];
+  blocked_times: BlockedTime[];
+}> {
+  try {
+    const params = new URLSearchParams({
+      start_date: startDate,
+      end_date: endDate,
+      ...(status ? { status } : {})
+    });
+
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/appointments?${params}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      return { appointments: [], blocked_times: [] };
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        appointments: json.data?.appointments || [],
+        blocked_times: json.data?.blocked_times || []
+      };
+    }
+
+    return { appointments: [], blocked_times: [] };
+  } catch (error) {
+    console.error('getCalendarAppointments error:', error);
+    return { appointments: [], blocked_times: [] };
+  }
+}
+
+// Müsaitlik şablonu
+export async function getAvailabilitySettings(): Promise<AvailabilitySettings | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/availability`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('getAvailabilitySettings error:', error);
+    return null;
+  }
+}
+
+export async function updateAvailabilitySettings(data: {
+  slot_duration: number;
+  buffer_time: number;
+  schedule: { day: number; start_time: string; end_time: string }[];
+}): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/availability`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('updateAvailabilitySettings error:', error);
+    return { success: false, message: 'Ayarlar kaydedilemedi.' };
+  }
+}
+
+// Randevu CRUD
+export async function createAppointment(data: {
+  client_id: number;
+  service_id?: number;
+  title?: string;
+  date: string;
+  start_time: string;
+  duration?: number;
+  type: 'online' | 'in_person' | 'phone';
+  location?: string;
+  meeting_link?: string;
+  notes?: string;
+}): Promise<{ success: boolean; appointment?: Appointment; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/appointments`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        success: true,
+        appointment: json.data?.appointment,
+        message: json.message
+      };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('createAppointment error:', error);
+    return { success: false, message: 'Randevu oluşturulamadı.' };
+  }
+}
+
+export async function updateAppointment(appointmentId: number, data: Partial<Appointment>): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/appointments/${appointmentId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('updateAppointment error:', error);
+    return { success: false, message: 'Randevu güncellenemedi.' };
+  }
+}
+
+export async function cancelAppointment(appointmentId: number, reason?: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/appointments/${appointmentId}/cancel`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ reason }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('cancelAppointment error:', error);
+    return { success: false, message: 'Randevu iptal edilemedi.' };
+  }
+}
+
+export async function completeAppointment(appointmentId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/appointments/${appointmentId}/complete`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('completeAppointment error:', error);
+    return { success: false, message: 'Randevu tamamlanamadı.' };
+  }
+}
+
+export async function markNoShow(appointmentId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/appointments/${appointmentId}/no-show`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('markNoShow error:', error);
+    return { success: false, message: 'İşlem tamamlanamadı.' };
+  }
+}
+
+// Randevu talepleri
+export async function getAppointmentRequests(status?: string): Promise<{
+  requests: AppointmentRequest[];
+  meta: { total: number; pending: number };
+}> {
+  try {
+    const params = status ? `?status=${status}` : '';
+    
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/requests${params}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      return { requests: [], meta: { total: 0, pending: 0 } };
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        requests: json.data?.requests || [],
+        meta: json.data?.meta || { total: 0, pending: 0 }
+      };
+    }
+
+    return { requests: [], meta: { total: 0, pending: 0 } };
+  } catch (error) {
+    console.error('getAppointmentRequests error:', error);
+    return { requests: [], meta: { total: 0, pending: 0 } };
+  }
+}
+
+export async function approveAppointmentRequest(requestId: number, data: {
+  date: string;
+  start_time: string;
+  type: 'online' | 'in_person' | 'phone';
+  meeting_link?: string;
+}): Promise<{ success: boolean; appointment?: Appointment; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/requests/${requestId}/approve`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        success: true,
+        appointment: json.data?.appointment,
+        message: json.message
+      };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('approveAppointmentRequest error:', error);
+    return { success: false, message: 'Talep onaylanamadı.' };
+  }
+}
+
+export async function rejectAppointmentRequest(requestId: number, reason?: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/requests/${requestId}/reject`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ reason }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('rejectAppointmentRequest error:', error);
+    return { success: false, message: 'Talep reddedilemedi.' };
+  }
+}
+
+// Zaman bloke
+export async function blockTime(data: {
+  date: string;
+  start_time?: string;
+  end_time?: string;
+  all_day?: boolean;
+  reason?: string;
+}): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/block-time`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('blockTime error:', error);
+    return { success: false, message: 'Zaman bloke edilemedi.' };
+  }
+}
+
+export async function unblockTime(blockId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/block-time/${blockId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('unblockTime error:', error);
+    return { success: false, message: 'Bloke kaldırılamadı.' };
+  }
+}
+
+// Public - Müsait slotlar
+export async function getExpertAvailableSlots(expertId: number, date: string): Promise<{
+  expert: { id: number; name: string; avatar: string };
+  available_slots: string[];
+  slot_duration: number;
+}> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/experts/${expertId}/available-slots?date=${date}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!res.ok) {
+      return { expert: { id: expertId, name: '', avatar: '' }, available_slots: [], slot_duration: 60 };
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return { expert: { id: expertId, name: '', avatar: '' }, available_slots: [], slot_duration: 60 };
+  } catch (error) {
+    console.error('getExpertAvailableSlots error:', error);
+    return { expert: { id: expertId, name: '', avatar: '' }, available_slots: [], slot_duration: 60 };
+  }
+}
+
+export async function getExpertAvailableSlotsRange(expertId: number, startDate: string, endDate: string): Promise<{
+  expert: { id: number; name: string; avatar: string };
+  available_slots: Record<string, string[]>;
+  slot_duration: number;
+}> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/experts/${expertId}/available-slots?start_date=${startDate}&end_date=${endDate}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!res.ok) {
+      return { expert: { id: expertId, name: '', avatar: '' }, available_slots: {}, slot_duration: 60 };
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return { expert: { id: expertId, name: '', avatar: '' }, available_slots: {}, slot_duration: 60 };
+  } catch (error) {
+    console.error('getExpertAvailableSlotsRange error:', error);
+    return { expert: { id: expertId, name: '', avatar: '' }, available_slots: {}, slot_duration: 60 };
+  }
+}
+
+// Randevu talebi gönder (client/guest)
+export async function requestAppointment(data: {
+  expert_id: number;
+  service_id?: number;
+  preferred_date: string;
+  preferred_time: string;
+  alternative_date?: string;
+  alternative_time?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  message?: string;
+}): Promise<{ success: boolean; request_id?: number; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/appointment-requests`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        success: true,
+        request_id: json.data?.request_id,
+        message: json.message
+      };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('requestAppointment error:', error);
+    return { success: false, message: 'Talep gönderilemedi.' };
+  }
+}
