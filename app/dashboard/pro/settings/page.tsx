@@ -420,37 +420,38 @@ export default function ProSettingsPage() {
 
     const dataToSend = {
       ...formData,
-      education: JSON.stringify(formData.education),
-      certificates: JSON.stringify(formData.certificates),
-      expertise_tags: JSON.stringify(formData.expertise_tags),
-      goal_tags: JSON.stringify(formData.goal_tags),
-      level_suitability: JSON.stringify(formData.level_suitability),
-      age_groups: JSON.stringify(formData.age_groups),
-      service_languages: JSON.stringify(formData.service_languages),
-      excluded_cases: JSON.stringify(formData.excluded_cases),
-      working_hours: JSON.stringify(formData.working_hours),
-      communication_preference: JSON.stringify(formData.communication_preference),
-      privacy_settings: JSON.stringify(formData.privacy_settings),
-    };
-
-    try {
-      const result: any = await updateUser(dataToSend);
-
-      if (result?.success) {
-        setMessage({ type: "success", text: "Uzman profiliniz güncellendi." });
-        try {
-          localStorage.setItem("user_name", formData.name);
-          window.dispatchEvent(new Event("storage"));
-        } catch {}
-      } else {
-        setMessage({ type: "error", text: result?.message || "Hata oluştu." });
-      }
-    } catch {
-      setMessage({ type: "error", text: "Hata oluştu." });
-    } finally {
-      setSaving(false);
-    }
+    education:  formData.education,
+    certificates: formData.certificates,
+    expertise_tags: formData.expertise_tags,
+    goal_tags: formData.goal_tags,
+    level_suitability: formData. level_suitability,
+    age_groups: formData.age_groups,
+    service_languages: formData.service_languages,
+    excluded_cases: formData.excluded_cases,
+    communication_preference: formData.communication_preference,
+    // Object alanları - obje olarak gönder (stringify yok!)
+    working_hours:  formData.working_hours,
+    privacy_settings: formData. privacy_settings,
   };
+
+  try {
+    const result:  any = await updateUser(dataToSend);
+
+    if (result?. success) {
+      setMessage({ type: "success", text: "Uzman profiliniz güncellendi." });
+      try {
+        localStorage.setItem("user_name", formData.name);
+        window.dispatchEvent(new Event("storage"));
+      } catch {}
+    } else {
+      setMessage({ type: "error", text: result?.message || "Hata oluştu." });
+    }
+  } catch {
+    setMessage({ type: "error", text: "Hata oluştu." });
+  } finally {
+    setSaving(false);
+  }
+};
 
   // Dynamic arrays helpers
   const addEducation = () => {
@@ -630,7 +631,7 @@ export default function ProSettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Unvan (Örn: Uzman Diyetisyen)</label>
+                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Unvan (Örn: Uzm.  Dyt.)</label>
                   <input
                     type="text"
                     value={formData.title}

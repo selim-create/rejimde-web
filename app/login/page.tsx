@@ -186,7 +186,7 @@ const handleLogin = async () => {
             
             <div className="mt-8 pt-6 border-t-2 border-gray-100">
                 <p className="text-gray-400 font-bold text-sm">
-                    Hesabın yok mu? <Link href="/register/user" className="text-rejimde-green font-extrabold hover:underline uppercase">Kayıt Ol</Link>
+                    Hesabın yok mu? <Link href="/register" className="text-rejimde-green font-extrabold hover:underline uppercase">Kayıt Ol</Link>
                 </p>
             </div>
         </div>
