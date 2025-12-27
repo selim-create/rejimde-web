@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createService } from '@/lib/api';
+import { createService, type Service } from '@/lib/api';
 
 interface NewServiceModalProps {
   onClose: () => void;

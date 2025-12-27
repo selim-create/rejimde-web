@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createPayment, getProClients, getServices, type ClientListItem, type Service } from '@/lib/api';
+import { createPayment, getProClients, getServices, type ClientListItem, type Service, type Payment } from '@/lib/api';
 
 interface NewPaymentModalProps {
   onClose: () => void;
