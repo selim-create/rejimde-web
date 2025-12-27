@@ -6,7 +6,7 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import MascotDisplay from "@/components/MascotDisplay";
 import StreakDisplay from "@/components/StreakDisplay";
 import PointsToast from "@/components/PointsToast";
-import { earnPoints, getMe, getGamificationStats, getPlans, getExercisePlans } from "@/lib/api"; 
+import { earnPoints, getMe, getGamificationStats, getPlans, getExercisePlans, getMyExperts, getMyAppointments, getMyInboxThreads, getMyPrivatePlans } from "@/lib/api"; 
 import { MascotState } from "@/lib/mascot-config";
 import { useGamification } from "@/hooks/useGamification";
 
@@ -20,6 +20,12 @@ export default function DashboardPage() {
   // Content States
   const [activeDiet, setActiveDiet] = useState<any>(null);
   const [todaysExercise, setTodaysExercise] = useState<any>(null);
+  
+  // User Dashboard States (Mirror Logic)
+  const [myExperts, setMyExperts] = useState<any[]>([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [assignedPlans, setAssignedPlans] = useState<any[]>([]);
   
   // UI States
   const [mascotState, setMascotState] = useState<MascotState>("idle_dashboard");
@@ -56,6 +62,20 @@ export default function DashboardPage() {
             // 4. Egzersiz Planı
             const exercises = await getExercisePlans();
             if (exercises && exercises.length > 0) setTodaysExercise(exercises[0]);
+
+            // 5. User Dashboard Data (Mirror Logic)
+            const experts = await getMyExperts();
+            setMyExperts(experts.slice(0, 3)); // İlk 3 uzman
+
+            const appointments = await getMyAppointments({ status: 'confirmed', limit: 3 });
+            setUpcomingAppointments(appointments);
+
+            const threads = await getMyInboxThreads();
+            const unread = threads.filter(t => !t.is_read).length;
+            setUnreadMessages(unread);
+
+            const plans = await getMyPrivatePlans();
+            setAssignedPlans(plans.filter(p => p.status === 'active'));
 
         } catch (error) {
             console.error("Dashboard veri hatası:", error);
@@ -113,6 +133,27 @@ export default function DashboardPage() {
                           <i className="fa-solid fa-house text-xl w-8 text-center"></i>
                           <span className="font-extrabold uppercase text-sm">Panelim</span>
                       </Link>
+                      <Link href="/dashboard/experts" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-user-doctor text-xl w-8 text-center group-hover:text-blue-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Uzmanlarım</span>
+                      </Link>
+                      <Link href="/dashboard/calendar" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-calendar-days text-xl w-8 text-center group-hover:text-green-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Takvimim</span>
+                      </Link>
+                      <Link href="/dashboard/inbox" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-message text-xl w-8 text-center group-hover:text-purple-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Mesajlarım</span>
+                      </Link>
+                      <Link href="/dashboard/wallet" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-wallet text-xl w-8 text-center group-hover:text-yellow-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Cüzdanım</span>
+                      </Link>
+                      <Link href="/dashboard/plans" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-clipboard-list text-xl w-8 text-center group-hover:text-orange-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Planlarım</span>
+                      </Link>
+                      <div className="h-px bg-gray-100 my-2"></div>
                       <Link href={user?.clan ? `/circles/${user.clan.slug}` : "/circles"} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
                           <i className={`fa-solid ${user?.clan ? 'fa-shield-cat' : 'fa-shield-halved'} text-xl w-8 text-center group-hover:text-purple-500`}></i>
                           <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Circle'ım</span>
@@ -373,6 +414,139 @@ export default function DashboardPage() {
                           Circle Bul
                       </Link>
                   </div>
+              )}
+
+              {/* MY EXPERTS WIDGET */}
+              {myExperts.length > 0 && (
+                <div className="bg-white border-2 border-gray-200 rounded-[2rem] overflow-hidden shadow-card">
+                  <div className="p-4 bg-blue-50 border-b-2 border-blue-100 flex justify-between items-center">
+                    <h3 className="font-extrabold uppercase text-sm flex items-center gap-2 text-blue-600">
+                      <i className="fa-solid fa-user-doctor"></i> Uzmanlarım
+                    </h3>
+                    <Link href="/dashboard/experts" className="text-blue-600 text-xs font-bold hover:underline">
+                      Tümü
+                    </Link>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {myExperts.map((expert) => (
+                      <Link 
+                        key={expert.id}
+                        href={`/dashboard/experts`}
+                        className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition group"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={expert.expert.avatar} className="w-10 h-10 rounded-xl border border-gray-100" alt={expert.expert.name} />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-gray-800 text-sm truncate group-hover:text-blue-600">{expert.expert.name}</h4>
+                          <p className="text-xs text-gray-400 font-bold truncate">{expert.expert.title}</p>
+                        </div>
+                        {expert.unread_messages > 0 && (
+                          <span className="bg-red-500 text-white text-xs font-black px-2 py-0.5 rounded-full">{expert.unread_messages}</span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* UPCOMING APPOINTMENTS WIDGET */}
+              {upcomingAppointments.length > 0 && (
+                <div className="bg-white border-2 border-gray-200 rounded-[2rem] overflow-hidden shadow-card">
+                  <div className="p-4 bg-green-50 border-b-2 border-green-100 flex justify-between items-center">
+                    <h3 className="font-extrabold uppercase text-sm flex items-center gap-2 text-green-600">
+                      <i className="fa-solid fa-calendar-days"></i> Yaklaşan Randevular
+                    </h3>
+                    <Link href="/dashboard/calendar" className="text-green-600 text-xs font-bold hover:underline">
+                      Tümü
+                    </Link>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {upcomingAppointments.map((apt) => (
+                      <Link 
+                        key={apt.id}
+                        href="/dashboard/calendar"
+                        className="block p-3 rounded-xl bg-gray-50 hover:bg-green-50 border border-gray-100 hover:border-green-200 transition"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                            apt.type === 'online' 
+                              ? 'bg-purple-100 text-purple-600' 
+                              : 'bg-orange-100 text-orange-600'
+                          }`}>
+                            {apt.type === 'online' ? 'Online' : 'Yüzyüze'}
+                          </span>
+                          <span className="text-xs font-bold text-gray-500">{apt.expert.name}</span>
+                        </div>
+                        <h4 className="font-black text-gray-800 text-sm mb-1">{apt.title}</h4>
+                        <p className="text-xs text-gray-500 font-bold">
+                          {new Date(apt.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })} - {apt.start_time}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* UNREAD MESSAGES WIDGET */}
+              {unreadMessages > 0 && (
+                <Link href="/dashboard/inbox" className="block bg-purple-50 border-2 border-purple-200 rounded-[2rem] p-5 shadow-card hover:border-purple-400 transition group">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-12 h-12 bg-purple-500 rounded-2xl flex items-center justify-center text-white">
+                      <i className="fa-solid fa-message text-xl"></i>
+                    </div>
+                    <div className="bg-red-500 text-white text-lg font-black px-3 py-1 rounded-full">{unreadMessages}</div>
+                  </div>
+                  <h4 className="font-black text-gray-800 text-base mb-1 group-hover:text-purple-600 transition">Okunmamış Mesaj</h4>
+                  <p className="text-xs text-gray-500 font-bold">Uzmanlarından yeni mesajlar var!</p>
+                </Link>
+              )}
+
+              {/* ASSIGNED PLANS WIDGET */}
+              {assignedPlans.length > 0 && (
+                <div className="bg-white border-2 border-gray-200 rounded-[2rem] overflow-hidden shadow-card">
+                  <div className="p-4 bg-orange-50 border-b-2 border-orange-100 flex justify-between items-center">
+                    <h3 className="font-extrabold uppercase text-sm flex items-center gap-2 text-orange-600">
+                      <i className="fa-solid fa-clipboard-list"></i> Aktif Planlar
+                    </h3>
+                    <Link href="/dashboard/plans" className="text-orange-600 text-xs font-bold hover:underline">
+                      Tümü
+                    </Link>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {assignedPlans.slice(0, 2).map((plan) => (
+                      <Link 
+                        key={plan.id}
+                        href="/dashboard/plans"
+                        className="block p-3 rounded-xl hover:bg-orange-50 border border-gray-100 hover:border-orange-200 transition"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            plan.type === 'diet' ? 'bg-green-100 text-green-600' :
+                            plan.type === 'workout' ? 'bg-orange-100 text-orange-600' :
+                            'bg-purple-100 text-purple-600'
+                          }`}>
+                            <i className={`fa-solid text-sm ${
+                              plan.type === 'diet' ? 'fa-utensils' :
+                              plan.type === 'workout' ? 'fa-dumbbell' :
+                              'fa-list-check'
+                            }`}></i>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-black text-gray-800 text-sm truncate">{plan.title}</h4>
+                            <p className="text-xs text-gray-400 font-bold truncate">{plan.expert.name}</p>
+                          </div>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="bg-orange-500 h-full rounded-full transition-all duration-500" 
+                            style={{ width: `${plan.progress_percent}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-[10px] text-gray-400 font-bold mt-1">İlerleme: {plan.progress_percent}%</p>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               )}
 
               {/* FRIEND ACTIVITY (Mock) */}
