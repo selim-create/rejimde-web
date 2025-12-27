@@ -23,6 +23,8 @@ const config: Config = {
           redDark: '#d42828',
           purple: '#ce82ff',
           purpleDark: '#a348e0',
+          teal: '#14b8a6',
+          tealDark: '#0d9488',
           text: '#4b4b4b',
           bg: '#f7f7f7'
         }
