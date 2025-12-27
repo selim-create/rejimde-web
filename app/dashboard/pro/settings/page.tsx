@@ -4,7 +4,7 @@ import Link from "next/link";
 import React, { useEffect, useRef, useState } from "react";
 import { getMe, updateUser, changePassword, uploadAvatar, uploadCertificate } from "@/lib/api";
 import { CITIES } from "@/lib/locations";
-import { PROFESSION_CATEGORIES, LANGUAGE_OPTIONS, COUNTRY_OPTIONS } from "@/lib/constants";
+import { LANGUAGE_OPTIONS, COUNTRY_OPTIONS } from "@/lib/constants";
 import {
   ProfessionalExperienceSection,
   ExpertiseTagsSection,
@@ -12,11 +12,42 @@ import {
   ExcludedCasesSection,
   PrivacySettingsSection,
 } from "@/components/ProSettingsSections";
+import DatePickerRejimde from "@/components/ui/DatePickerRejimde";
+import TimePickerRejimde from "@/components/ui/TimePickerRejimde";
+import MarkdownEditor from "@/components/ui/MarkdownEditor";
 
 type MessageState = { type: "success" | "error"; text: string } | null;
 
 type EducationItem = { school: string; department: string; year: string };
 type CertificateItem = { name: string; institution: string; year: string; file_url: string };
+
+// Client Type Options
+const CLIENT_TYPE_OPTIONS = [
+  { id: 'woman', label: 'Kadın' },
+  { id: 'man', label: 'Erkek' },
+  { id: 'child', label: 'Çocuk' },
+  { id: 'all', label: 'Hepsi' },
+];
+
+// Consultation Method Options (Multi-select)
+const CONSULTATION_METHOD_OPTIONS = [
+  { id: 'message', icon: 'fa-message', label: 'Yazılı Mesaj' },
+  { id: 'video', icon: 'fa-video', label: 'Video Görüşme' },
+  { id: 'face', icon: 'fa-people-arrows', label: 'Yüz Yüze Görüşme' },
+];
+
+// Sidebar Navigation Sections
+const SIDEBAR_SECTIONS = [
+  { id: 'identity', icon: 'fa-id-card', label: 'Kimlik & İletişim' },
+  { id: 'location', icon: 'fa-location-dot', label: 'Lokasyon' },
+  { id: 'professional', icon: 'fa-briefcase', label: 'Mesleki Detaylar' },
+  { id: 'experience', icon: 'fa-graduation-cap', label: 'Deneyim & Eğitim' },
+  { id: 'expertise', icon: 'fa-tags', label: 'Uzmanlık & Etiketler' },
+  { id: 'excluded', icon: 'fa-triangle-exclamation', label: 'Çalışmadığı Durumlar' },
+  { id: 'work', icon: 'fa-clock', label: 'Çalışma & İletişim' },
+  { id: 'privacy', icon: 'fa-shield', label: 'Görünürlük' },
+  { id: 'security', icon: 'fa-lock', label: 'Güvenlik' },
+];
 
 type FormData = {
   // Basic identity
@@ -30,15 +61,11 @@ type FormData = {
   certificate_status: string;
 
   // New identity fields
-  profession_category: string;
   motto: string;
   birth_date: string;
 
   // Professional details
-  branches: string;
-  services: string;
-  client_types: string;
-  consultation_types: "online" | "face" | "hybrid";
+  client_type: string; // 'woman' | 'man' | 'child' | 'all'
 
   // New professional experience
   career_start_date: string;
@@ -71,7 +98,7 @@ type FormData = {
     weekend: string;
   };
   response_time: string;
-  communication_preference: string;
+  communication_preference: string[]; // Changed to array for multi-select
 
   // Privacy
   privacy_settings: {
@@ -103,15 +130,11 @@ export default function ProSettingsPage() {
     certificate_status: "none",
 
     // New identity fields
-    profession_category: "",
     motto: "",
     birth_date: "",
 
     // Professional details
-    branches: "",
-    services: "",
-    client_types: "",
-    consultation_types: "online",
+    client_type: "all",
 
     // New professional experience
     career_start_date: "",
@@ -144,7 +167,7 @@ export default function ProSettingsPage() {
       weekend: "",
     },
     response_time: "24h",
-    communication_preference: "both",
+    communication_preference: [],
 
     // Privacy
     privacy_settings: {
@@ -161,6 +184,8 @@ export default function ProSettingsPage() {
     new: "",
     confirm: "",
   });
+
+  const [activeSection, setActiveSection] = useState<string>("identity");
 
   // Seçilen şehre göre ilçeleri getir
   const selectedCity = CITIES.find((c) => c.id === formData.city);
@@ -209,15 +234,11 @@ export default function ProSettingsPage() {
             certificate_status: userData.certificate_status || "none",
 
             // New identity fields
-            profession_category: userData.profession_category || "",
             motto: userData.motto || "",
             birth_date: userData.birth_date || "",
 
             // Professional details
-            branches: userData.branches || "",
-            services: userData.services || "",
-            client_types: userData.client_types || "",
-            consultation_types: (userData.consultation_types || "online") as FormData["consultation_types"],
+            client_type: userData.client_type || "all",
 
             // Professional experience
             career_start_date: userData.career_start_date || "",
@@ -250,7 +271,7 @@ export default function ProSettingsPage() {
               weekend: "",
             }),
             response_time: userData.response_time || "24h",
-            communication_preference: userData.communication_preference || "both",
+            communication_preference: parseMaybeJson<string[]>(userData.communication_preference, []),
 
             // Privacy
             privacy_settings: parseMaybeJson<FormData["privacy_settings"]>(userData.privacy_settings, {
@@ -277,9 +298,28 @@ export default function ProSettingsPage() {
     loadData();
   }, []);
 
+  // Scroll spy for sidebar navigation
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = SIDEBAR_SECTIONS.map(s => s.id);
+      const scrollPosition = window.scrollY + 150; // Offset for header
+
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const section = document.getElementById(sections[i]);
+        if (section && section.offsetTop <= scrollPosition) {
+          setActiveSection(sections[i]);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Helper function for multi-select tags
   const toggleTag = (
-    field: "expertise_tags" | "goal_tags" | "level_suitability" | "age_groups" | "service_languages" | "excluded_cases",
+    field: "expertise_tags" | "goal_tags" | "level_suitability" | "age_groups" | "service_languages" | "excluded_cases" | "communication_preference",
     value: string
   ) => {
     setFormData((prev) => {
@@ -389,6 +429,7 @@ export default function ProSettingsPage() {
       service_languages: JSON.stringify(formData.service_languages),
       excluded_cases: JSON.stringify(formData.excluded_cases),
       working_hours: JSON.stringify(formData.working_hours),
+      communication_preference: JSON.stringify(formData.communication_preference),
       privacy_settings: JSON.stringify(formData.privacy_settings),
     };
 
@@ -476,6 +517,15 @@ export default function ProSettingsPage() {
     return years;
   };
 
+  const scrollToSection = (sectionId: string) => {
+    const section = document.getElementById(sectionId);
+    if (section) {
+      const offset = 100; // Header offset
+      const top = section.offsetTop - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  };
+
   const handlePasswordChange = async () => {
     if (passwordData.new !== passwordData.confirm) {
       setMessage({ type: "error", text: "Yeni şifreler eşleşmiyor." });
@@ -507,21 +557,23 @@ export default function ProSettingsPage() {
         <h1 className="font-extrabold text-white text-xl">Uzman Profil Ayarları</h1>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        {message && (
-          <div
-            className={`p-4 rounded-xl font-bold text-sm ${
-              message.type === "success"
-                ? "bg-green-900/50 text-green-400 border border-green-800"
-                : "bg-red-900/50 text-red-400 border border-red-800"
-            }`}
-          >
-            {message.text}
-          </div>
-        )}
+      <div className="max-w-7xl mx-auto px-4 py-8 flex gap-8">
+        {/* Main Content */}
+        <div className="flex-1 space-y-6">
+          {message && (
+            <div
+              className={`p-4 rounded-xl font-bold text-sm ${
+                message.type === "success"
+                  ? "bg-green-900/50 text-green-400 border border-green-800"
+                  : "bg-red-900/50 text-red-400 border border-red-800"
+              }`}
+            >
+              {message.text}
+            </div>
+          )}
 
         {/* 1. KİMLİK & AVATAR */}
-        <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+        <div id="identity" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
           <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
             <i className="fa-solid fa-id-card text-rejimde-blue"></i> Kimlik & İletişim
           </h2>
@@ -599,37 +651,16 @@ export default function ProSettingsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Meslek Grubu</label>
-                  <select
-                    className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue cursor-pointer"
-                    value={formData.profession_category}
-                    onChange={(e) => setFormData({ ...formData, profession_category: e.target.value })}
-                  >
-                    <option value="">Seçiniz</option>
-                    {PROFESSION_CATEGORIES.flatMap((cat) =>
-                      cat.items.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.label}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Doğum Tarihi</label>
-                  <input
-                    type="date"
-                    value={formData.birth_date}
-                    onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-blue"
-                  />
-                  {formData.birth_date && (
-                    <p className="text-xs text-slate-500 mt-1 font-bold">Yaş: {calculateAge(formData.birth_date)}</p>
-                  )}
-                </div>
+              <div>
+                <DatePickerRejimde
+                  label="Doğum Tarihi"
+                  value={formData.birth_date}
+                  onChange={(date) => setFormData({ ...formData, birth_date: date })}
+                  maxDate={new Date()}
+                />
+                {formData.birth_date && (
+                  <p className="text-xs text-slate-500 mt-1 font-bold">Yaş: {calculateAge(formData.birth_date)}</p>
+                )}
               </div>
 
               <div>
@@ -647,7 +678,7 @@ export default function ProSettingsPage() {
         </div>
 
         {/* 2. LOKASYON BİLGİLERİ */}
-        <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+        <div id="location" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
           <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
             <i className="fa-solid fa-location-dot text-rejimde-green"></i> Lokasyon & Adres
           </h2>
@@ -750,68 +781,19 @@ export default function ProSettingsPage() {
         </div>
 
         {/* 3. MESLEKİ DETAYLAR */}
-        <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+        <div id="professional" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
           <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
             <i className="fa-solid fa-briefcase text-rejimde-purple"></i> Mesleki Detaylar
           </h2>
 
           <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Özgeçmiş / Biyografi</label>
-              <textarea
-                value={formData.bio}
-                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 font-medium text-white outline-none focus:border-rejimde-purple h-32 resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Uzmanlık Alanları (Branşlar)</label>
-              <input
-                type="text"
-                value={formData.branches}
-                onChange={(e) => setFormData({ ...formData, branches: e.target.value })}
-                placeholder="Virgülle ayırın: Keto, Sporcu Beslenmesi..."
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-purple"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Hizmetler</label>
-                <input
-                  type="text"
-                  value={formData.services}
-                  onChange={(e) => setFormData({ ...formData, services: e.target.value })}
-                  placeholder="Online Takip, Detoks..."
-                  className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-purple"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Danışan Türü</label>
-                <input
-                  type="text"
-                  value={formData.client_types}
-                  onChange={(e) => setFormData({ ...formData, client_types: e.target.value })}
-                  placeholder="Kadın, Çocuk, Sporcu..."
-                  className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-purple"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Konsültasyon Tipi</label>
-              <select
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-purple cursor-pointer"
-                value={formData.consultation_types}
-                onChange={(e) => setFormData({ ...formData, consultation_types: e.target.value as FormData["consultation_types"] })}
-              >
-                <option value="online">Sadece Online</option>
-                <option value="face">Sadece Yüz Yüze</option>
-                <option value="hybrid">Hibrit (İkisi de)</option>
-              </select>
-            </div>
+            <MarkdownEditor
+              label="Özgeçmiş / Biyografi"
+              value={formData.bio}
+              onChange={(value) => setFormData({ ...formData, bio: value })}
+              placeholder="Kendinizi tanıtın, deneyimlerinizi ve yaklaşımınızı paylaşın..."
+              maxLength={2000}
+            />
           </div>
         </div>
 
@@ -888,7 +870,7 @@ export default function ProSettingsPage() {
         </div>
 
         {/* 5. GÜVENLİK */}
-        <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 mt-8">
+        <div id="security" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
           <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
             <i className="fa-solid fa-lock text-slate-400"></i> Şifre Değiştir
           </h2>
@@ -931,6 +913,30 @@ export default function ProSettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* Right Sidebar Navigation */}
+      <aside className="hidden lg:block w-64 sticky top-24 h-fit">
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4">
+          <h3 className="text-sm font-extrabold text-slate-400 uppercase mb-3 px-2">Bölümler</h3>
+          <nav className="space-y-1">
+            {SIDEBAR_SECTIONS.map(section => (
+              <button
+                key={section.id}
+                onClick={() => scrollToSection(section.id)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition flex items-center gap-3 ${
+                  activeSection === section.id
+                    ? 'bg-rejimde-blue text-white'
+                    : 'text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                <i className={`fa-solid ${section.icon} w-4`}></i>
+                <span>{section.label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      </aside>
+    </div>
     </div>
   );
 }

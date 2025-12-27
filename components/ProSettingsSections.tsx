@@ -8,12 +8,29 @@ import {
   AGE_GROUP_OPTIONS,
   EXCLUDED_CASES_OPTIONS
 } from "@/lib/constants";
+import DatePickerRejimde from "@/components/ui/DatePickerRejimde";
+import TimePickerRejimde from "@/components/ui/TimePickerRejimde";
 
 // Type definitions
 type EducationItem = { school: string; department: string; year: string };
 type CertificateItem = { name: string; institution: string; year: string; file_url: string };
 
-type TagField = "expertise_tags" | "goal_tags" | "level_suitability" | "age_groups" | "service_languages" | "excluded_cases";
+type TagField = "expertise_tags" | "goal_tags" | "level_suitability" | "age_groups" | "service_languages" | "excluded_cases" | "communication_preference";
+
+// Client Type Options
+const CLIENT_TYPE_OPTIONS = [
+  { id: 'woman', label: 'Kadın' },
+  { id: 'man', label: 'Erkek' },
+  { id: 'child', label: 'Çocuk' },
+  { id: 'all', label: 'Hepsi' },
+];
+
+// Consultation Method Options (Multi-select)
+const CONSULTATION_METHOD_OPTIONS = [
+  { id: 'message', icon: 'fa-message', label: 'Yazılı Mesaj' },
+  { id: 'video', icon: 'fa-video', label: 'Video Görüşme' },
+  { id: 'face', icon: 'fa-people-arrows', label: 'Yüz Yüze Görüşme' },
+];
 
 interface SectionProps {
   formData: any;
@@ -38,19 +55,18 @@ export function ProfessionalExperienceSection({
   calculateExperience 
 }: ProfessionalExperienceSectionProps) {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+    <div id="experience" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
       <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
-        <i className="fa-solid fa-graduation-cap text-rejimde-yellow"></i> Mesleki Deneyim
+        <i className="fa-solid fa-graduation-cap text-rejimde-yellow"></i> Deneyim & Eğitim
       </h2>
       
       <div className="space-y-4">
         <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Mesleğe Başlama Tarihi</label>
-          <input 
-            type="date" 
-            value={formData.career_start_date} 
-            onChange={(e) => setFormData({...formData, career_start_date: e.target.value})} 
-            className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-yellow" 
+          <DatePickerRejimde
+            label="Mesleğe Başlama Tarihi"
+            value={formData.career_start_date}
+            onChange={(date) => setFormData({...formData, career_start_date: date})}
+            maxDate={new Date()}
           />
           {formData.career_start_date && (
             <p className="text-xs text-slate-500 mt-1 font-bold">Tecrübe: {calculateExperience(formData.career_start_date)} yıl</p>
@@ -121,9 +137,9 @@ export function ProfessionalExperienceSection({
 }
 
 // Expertise Tags Section
-export function ExpertiseTagsSection({ formData, toggleTag }: SectionProps) {
+export function ExpertiseTagsSection({ formData, setFormData, toggleTag }: SectionProps) {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+    <div id="expertise" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
       <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
         <i className="fa-solid fa-tags text-rejimde-purple"></i> Uzmanlık & Etiketler
       </h2>
@@ -168,6 +184,19 @@ export function ExpertiseTagsSection({ formData, toggleTag }: SectionProps) {
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-400 uppercase mb-3">Danışan Türü</label>
+          <select
+            className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-purple cursor-pointer"
+            value={formData.client_type}
+            onChange={(e) => setFormData({...formData, client_type: e.target.value})}
+          >
+            {CLIENT_TYPE_OPTIONS.map(option => (
+              <option key={option.id} value={option.id}>{option.label}</option>
+            ))}
+          </select>
         </div>
 
         <div>
@@ -225,35 +254,33 @@ export function ExpertiseTagsSection({ formData, toggleTag }: SectionProps) {
 }
 
 // Work & Communication Section
-export function WorkCommunicationSection({ formData, setFormData }: SectionProps) {
+export function WorkCommunicationSection({ formData, setFormData, toggleTag }: SectionProps) {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+    <div id="work" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
       <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
-        <i className="fa-solid fa-briefcase text-rejimde-teal"></i> Çalışma & İletişim
+        <i className="fa-solid fa-clock text-rejimde-teal"></i> Çalışma & İletişim
       </h2>
       
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Hafta İçi Çalışma Saatleri</label>
-            <input 
-              type="text" 
-              value={formData.working_hours.weekday} 
-              onChange={(e) => setFormData({...formData, working_hours: {...formData.working_hours, weekday: e.target.value}})} 
-              className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-teal" 
-              placeholder="Örn: 09:00 - 18:00"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Hafta Sonu Çalışma Saatleri</label>
-            <input 
-              type="text" 
-              value={formData.working_hours.weekend} 
-              onChange={(e) => setFormData({...formData, working_hours: {...formData.working_hours, weekend: e.target.value}})} 
-              className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-rejimde-teal" 
-              placeholder="Örn: 10:00 - 16:00"
-            />
-          </div>
+          <TimePickerRejimde
+            label="Hafta İçi Çalışma Saatleri"
+            startTime={formData.working_hours.weekday.split(' - ')[0] || ''}
+            endTime={formData.working_hours.weekday.split(' - ')[1] || ''}
+            onChange={(start, end) => setFormData({
+              ...formData, 
+              working_hours: {...formData.working_hours, weekday: `${start} - ${end}`}
+            })}
+          />
+          <TimePickerRejimde
+            label="Hafta Sonu Çalışma Saatleri"
+            startTime={formData.working_hours.weekend.split(' - ')[0] || ''}
+            endTime={formData.working_hours.weekend.split(' - ')[1] || ''}
+            onChange={(start, end) => setFormData({
+              ...formData, 
+              working_hours: {...formData.working_hours, weekend: `${start} - ${end}`}
+            })}
+          />
         </div>
 
         <div>
@@ -271,62 +298,29 @@ export function WorkCommunicationSection({ formData, setFormData }: SectionProps
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase mb-3">İletişim Tercihi</label>
-          <div className="flex gap-3">
-            <label className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition ${
-              formData.communication_preference === 'message'
-                ? 'bg-rejimde-teal/20 border-rejimde-teal'
-                : 'bg-slate-900 border-slate-600 hover:border-slate-500'
-            }`}>
-              <input 
-                type="radio"
-                name="communication_preference"
-                value="message"
-                checked={formData.communication_preference === 'message'}
-                onChange={(e) => setFormData({...formData, communication_preference: e.target.value})}
-                className="hidden"
-              />
-              <div className="text-center">
-                <i className="fa-solid fa-message text-2xl text-white mb-2"></i>
-                <div className="text-sm font-extrabold text-white">Yazılı Mesaj</div>
-              </div>
-            </label>
-            <label className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition ${
-              formData.communication_preference === 'video'
-                ? 'bg-rejimde-teal/20 border-rejimde-teal'
-                : 'bg-slate-900 border-slate-600 hover:border-slate-500'
-            }`}>
-              <input 
-                type="radio"
-                name="communication_preference"
-                value="video"
-                checked={formData.communication_preference === 'video'}
-                onChange={(e) => setFormData({...formData, communication_preference: e.target.value})}
-                className="hidden"
-              />
-              <div className="text-center">
-                <i className="fa-solid fa-video text-2xl text-white mb-2"></i>
-                <div className="text-sm font-extrabold text-white">Video Görüşme</div>
-              </div>
-            </label>
-            <label className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition ${
-              formData.communication_preference === 'both'
-                ? 'bg-rejimde-teal/20 border-rejimde-teal'
-                : 'bg-slate-900 border-slate-600 hover:border-slate-500'
-            }`}>
-              <input 
-                type="radio"
-                name="communication_preference"
-                value="both"
-                checked={formData.communication_preference === 'both'}
-                onChange={(e) => setFormData({...formData, communication_preference: e.target.value})}
-                className="hidden"
-              />
-              <div className="text-center">
-                <i className="fa-solid fa-comments text-2xl text-white mb-2"></i>
-                <div className="text-sm font-extrabold text-white">Her İkisi</div>
-              </div>
-            </label>
+          <label className="block text-xs font-bold text-slate-400 uppercase mb-3">Danışan Metodu (Çoklu Seçim)</label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {CONSULTATION_METHOD_OPTIONS.map(method => (
+              <label
+                key={method.id}
+                className={`p-4 rounded-xl border-2 cursor-pointer transition ${
+                  formData.communication_preference.includes(method.id)
+                    ? 'bg-rejimde-teal/20 border-rejimde-teal'
+                    : 'bg-slate-900 border-slate-600 hover:border-slate-500'
+                }`}
+              >
+                <input 
+                  type="checkbox"
+                  checked={formData.communication_preference.includes(method.id)}
+                  onChange={() => toggleTag('communication_preference', method.id)}
+                  className="hidden"
+                />
+                <div className="text-center">
+                  <i className={`fa-solid ${method.icon} text-2xl text-white mb-2`}></i>
+                  <div className="text-sm font-extrabold text-white">{method.label}</div>
+                </div>
+              </label>
+            ))}
           </div>
         </div>
       </div>
@@ -337,7 +331,7 @@ export function WorkCommunicationSection({ formData, setFormData }: SectionProps
 // Excluded Cases Section
 export function ExcludedCasesSection({ formData, toggleTag, setFormData }: SectionProps) {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+    <div id="excluded" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
       <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
         <i className="fa-solid fa-triangle-exclamation text-orange-500"></i> Çalışmadığı Durumlar
       </h2>
@@ -384,7 +378,7 @@ export function ExcludedCasesSection({ formData, toggleTag, setFormData }: Secti
 // Privacy Settings Section
 export function PrivacySettingsSection({ formData, setFormData }: SectionProps) {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8">
+    <div id="privacy" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
       <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
         <i className="fa-solid fa-shield text-rejimde-blue"></i> Görünürlük & Mahremiyet
       </h2>
