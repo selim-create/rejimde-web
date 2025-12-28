@@ -28,6 +28,11 @@ This project integrates with the `rejimde-core` WordPress plugin for backend API
 - **[Backend Configuration Checklist](docs/BACKEND_CHECKLIST.md)** - Backend setup requirements
 - **[Quick Reference](docs/QUICK_REFERENCE.md)** - Common usage examples
 
+### Recent Updates
+
+- **[Expert Services Loading Fix](docs/EXPERT_SERVICES_FIX.md)** - Fix for service packages display issue (Dec 2024)
+- **[Expert Services Test Cases](docs/EXPERT_SERVICES_TEST_CASES.md)** - Manual testing guide for expert profiles
+
 ### Environment Variables
 
 Create a `.env.local` file in the project root:
