@@ -2959,18 +2959,25 @@ export async function getProClients(options?: {
     
     if (json.status === 'success') {
       // Check nested format first (expected)
-      let clients = json.data || [];
+      let clients = json.data;
       let meta = json.meta || defaultMeta;
       
-      // Check root level (legacy) - only if nested data doesn't exist at all
-      if (json.data === undefined && json.clients !== undefined) {
+      // Fallback: Check root level clients property if data doesn't exist
+      if (clients === undefined && json.clients !== undefined) {
         clients = json.clients;
-        meta = json.meta || defaultMeta;
       }
+      
+      // Fallback: Check if data has a nested clients property
+      if (clients && typeof clients === 'object' && !Array.isArray(clients) && 'clients' in clients && clients.clients) {
+        clients = clients.clients;
+      }
+      
+      // Ensure clients is an array
+      clients = Array.isArray(clients) ? clients : [];
       
       // Ensure clients have the correct nested structure
       // Handle flat client objects vs nested client objects
-      const normalizedClients = (Array.isArray(clients) ? clients : []).map((item: any) => {
+      const normalizedClients = clients.map((item: any) => {
         // If the client data is already nested correctly, return as-is
         if (item.client && typeof item.client === 'object' && item.client.id) {
           return item;
@@ -4657,7 +4664,21 @@ export async function getProServices(): Promise<ProService[]> {
     const json = await res.json();
     
     if (json.status === 'success') {
-      return json.data || [];
+      // Check nested format first (expected)
+      let services = json.data;
+      
+      // Fallback: Check root level services property if data doesn't exist
+      if (services === undefined && json.services !== undefined) {
+        services = json.services;
+      }
+      
+      // Fallback: Check if data has a nested services property
+      if (services && typeof services === 'object' && !Array.isArray(services) && 'services' in services && services.services) {
+        services = services.services;
+      }
+      
+      // Ensure services is an array
+      return Array.isArray(services) ? services : [];
     }
 
     return [];
