@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { createService, type Service } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { updateService, type Service } from '@/lib/api';
 
-interface NewServiceModalProps {
+interface EditServiceModalProps {
+  service: Service;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -19,18 +20,18 @@ const COLORS = [
   { name: 'Turuncu', value: '#f97316' }
 ];
 
-export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalProps) {
+export default function EditServiceModal({ service, onClose, onSuccess }: EditServiceModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    type: 'online' as const,
-    price: '',
-    duration_minutes: '60',
-    session_count: '',
-    validity_days: '',
-    capacity: '1',
-    color: '#3b82f6'
+    name: service.name,
+    description: service.description || '',
+    type: service.type,
+    price: service.price.toString(),
+    duration_minutes: service.duration_minutes?.toString() || '60',
+    session_count: service.session_count?.toString() || '',
+    validity_days: service.validity_days?.toString() || '',
+    capacity: service.capacity?.toString() || '1',
+    color: service.color
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,7 +43,7 @@ export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalP
     }
 
     setIsProcessing(true);
-    const result = await createService({
+    const result = await updateService(service.id, {
       name: formData.name,
       description: formData.description || undefined,
       type: formData.type,
@@ -56,11 +57,11 @@ export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalP
     setIsProcessing(false);
 
     if (result.success) {
-      alert('Hizmet başarıyla oluşturuldu!');
+      alert('Hizmet başarıyla güncellendi!');
       onSuccess();
       onClose();
     } else {
-      alert(result.message || 'Hizmet oluşturulamadı.');
+      alert(result.message || 'Hizmet güncellenemedi.');
     }
   };
 
@@ -76,7 +77,7 @@ export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalP
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-black text-white">Yeni Hizmet/Paket</h2>
+          <h2 className="text-2xl font-black text-white">Hizmet/Paket Düzenle</h2>
           <button 
             onClick={onClose}
             className="w-10 h-10 rounded-xl bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-600 transition"
@@ -250,7 +251,7 @@ export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalP
               disabled={isProcessing}
               className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-bold py-3 rounded-xl transition"
             >
-              {isProcessing ? 'Oluşturuluyor...' : 'Hizmet Oluştur'}
+              {isProcessing ? 'Güncelleniyor...' : 'Değişiklikleri Kaydet'}
             </button>
           </div>
         </form>

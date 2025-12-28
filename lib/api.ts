@@ -4206,12 +4206,13 @@ export interface Service {
   id: number;
   name: string;
   description?: string;
-  type: 'session' | 'package' | 'subscription' | 'one_time';
+  type: 'online' | 'face_to_face' | 'group' | 'package' | 'consultation' | 'session' | 'one_time';
   price: number;
   currency: string;
   duration_minutes: number;
   session_count?: number;
   validity_days?: number;
+  capacity?: number;
   is_active: boolean;
   is_featured: boolean;
   color: string;
