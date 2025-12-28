@@ -2963,6 +2963,7 @@ export async function getProClients(options?: {
       // Check root level (legacy)
       if (!json.data && json.clients) {
         clients = json.clients;
+        meta = json.meta || { total: 0, active: 0, pending: 0, archived: 0 };
       }
       
       // Ensure clients have the correct nested structure
@@ -3348,15 +3349,15 @@ export async function getInboxThreads(options?: {
     
     if (json.status === 'success') {
       // Check nested format first (expected)
-      if (json.data?.threads || json.data?.meta) {
+      if (json.data) {
         return {
-          threads: json.data?.threads || [],
-          meta: json.data?.meta || { total: 0, unread_total: 0 }
+          threads: json.data.threads || [],
+          meta: json.data.meta || { total: 0, unread_total: 0 }
         };
       }
       
       // Check root level (legacy)
-      if (json.threads || json.meta) {
+      if (json.threads !== undefined || json.meta !== undefined) {
         return {
           threads: json.threads || [],
           meta: json.meta || { total: 0, unread_total: 0 }
@@ -4305,11 +4306,13 @@ export async function getPayments(options?: {
     const json = await res.json();
     
     if (json.status === 'success') {
-      // Check nested format first (expected), then root level (legacy)
+      // Check nested format first (expected)
       if (json.data) {
         return json.data;
-      } else if (json.payments || json.meta) {
-        // Legacy format: payments and meta at root level
+      }
+      
+      // Check root level (legacy)
+      if (json.payments !== undefined || json.meta !== undefined) {
         return {
           payments: json.payments || [],
           meta: json.meta || { total: 0, total_amount: 0, paid_amount: 0, pending_amount: 0 }
