@@ -134,7 +134,7 @@ describe('Expert Services Loading', () => {
   it('should handle missing user ID fields', () => {
     const expertData = {
       id: 100,  // Post ID
-      name: 'Dr. Test'
+      name: 'Dr. Test',
       // No related_user_id or user_id
     };
     
