@@ -35,8 +35,8 @@ export default function PaymentsPage() {
       }
       
       const data = await getPayments(options);
-      setPayments(data.payments);
-      setMeta(data.meta);
+      setPayments(data?.payments || []);
+      setMeta(data?.meta || { total: 0, total_amount: 0, paid_amount: 0, pending_amount: 0 });
     } catch (error) {
       console.error('Failed to load payments:', error);
       // Mock data for development
@@ -52,7 +52,7 @@ export default function PaymentsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
-  const filteredPayments = payments.filter(payment => {
+  const filteredPayments = (payments || []).filter(payment => {
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       return (

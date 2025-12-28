@@ -114,9 +114,9 @@ export default function NewPaymentModal({ onClose, onSuccess }: NewPaymentModalP
               disabled={loadingData}
             >
               <option value="">Danışan Seçin</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
+              {clients.map((clientItem) => (
+                <option key={clientItem.client.id} value={clientItem.client.id}>
+                  {clientItem.client.name}
                 </option>
               ))}
             </select>
