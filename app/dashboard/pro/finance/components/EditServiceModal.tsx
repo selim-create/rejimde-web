@@ -7,6 +7,7 @@ interface EditServiceModalProps {
   service: Service;
   onClose: () => void;
   onSuccess: () => void;
+  onError?: (message: string) => void;
 }
 
 const COLORS = [
@@ -20,7 +21,7 @@ const COLORS = [
   { name: 'Turuncu', value: '#f97316' }
 ];
 
-export default function EditServiceModal({ service, onClose, onSuccess }: EditServiceModalProps) {
+export default function EditServiceModal({ service, onClose, onSuccess, onError }: EditServiceModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
     name: service.name,
@@ -58,6 +59,10 @@ export default function EditServiceModal({ service, onClose, onSuccess }: EditSe
     if (result.success) {
       onSuccess();
       onClose();
+    } else {
+      if (onError) {
+        onError(result.message || 'Hizmet güncellenemedi.');
+      }
     }
   };
 

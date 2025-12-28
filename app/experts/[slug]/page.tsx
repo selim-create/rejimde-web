@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { getExpertBySlug, getExpertPublicServices, type Service } from "@/lib/api";
+import { formatCurrency } from "@/lib/format-utils";
 import MascotDisplay from "@/components/MascotDisplay";
 import ExpertReviews from "@/components/CommentsExperts";
 import { 
@@ -881,7 +882,7 @@ export default function ExpertProfilePage() {
                                             
                                             {/* Price */}
                                             <div className="text-3xl font-black text-gray-800 mb-4">
-                                                ₺{service.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                {formatCurrency(service.price)}
                                             </div>
                                             
                                             {/* Details */}

@@ -4592,7 +4592,11 @@ export async function toggleServiceActive(serviceId: number): Promise<{ success:
     const json = await res.json();
     
     if (json.status === 'success') {
-      return { success: true, is_active: json.data?.is_active, message: json.message };
+      return { 
+        success: true, 
+        is_active: json.data?.is_active ?? undefined, 
+        message: json.message 
+      };
     }
 
     return { success: false, message: json.message };

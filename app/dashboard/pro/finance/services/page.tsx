@@ -294,6 +294,14 @@ export default function ServicesPage() {
               variant: 'success'
             });
           }}
+          onError={(message) => {
+            setAlertModal({
+              isOpen: true,
+              title: 'Hata',
+              message: message,
+              variant: 'error'
+            });
+          }}
         />
       )}
 
@@ -308,6 +316,14 @@ export default function ServicesPage() {
               title: 'Başarılı',
               message: 'Hizmet başarıyla güncellendi!',
               variant: 'success'
+            });
+          }}
+          onError={(message) => {
+            setAlertModal({
+              isOpen: true,
+              title: 'Hata',
+              message: message,
+              variant: 'error'
             });
           }}
         />

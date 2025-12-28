@@ -6,6 +6,7 @@ import { createService, type Service } from '@/lib/api';
 interface NewServiceModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  onError?: (message: string) => void;
 }
 
 const COLORS = [
@@ -19,7 +20,7 @@ const COLORS = [
   { name: 'Turuncu', value: '#f97316' }
 ];
 
-export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalProps) {
+export default function NewServiceModal({ onClose, onSuccess, onError }: NewServiceModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -57,6 +58,10 @@ export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalP
     if (result.success) {
       onSuccess();
       onClose();
+    } else {
+      if (onError) {
+        onError(result.message || 'Hizmet oluşturulamadı.');
+      }
     }
   };
 
