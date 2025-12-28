@@ -2962,8 +2962,8 @@ export async function getProClients(options?: {
       let clients = json.data;
       let meta = json.meta || defaultMeta;
       
-      // Fallback: Check root level clients property if data doesn't exist
-      if (clients === undefined && json.clients !== undefined) {
+      // Fallback: Check root level clients property if data doesn't exist or is empty
+      if ((!clients || (Array.isArray(clients) && clients.length === 0)) && json.clients !== undefined) {
         clients = json.clients;
       }
       
@@ -4667,8 +4667,8 @@ export async function getProServices(): Promise<ProService[]> {
       // Check nested format first (expected)
       let services = json.data;
       
-      // Fallback: Check root level services property if data doesn't exist
-      if (services === undefined && json.services !== undefined) {
+      // Fallback: Check root level services property if data doesn't exist or is empty
+      if ((!services || (Array.isArray(services) && services.length === 0)) && json.services !== undefined) {
         services = json.services;
       }
       
