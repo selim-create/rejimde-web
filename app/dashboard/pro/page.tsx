@@ -326,7 +326,7 @@ export default function ProDashboardPage() {
             <a href="/dashboard/pro/finance" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-wallet w-6 text-center group-hover:text-yellow-400"></i> Finans
             </a>
-            <a href="/dashboard/pro/services" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            <a href="/dashboard/pro/finance/services" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-list w-6 text-center group-hover:text-teal-400"></i> Paketlerim
             </a>
             <a href="/dashboard/pro/reviews" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
@@ -547,7 +547,7 @@ export default function ProDashboardPage() {
                             <h3 className="font-extrabold text-white text-sm uppercase tracking-wide flex items-center gap-2">
                                 <i className="fa-solid fa-list text-teal-400"></i> Paketlerim
                             </h3>
-                            <a href="/dashboard/pro/services" className="w-6 h-6 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400 hover:bg-teal-500 hover:text-white transition">
+                            <a href="/dashboard/pro/finance/services" className="w-6 h-6 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400 hover:bg-teal-500 hover:text-white transition">
                                 <i className="fa-solid fa-plus text-xs"></i>
                             </a>
                         </div>

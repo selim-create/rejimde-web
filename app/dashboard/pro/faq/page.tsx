@@ -198,7 +198,7 @@ export default function ProFaqPage() {
             <a href="/dashboard/pro/earnings" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-wallet w-6 text-center group-hover:text-yellow-400"></i> Gelirler
             </a>
-            <a href="/dashboard/pro/services" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+            <a href="/dashboard/pro/finance/services" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-list w-6 text-center group-hover:text-teal-400"></i> Paketlerim
             </a>
             <a href="/dashboard/pro/reviews" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
