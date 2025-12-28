@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { getExpertBySlug } from "@/lib/api";
+import { getExpertBySlug, getExpertPublicServices, type Service } from "@/lib/api";
+import { formatCurrency } from "@/lib/format-utils";
 import MascotDisplay from "@/components/MascotDisplay";
 import ExpertReviews from "@/components/CommentsExperts";
 import { 
@@ -161,6 +162,7 @@ export default function ExpertProfilePage() {
   const [expert, setExpert] = useState<ExpertDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
 
   const rawSlug = params?. slug 
     ? (Array.isArray(params.slug) ? params.slug[0] : params.slug) 
@@ -210,6 +212,11 @@ export default function ExpertProfilePage() {
                     certificates: parseJsonField((data as any).certificates, []),
                     excluded_cases: parseJsonField((data as any).excluded_cases, []),
                 });
+                
+                // Load expert's services
+                const servicesData = await getExpertPublicServices(data.id);
+                // Filter only active services
+                setServices(servicesData.filter(s => s.is_active));
             } else {
                 setNotFound(true);
             }
@@ -840,24 +847,82 @@ export default function ExpertProfilePage() {
                         </div>
                     )}
 
-                    {/* 9. HİZMET PAKETLERİ - DEMO */}
-                    <div className="opacity-50 pointer-events-none grayscale">
-                        <h2 className="text-xl font-extrabold text-gray-800 mb-6 px-2 uppercase tracking-wide">HİZMET PAKETLERİ (YAKINDA)</h2>
-                        <div className="grid grid-cols-1 md: grid-cols-2 gap-6">
-                            <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-card">
-                                <div className="flex justify-between items-start mb-4">
-                                    <h3 className="text-lg font-extrabold text-gray-700">Standart Takip</h3>
-                                    <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs font-black uppercase">AYLIK</span>
-                                </div>
-                                <div className="text-3xl font-black text-gray-800 mb-6">
-                                    ₺1. 500 <span className="text-sm text-gray-400 font-bold">/ ay</span>
-                                </div>
-                                <button className="w-full border-2 border-gray-200 text-gray-500 py-3 rounded-xl font-extrabold uppercase text-sm">
-                                    Paketi İncele
-                                </button>
+                    {/* 9. HİZMET PAKETLERİ */}
+                    {services.length > 0 && (
+                        <div>
+                            <h2 className="text-xl font-extrabold text-gray-800 mb-6 px-2 uppercase tracking-wide">
+                                Hizmet Paketleri
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {services.map((service) => {
+                                    const typeLabels: Record<typeof service.type, string> = {
+                                        online: 'Online',
+                                        face_to_face: 'Yüzyüze',
+                                        group: 'Grup',
+                                        package: 'Paket',
+                                        consultation: 'Danışmanlık',
+                                        session: 'Seans',
+                                        one_time: 'Tek Seferlik'
+                                    };
+                                    
+                                    return (
+                                        <div key={service.id} className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-card hover:shadow-xl transition-shadow">
+                                            {/* Header with type badge */}
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <h3 className="text-lg font-extrabold text-gray-700">{service.name}</h3>
+                                                    {service.description && (
+                                                        <p className="text-sm text-gray-600 mt-1">{service.description}</p>
+                                                    )}
+                                                </div>
+                                                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-black uppercase whitespace-nowrap ml-2">
+                                                    {typeLabels[service.type]}
+                                                </span>
+                                            </div>
+                                            
+                                            {/* Price */}
+                                            <div className="text-3xl font-black text-gray-800 mb-4">
+                                                {formatCurrency(service.price)}
+                                            </div>
+                                            
+                                            {/* Details */}
+                                            <div className="space-y-2 mb-6 text-sm text-gray-600">
+                                                {service.duration_minutes > 0 && (
+                                                    <div className="flex items-center gap-2">
+                                                        <i className="fa-solid fa-clock w-4"></i>
+                                                        <span>{service.duration_minutes} dakika</span>
+                                                    </div>
+                                                )}
+                                                {service.session_count && (
+                                                    <div className="flex items-center gap-2">
+                                                        <i className="fa-solid fa-layer-group w-4"></i>
+                                                        <span>{service.session_count} seans</span>
+                                                    </div>
+                                                )}
+                                                {service.validity_days && (
+                                                    <div className="flex items-center gap-2">
+                                                        <i className="fa-solid fa-calendar-check w-4"></i>
+                                                        <span>{service.validity_days} gün geçerli</span>
+                                                    </div>
+                                                )}
+                                                {service.capacity && (service.type === 'group' || service.type === 'package') && (
+                                                    <div className="flex items-center gap-2">
+                                                        <i className="fa-solid fa-user-group w-4"></i>
+                                                        <span>Kontenjan: {service.capacity} kişi</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            
+                                            {/* CTA Button */}
+                                            <button className="w-full border-2 border-rejimde-blue text-rejimde-blue hover:bg-rejimde-blue hover:text-white py-3 rounded-xl font-extrabold uppercase text-sm transition">
+                                                Detayları Gör
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* 10. REVIEWS */}
                     <div id="comments-section" className="scroll-mt-32">

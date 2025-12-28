@@ -6,6 +6,7 @@ import { createService, type Service } from '@/lib/api';
 interface NewServiceModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  onError?: (message: string) => void;
 }
 
 const COLORS = [
@@ -19,7 +20,7 @@ const COLORS = [
   { name: 'Turuncu', value: '#f97316' }
 ];
 
-export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalProps) {
+export default function NewServiceModal({ onClose, onSuccess, onError }: NewServiceModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -37,7 +38,6 @@ export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalP
     e.preventDefault();
 
     if (!formData.name || !formData.price) {
-      alert('Lütfen hizmet adı ve fiyatı girin.');
       return;
     }
 
@@ -56,11 +56,12 @@ export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalP
     setIsProcessing(false);
 
     if (result.success) {
-      alert('Hizmet başarıyla oluşturuldu!');
       onSuccess();
       onClose();
     } else {
-      alert(result.message || 'Hizmet oluşturulamadı.');
+      if (onError) {
+        onError(result.message || 'Hizmet oluşturulamadı.');
+      }
     }
   };
 

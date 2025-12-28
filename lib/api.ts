@@ -4562,6 +4562,74 @@ export async function deleteService(serviceId: number): Promise<{ success: boole
   }
 }
 
+export async function forceDeleteService(serviceId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services/${serviceId}/force`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('forceDeleteService error:', error);
+    return { success: false, message: 'Hizmet kalıcı olarak silinemedi.' };
+  }
+}
+
+export async function toggleServiceActive(serviceId: number): Promise<{ success: boolean; is_active?: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services/${serviceId}/toggle`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { 
+        success: true, 
+        is_active: json.data?.is_active ?? undefined, 
+        message: json.message 
+      };
+    }
+
+    return { success: false, message: json.message };
+  } catch (error) {
+    console.error('toggleServiceActive error:', error);
+    return { success: false, message: 'Hizmet durumu değiştirilemedi.' };
+  }
+}
+
+export async function getExpertPublicServices(expertId: number): Promise<Service[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/experts/${expertId}/services`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!res.ok) {
+      return [];
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return Array.isArray(json.data) ? json.data : [];
+    }
+
+    return [];
+  } catch (error) {
+    console.error('getExpertPublicServices error:', error);
+    return [];
+  }
+}
+
 // Raporlar
 export async function getMonthlyReport(year: number, month: number): Promise<MonthlyReport> {
   try {
