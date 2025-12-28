@@ -2962,8 +2962,8 @@ export async function getProClients(options?: {
       let clients = json.data || [];
       let meta = json.meta || defaultMeta;
       
-      // Check root level (legacy)
-      if (!json.data && json.clients) {
+      // Check root level (legacy) - only if nested data doesn't exist
+      if (!json.data && json.clients !== undefined) {
         clients = json.clients;
         meta = json.meta || defaultMeta;
       }
@@ -2978,6 +2978,7 @@ export async function getProClients(options?: {
         
         // If the client data is flat, restructure it
         // Extract client-specific fields and move them under 'client' property
+        // Priority: prefixed fields (client_*) take precedence over non-prefixed fields
         const { client_id, client_name, client_avatar, client_email, name, avatar, email, ...restFields } = item;
         return {
           ...restFields,
@@ -2992,7 +2993,7 @@ export async function getProClients(options?: {
       
       return {
         clients: normalizedClients,
-        meta: meta
+        meta
       };
     }
 
