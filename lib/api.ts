@@ -2963,7 +2963,7 @@ export async function getProClients(options?: {
       let meta = json.meta || defaultMeta;
       
       // Fallback: Check root level clients property if data doesn't exist or is empty
-      if ((!clients || (Array.isArray(clients) && clients.length === 0)) && json.clients !== undefined) {
+      if ((clients == null || (Array.isArray(clients) && clients.length === 0)) && json.clients !== undefined) {
         clients = json.clients;
       }
       
@@ -4668,7 +4668,7 @@ export async function getProServices(): Promise<ProService[]> {
       let services = json.data;
       
       // Fallback: Check root level services property if data doesn't exist or is empty
-      if ((!services || (Array.isArray(services) && services.length === 0)) && json.services !== undefined) {
+      if ((services == null || (Array.isArray(services) && services.length === 0)) && json.services !== undefined) {
         services = json.services;
       }
       
