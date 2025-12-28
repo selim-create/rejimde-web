@@ -37,7 +37,6 @@ export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalP
     e.preventDefault();
 
     if (!formData.name || !formData.price) {
-      alert('Lütfen hizmet adı ve fiyatı girin.');
       return;
     }
 
@@ -56,11 +55,8 @@ export default function NewServiceModal({ onClose, onSuccess }: NewServiceModalP
     setIsProcessing(false);
 
     if (result.success) {
-      alert('Hizmet başarıyla oluşturuldu!');
       onSuccess();
       onClose();
-    } else {
-      alert(result.message || 'Hizmet oluşturulamadı.');
     }
   };
 

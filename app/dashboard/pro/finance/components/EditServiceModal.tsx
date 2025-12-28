@@ -38,7 +38,6 @@ export default function EditServiceModal({ service, onClose, onSuccess }: EditSe
     e.preventDefault();
 
     if (!formData.name || !formData.price) {
-      alert('Lütfen hizmet adı ve fiyatı girin.');
       return;
     }
 
@@ -57,11 +56,8 @@ export default function EditServiceModal({ service, onClose, onSuccess }: EditSe
     setIsProcessing(false);
 
     if (result.success) {
-      alert('Hizmet başarıyla güncellendi!');
       onSuccess();
       onClose();
-    } else {
-      alert(result.message || 'Hizmet güncellenemedi.');
     }
   };
 

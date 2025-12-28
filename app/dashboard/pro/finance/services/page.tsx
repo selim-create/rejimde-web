@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getServices, updateService, deleteService, type Service } from '@/lib/api';
+import { getServices, updateService, deleteService, forceDeleteService, toggleServiceActive, type Service } from '@/lib/api';
 import ServiceCard from '../components/ServiceCard';
 import NewServiceModal from '../components/NewServiceModal';
 import EditServiceModal from '../components/EditServiceModal';
 import ConfirmModal from '../components/ConfirmModal';
+import AlertModal from '@/components/ui/AlertModal';
 
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
@@ -14,17 +15,25 @@ export default function ServicesPage() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showNewServiceModal, setShowNewServiceModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
-  const [confirmModal, setConfirmModal] = useState<{
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isOpen: boolean;
+    service: Service | null;
+    mode: 'choose' | 'soft' | 'force';
+  }>({
+    isOpen: false,
+    service: null,
+    mode: 'choose'
+  });
+  const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     title: string;
     message: string;
-    onConfirm: () => void;
-    variant?: 'danger' | 'warning' | 'primary';
+    variant: 'success' | 'error' | 'warning' | 'info';
   }>({
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {}
+    variant: 'info'
   });
 
   const loadServices = async () => {
@@ -57,28 +66,35 @@ export default function ServicesPage() {
       loadServices();
     } catch (error) {
       console.error('Failed to toggle featured:', error);
-      setConfirmModal({
+      setAlertModal({
         isOpen: true,
         title: 'Hata',
         message: 'Hizmet güncellenemedi.',
-        onConfirm: () => setConfirmModal({ ...confirmModal, isOpen: false }),
-        variant: 'warning'
+        variant: 'error'
       });
     }
   };
 
   const handleToggleActive = async (service: Service) => {
     try {
-      await updateService(service.id, { is_active: !service.is_active });
-      loadServices();
+      const result = await toggleServiceActive(service.id);
+      if (result.success) {
+        loadServices();
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: 'Hata',
+          message: result.message || 'Hizmet durumu değiştirilemedi.',
+          variant: 'error'
+        });
+      }
     } catch (error) {
       console.error('Failed to toggle active status:', error);
-      setConfirmModal({
+      setAlertModal({
         isOpen: true,
         title: 'Hata',
         message: 'Hizmet durumu değiştirilemedi.',
-        onConfirm: () => setConfirmModal({ ...confirmModal, isOpen: false }),
-        variant: 'warning'
+        variant: 'error'
       });
     }
   };
@@ -87,46 +103,53 @@ export default function ServicesPage() {
     setEditingService(service);
   };
 
-  const handleDelete = async (service: Service) => {
-    setConfirmModal({
+  const handleDelete = (service: Service) => {
+    setDeleteModalState({
       isOpen: true,
-      title: 'Hizmeti Sil',
-      message: `${service.name} hizmetini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
-      variant: 'danger',
-      onConfirm: async () => {
-        try {
-          const result = await deleteService(service.id);
-          setConfirmModal({ ...confirmModal, isOpen: false });
-          if (result.success) {
-            setConfirmModal({
-              isOpen: true,
-              title: 'Başarılı',
-              message: 'Hizmet başarıyla silindi.',
-              onConfirm: () => setConfirmModal({ ...confirmModal, isOpen: false }),
-              variant: 'primary'
-            });
-            loadServices();
-          } else {
-            setConfirmModal({
-              isOpen: true,
-              title: 'Hata',
-              message: result.message || 'Hizmet silinemedi.',
-              onConfirm: () => setConfirmModal({ ...confirmModal, isOpen: false }),
-              variant: 'warning'
-            });
-          }
-        } catch (error) {
-          console.error('Failed to delete service:', error);
-          setConfirmModal({
-            isOpen: true,
-            title: 'Hata',
-            message: 'Hizmet silinemedi.',
-            onConfirm: () => setConfirmModal({ ...confirmModal, isOpen: false }),
-            variant: 'warning'
-          });
-        }
-      }
+      service: service,
+      mode: 'choose'
     });
+  };
+
+  const handleDeleteConfirm = async (mode: 'soft' | 'force') => {
+    const service = deleteModalState.service;
+    if (!service) return;
+
+    try {
+      const result = mode === 'force' 
+        ? await forceDeleteService(service.id)
+        : await deleteService(service.id);
+      
+      setDeleteModalState({ isOpen: false, service: null, mode: 'choose' });
+      
+      if (result.success) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Başarılı',
+          message: mode === 'force' 
+            ? 'Hizmet kalıcı olarak silindi.' 
+            : 'Hizmet pasife alındı.',
+          variant: 'success'
+        });
+        loadServices();
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: 'Hata',
+          message: result.message || 'İşlem başarısız oldu.',
+          variant: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete service:', error);
+      setDeleteModalState({ isOpen: false, service: null, mode: 'choose' });
+      setAlertModal({
+        isOpen: true,
+        title: 'Hata',
+        message: 'Hizmet silinemedi.',
+        variant: 'error'
+      });
+    }
   };
 
   return (
@@ -264,6 +287,12 @@ export default function ServicesPage() {
           onClose={() => setShowNewServiceModal(false)}
           onSuccess={() => {
             loadServices();
+            setAlertModal({
+              isOpen: true,
+              title: 'Başarılı',
+              message: 'Hizmet başarıyla oluşturuldu!',
+              variant: 'success'
+            });
           }}
         />
       )}
@@ -274,17 +303,110 @@ export default function ServicesPage() {
           onClose={() => setEditingService(null)}
           onSuccess={() => {
             loadServices();
+            setAlertModal({
+              isOpen: true,
+              title: 'Başarılı',
+              message: 'Hizmet başarıyla güncellendi!',
+              variant: 'success'
+            });
           }}
         />
       )}
 
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        confirmVariant={confirmModal.variant}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      {/* Delete Choice Modal */}
+      {deleteModalState.isOpen && deleteModalState.mode === 'choose' && deleteModalState.service && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setDeleteModalState({ isOpen: false, service: null, mode: 'choose' })}
+        >
+          <div 
+            className="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4">
+              <h3 className="text-xl font-black text-white mb-2">Hizmeti Nasıl Silmek İstersiniz?</h3>
+              <p className="text-slate-300 mb-4">"{deleteModalState.service.name}" hizmeti için bir seçenek belirleyin:</p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteModalState({ ...deleteModalState, mode: 'soft' });
+                }}
+                className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-xl transition text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <i className="fa-solid fa-eye-slash text-xl"></i>
+                  <div>
+                    <div className="font-black">Pasife Al</div>
+                    <div className="text-xs opacity-90">Hizmet gizlenir, veriler korunur</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteModalState({ ...deleteModalState, mode: 'force' });
+                }}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl transition text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <i className="fa-solid fa-trash text-xl"></i>
+                  <div>
+                    <div className="font-black">Kalıcı Olarak Sil</div>
+                    <div className="text-xs opacity-90">Tüm veriler silinir, geri alınamaz</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setDeleteModalState({ isOpen: false, service: null, mode: 'choose' })}
+                className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition"
+              >
+                İptal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Soft Delete Confirmation */}
+      {deleteModalState.isOpen && deleteModalState.mode === 'soft' && deleteModalState.service && (
+        <ConfirmModal
+          isOpen={true}
+          title="Pasife Al"
+          message={`"${deleteModalState.service.name}" hizmeti pasife alınacak. Veriler korunacak ve istediğiniz zaman tekrar aktif edebilirsiniz.`}
+          confirmText="Pasife Al"
+          cancelText="İptal"
+          confirmVariant="warning"
+          onConfirm={() => handleDeleteConfirm('soft')}
+          onCancel={() => setDeleteModalState({ isOpen: false, service: null, mode: 'choose' })}
+        />
+      )}
+
+      {/* Force Delete Confirmation */}
+      {deleteModalState.isOpen && deleteModalState.mode === 'force' && deleteModalState.service && (
+        <ConfirmModal
+          isOpen={true}
+          title="Kalıcı Olarak Sil"
+          message={`"${deleteModalState.service.name}" hizmeti ve tüm ilgili veriler kalıcı olarak silinecek. Bu işlem geri alınamaz!`}
+          confirmText="Kalıcı Olarak Sil"
+          cancelText="İptal"
+          confirmVariant="danger"
+          onConfirm={() => handleDeleteConfirm('force')}
+          onCancel={() => setDeleteModalState({ isOpen: false, service: null, mode: 'choose' })}
+        />
+      )}
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        variant={alertModal.variant}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
       />
     </div>
   );
