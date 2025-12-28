@@ -224,6 +224,8 @@ export default function ExpertProfilePage() {
                     const servicesData = await getExpertPublicServices(userId);
                     // Filter only active services
                     setServices(servicesData.filter(s => s.is_active));
+                } else {
+                    console.warn('Expert user_id not found in response. Services cannot be loaded. Post ID:', data.id);
                 }
             } else {
                 setNotFound(true);
