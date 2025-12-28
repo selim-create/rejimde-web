@@ -61,6 +61,10 @@ interface ExpertDetail {
     bio?: string;
     is_claimed?: boolean;
     
+    /** User ID fields returned from backend (related_user_id is preferred, user_id is fallback) */
+    related_user_id?: number;   // User ID from backend (primary field)
+    user_id?: number;           // User ID from backend (alternative field name)
+    
     // Kimlik & Profil
     motto?:  string;
     
@@ -214,9 +218,16 @@ export default function ExpertProfilePage() {
                 });
                 
                 // Load expert's services
-                const servicesData = await getExpertPublicServices(data.id);
-                // Filter only active services
-                setServices(servicesData.filter(s => s.is_active));
+                // Use user_id instead of post ID (data.id)
+                // Try related_user_id first (primary field), then user_id (fallback)
+                const userId = data?.related_user_id ?? data?.user_id;
+                if (userId) {
+                    const servicesData = await getExpertPublicServices(userId);
+                    // Filter only active services
+                    setServices(servicesData.filter(s => s.is_active));
+                } else {
+                    console.warn('Expert user ID (related_user_id or user_id) not found in response. Services cannot be loaded. Post ID:', data.id);
+                }
             } else {
                 setNotFound(true);
             }
