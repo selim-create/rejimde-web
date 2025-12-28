@@ -1,20 +1,29 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { getProClients, addProClient, createClientInvite, ClientListItem, getProServices, type ProService } from "@/lib/api";
+import { 
+  getProClients, 
+  addProClient, 
+  createClientInvite, 
+  getServices,
+  type ClientListItem,
+  type Service 
+} from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 
 export default function ProClientsPage() {
   const { showToast } = useToast();
   const [clients, setClients] = useState<ClientListItem[]>([]);
-  const [meta, setMeta] = useState({ total: 0, active: 0, pending: 0, archived: 0 });
+  const DEFAULT_META = { total: 0, active: 0, pending: 0, archived: 0 };
+  const [meta, setMeta] = useState(DEFAULT_META);
   const [loading, setLoading] = useState(true);
-  const [services, setServices] = useState<ProService[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   
   const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'archived'>('active');
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const isInitialMount = useRef(true);
 
   // Form states for adding client
   const [formData, setFormData] = useState({
@@ -35,21 +44,33 @@ export default function ProClientsPage() {
   // Fetch clients
   const fetchClients = async () => {
     setLoading(true);
-    
-    const result = await getProClients({
-      status: activeTab,
-      search: searchTerm || undefined
-    });
-    
-    setClients(result.clients);
-    setMeta(result.meta);
-    setLoading(false);
+    try {
+      const result = await getProClients({
+        status: activeTab,
+        search: searchTerm || undefined
+      });
+      
+      // Defensive: ensure we have valid data
+      setClients(Array.isArray(result.clients) ? result.clients : []);
+      setMeta(result.meta || DEFAULT_META);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      setClients([]);
+      setMeta(DEFAULT_META);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Fetch services for package selection
   const fetchServices = async () => {
-    const data = await getProServices();
-    setServices(data || []);
+    try {
+      const data = await getServices();
+      setServices(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      setServices([]);
+    }
   };
 
   useEffect(() => {
@@ -58,12 +79,16 @@ export default function ProClientsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Search with debounce
+  // Search with debounce - refetch clients when search term changes (including when cleared)
   useEffect(() => {
+    // Skip the debounced call on initial mount (already fetched by the effect above)
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
     const timer = setTimeout(() => {
-      if (searchTerm !== '') {
-        fetchClients();
-      }
+      fetchClients();
     }, 300);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
