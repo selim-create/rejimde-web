@@ -2962,15 +2962,13 @@ export async function getProClients(options?: {
       let clients = json.data;
       let meta = json.meta || defaultMeta;
       
-      // Fallback: Check root level clients property if data is missing/empty
-      if (!clients || (Array.isArray(clients) && clients.length === 0)) {
-        if (json.clients !== undefined) {
-          clients = json.clients;
-        }
+      // Fallback: Check root level clients property if data doesn't exist
+      if (clients === undefined && json.clients !== undefined) {
+        clients = json.clients;
       }
       
       // Fallback: Check if data has a nested clients property
-      if (clients && typeof clients === 'object' && !Array.isArray(clients) && clients.clients) {
+      if (clients && typeof clients === 'object' && !Array.isArray(clients) && 'clients' in clients && clients.clients) {
         clients = clients.clients;
       }
       
@@ -4669,15 +4667,13 @@ export async function getProServices(): Promise<ProService[]> {
       // Check nested format first (expected)
       let services = json.data;
       
-      // Fallback: Check root level services property if data is missing/empty
-      if (!services || (Array.isArray(services) && services.length === 0)) {
-        if (json.services !== undefined) {
-          services = json.services;
-        }
+      // Fallback: Check root level services property if data doesn't exist
+      if (services === undefined && json.services !== undefined) {
+        services = json.services;
       }
       
       // Fallback: Check if data has a nested services property
-      if (services && typeof services === 'object' && !Array.isArray(services) && services.services) {
+      if (services && typeof services === 'object' && !Array.isArray(services) && 'services' in services && services.services) {
         services = services.services;
       }
       
