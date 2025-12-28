@@ -2,13 +2,21 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { getProClients, addProClient, createClientInvite, ClientListItem, getServices, type Service } from "@/lib/api";
+import { 
+  getProClients, 
+  addProClient, 
+  createClientInvite, 
+  getServices,
+  type ClientListItem,
+  type Service 
+} from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 
 export default function ProClientsPage() {
   const { showToast } = useToast();
   const [clients, setClients] = useState<ClientListItem[]>([]);
-  const [meta, setMeta] = useState({ total: 0, active: 0, pending: 0, archived: 0 });
+  const DEFAULT_META = { total: 0, active: 0, pending: 0, archived: 0 };
+  const [meta, setMeta] = useState(DEFAULT_META);
   const [loading, setLoading] = useState(true);
   const [services, setServices] = useState<Service[]>([]);
   
@@ -44,11 +52,11 @@ export default function ProClientsPage() {
       
       // Defensive: ensure we have valid data
       setClients(Array.isArray(result.clients) ? result.clients : []);
-      setMeta(result.meta || { total: 0, active: 0, pending: 0, archived: 0 });
+      setMeta(result.meta || DEFAULT_META);
     } catch (error) {
       console.error('Error fetching clients:', error);
       setClients([]);
-      setMeta({ total: 0, active: 0, pending: 0, archived: 0 });
+      setMeta(DEFAULT_META);
     } finally {
       setLoading(false);
     }
@@ -71,7 +79,7 @@ export default function ProClientsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Search with debounce - refetch when search term changes (but not on initial render)
+  // Search with debounce - refetch clients when search term changes (including when cleared)
   useEffect(() => {
     // Skip the debounced call on initial mount (already fetched by the effect above)
     if (isInitialMount.current) {
