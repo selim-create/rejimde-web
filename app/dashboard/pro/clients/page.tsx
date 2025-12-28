@@ -58,12 +58,10 @@ export default function ProClientsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Search with debounce
+  // Search with debounce - refetch when search term changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchTerm !== '') {
-        fetchClients();
-      }
+      fetchClients();
     }, 300);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
