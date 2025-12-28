@@ -219,7 +219,7 @@ export default function ExpertProfilePage() {
                 
                 // Load expert's services
                 // Use user_id instead of post ID (data.id)
-                const userId = (data as any).related_user_id || (data as any).user_id;
+                const userId = data.related_user_id || data.user_id;
                 if (userId) {
                     const servicesData = await getExpertPublicServices(userId);
                     // Filter only active services
