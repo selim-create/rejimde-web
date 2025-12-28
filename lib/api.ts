@@ -4494,6 +4494,7 @@ export async function createService(data: {
   duration_minutes?: number;
   session_count?: number;
   validity_days?: number;
+  capacity?: number;
   color?: string;
 }): Promise<{ success: boolean; service?: Service; message?: string }> {
   try {
