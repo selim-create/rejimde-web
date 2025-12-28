@@ -61,9 +61,9 @@ interface ExpertDetail {
     bio?: string;
     is_claimed?: boolean;
     
-    // User ID fields (backend'den dönen user ID)
-    user_id?: number;           // Alternatif alan adı
-    related_user_id?: number;   // Backend'den dönen user ID
+    /** User ID fields returned from backend */
+    user_id?: number;           // Alternative field name
+    related_user_id?: number;   // User ID from backend
     
     // Kimlik & Profil
     motto?:  string;
@@ -219,7 +219,7 @@ export default function ExpertProfilePage() {
                 
                 // Load expert's services
                 // Use user_id instead of post ID (data.id)
-                const userId = data.related_user_id || data.user_id;
+                const userId = data?.related_user_id ?? data?.user_id;
                 if (userId) {
                     const servicesData = await getExpertPublicServices(userId);
                     // Filter only active services
