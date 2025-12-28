@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getProClients, addProClient, createClientInvite, ClientListItem, getProServices, type ProService } from "@/lib/api";
+import { getProClients, addProClient, createClientInvite, ClientListItem, getServices, type Service } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 
 export default function ProClientsPage() {
@@ -10,7 +10,7 @@ export default function ProClientsPage() {
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [meta, setMeta] = useState({ total: 0, active: 0, pending: 0, archived: 0 });
   const [loading, setLoading] = useState(true);
-  const [services, setServices] = useState<ProService[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   
   const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'archived'>('active');
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,7 +48,7 @@ export default function ProClientsPage() {
 
   // Fetch services for package selection
   const fetchServices = async () => {
-    const data = await getProServices();
+    const data = await getServices();
     setServices(data || []);
   };
 
