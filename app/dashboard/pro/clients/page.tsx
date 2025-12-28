@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getProClients, addProClient, createClientInvite, ClientListItem } from "@/lib/api";
-import { MOCK_SERVICES } from "../../../../lib/mock-data-pro";
+import { getProClients, addProClient, createClientInvite, ClientListItem, getProServices, type ProService } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 
 export default function ProClientsPage() {
@@ -11,6 +10,7 @@ export default function ProClientsPage() {
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [meta, setMeta] = useState({ total: 0, active: 0, pending: 0, archived: 0 });
   const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState<ProService[]>([]);
   
   const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'archived'>('active');
   const [searchTerm, setSearchTerm] = useState("");
@@ -46,8 +46,15 @@ export default function ProClientsPage() {
     setLoading(false);
   };
 
+  // Fetch services for package selection
+  const fetchServices = async () => {
+    const data = await getProServices();
+    setServices(data || []);
+  };
+
   useEffect(() => {
     fetchClients();
+    fetchServices();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
@@ -368,7 +375,7 @@ export default function ProClientsPage() {
                             className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold appearance-none"
                             value={formData.package_name}
                             onChange={(e) => {
-                              const service = MOCK_SERVICES.find(s => s.title === e.target.value);
+                              const service = services.find(s => s.name === e.target.value);
                               setFormData({
                                 ...formData, 
                                 package_name: e.target.value,
@@ -377,8 +384,8 @@ export default function ProClientsPage() {
                             }}
                           >
                               <option value="">Paket Seçiniz</option>
-                              {MOCK_SERVICES.map(s => (
-                                  <option key={s.id} value={s.title}>{s.title} - {s.price} TL</option>
+                              {services.map(s => (
+                                  <option key={s.id} value={s.name}>{s.name} - {s.price} TL</option>
                               ))}
                           </select>
                       </div>

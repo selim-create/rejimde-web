@@ -270,7 +270,11 @@ export default function ProInboxPage() {
       {/* New Thread Modal */}
       {showNewThreadModal && (
         <NewThreadModal
-          clients={clients.map(c => ({ id: c.id, name: c.client_name, avatar: c.client_avatar }))}
+          clients={clients.map(c => ({ 
+            id: c.client.id, 
+            name: c.client.name, 
+            avatar: c.client.avatar 
+          }))}
           onSubmit={handleCreateThread}
           onClose={() => setShowNewThreadModal(false)}
         />

@@ -16,7 +16,8 @@ export default function ServicesPage() {
     setLoading(true);
     try {
       const data = await getServices();
-      setServices(data);
+      // Defensive: ensure array
+      setServices(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load services:', error);
       setServices([]);
