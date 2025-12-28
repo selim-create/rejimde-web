@@ -2955,15 +2955,17 @@ export async function getProClients(options?: {
 
     const json = await res.json();
     
+    const defaultMeta = { total: 0, active: 0, pending: 0, archived: 0 };
+    
     if (json.status === 'success') {
       // Check nested format first (expected)
       let clients = json.data || [];
-      let meta = json.meta || { total: 0, active: 0, pending: 0, archived: 0 };
+      let meta = json.meta || defaultMeta;
       
       // Check root level (legacy)
       if (!json.data && json.clients) {
         clients = json.clients;
-        meta = json.meta || { total: 0, active: 0, pending: 0, archived: 0 };
+        meta = json.meta || defaultMeta;
       }
       
       // Ensure clients have the correct nested structure
@@ -2975,15 +2977,15 @@ export async function getProClients(options?: {
         }
         
         // If the client data is flat, restructure it
-        // Flat format might have: id, name, email, avatar at the root level
-        // We need to move them under a 'client' property
+        // Extract client-specific fields and move them under 'client' property
+        const { client_id, client_name, client_avatar, client_email, name, avatar, email, ...restFields } = item;
         return {
-          ...item,
+          ...restFields,
           client: {
-            id: item.client_id || item.id,
-            name: item.client_name || item.name || '',
-            avatar: item.client_avatar || item.avatar || '',
-            email: item.client_email || item.email || ''
+            id: client_id || item.id,
+            name: client_name || name || '',
+            avatar: client_avatar || avatar || '',
+            email: client_email || email || ''
           }
         };
       });
@@ -2994,7 +2996,7 @@ export async function getProClients(options?: {
       };
     }
 
-    return { clients: [], meta: { total: 0, active: 0, pending: 0, archived: 0 } };
+    return { clients: [], meta: defaultMeta };
   } catch (error) {
     console.error('getProClients error:', error);
     return { clients: [], meta: { total: 0, active: 0, pending: 0, archived: 0 } };
