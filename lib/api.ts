@@ -2935,6 +2935,8 @@ export async function getProClients(options?: {
   limit?: number;
   offset?: number;
 }): Promise<ClientsListResponse> {
+  const defaultMeta = { total: 0, active: 0, pending: 0, archived: 0 };
+  
   try {
     const params = new URLSearchParams();
     if (options?.status) params.append('status', options.status);
@@ -2950,12 +2952,10 @@ export async function getProClients(options?: {
     });
 
     if (!res.ok) {
-      return { clients: [], meta: { total: 0, active: 0, pending: 0, archived: 0 } };
+      return { clients: [], meta: defaultMeta };
     }
 
     const json = await res.json();
-    
-    const defaultMeta = { total: 0, active: 0, pending: 0, archived: 0 };
     
     if (json.status === 'success') {
       // Check nested format first (expected)
@@ -2999,7 +2999,7 @@ export async function getProClients(options?: {
     return { clients: [], meta: defaultMeta };
   } catch (error) {
     console.error('getProClients error:', error);
-    return { clients: [], meta: { total: 0, active: 0, pending: 0, archived: 0 } };
+    return { clients: [], meta: defaultMeta };
   }
 }
 
