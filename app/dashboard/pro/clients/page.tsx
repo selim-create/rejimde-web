@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getProClients, addProClient, createClientInvite, ClientListItem, getServices, type Service } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -15,6 +15,7 @@ export default function ProClientsPage() {
   const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'archived'>('active');
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const isInitialMount = useRef(true);
 
   // Form states for adding client
   const [formData, setFormData] = useState({
@@ -70,8 +71,14 @@ export default function ProClientsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Search with debounce - refetch when search term changes
+  // Search with debounce - refetch when search term changes (but not on initial render)
   useEffect(() => {
+    // Skip the debounced call on initial mount (already fetched by the effect above)
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
     const timer = setTimeout(() => {
       fetchClients();
     }, 300);
