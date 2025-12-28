@@ -2935,6 +2935,8 @@ export async function getProClients(options?: {
   limit?: number;
   offset?: number;
 }): Promise<ClientsListResponse> {
+  const defaultMeta = { total: 0, active: 0, pending: 0, archived: 0 };
+  
   try {
     const params = new URLSearchParams();
     if (options?.status) params.append('status', options.status);
@@ -2950,22 +2952,55 @@ export async function getProClients(options?: {
     });
 
     if (!res.ok) {
-      return { clients: [], meta: { total: 0, active: 0, pending: 0, archived: 0 } };
+      return { clients: [], meta: defaultMeta };
     }
 
     const json = await res.json();
     
     if (json.status === 'success') {
+      // Check nested format first (expected)
+      let clients = json.data || [];
+      let meta = json.meta || defaultMeta;
+      
+      // Check root level (legacy) - only if nested data doesn't exist at all
+      if (json.data === undefined && json.clients !== undefined) {
+        clients = json.clients;
+        meta = json.meta || defaultMeta;
+      }
+      
+      // Ensure clients have the correct nested structure
+      // Handle flat client objects vs nested client objects
+      const normalizedClients = (Array.isArray(clients) ? clients : []).map((item: any) => {
+        // If the client data is already nested correctly, return as-is
+        if (item.client && typeof item.client === 'object' && item.client.id) {
+          return item;
+        }
+        
+        // If the client data is flat, restructure it
+        // Extract client-specific fields and move them under 'client' property
+        // Priority: prefixed fields (client_*) take precedence over non-prefixed fields
+        const { client_id, client_name, client_avatar, client_email, name, avatar, email, id, ...restFields } = item;
+        return {
+          ...restFields,
+          client: {
+            id: client_id || id,
+            name: client_name || name || '',
+            avatar: client_avatar || avatar || '',
+            email: client_email || email || ''
+          }
+        };
+      });
+      
       return {
-        clients: json.data || [],
-        meta: json.meta || { total: 0, active: 0, pending: 0, archived: 0 }
+        clients: normalizedClients,
+        meta
       };
     }
 
-    return { clients: [], meta: { total: 0, active: 0, pending: 0, archived: 0 } };
+    return { clients: [], meta: defaultMeta };
   } catch (error) {
     console.error('getProClients error:', error);
-    return { clients: [], meta: { total: 0, active: 0, pending: 0, archived: 0 } };
+    return { clients: [], meta: defaultMeta };
   }
 }
 
@@ -3316,10 +3351,21 @@ export async function getInboxThreads(options?: {
     const json = await res.json();
     
     if (json.status === 'success') {
-      return {
-        threads: json.data?.threads || [],
-        meta: json.data?.meta || { total: 0, unread_total: 0 }
-      };
+      // Check nested format first (expected)
+      if (json.data) {
+        return {
+          threads: json.data.threads || [],
+          meta: json.data.meta || { total: 0, unread_total: 0 }
+        };
+      }
+      
+      // Check root level (legacy)
+      if (json.threads !== undefined || json.meta !== undefined) {
+        return {
+          threads: json.threads || [],
+          meta: json.meta || { total: 0, unread_total: 0 }
+        };
+      }
     }
 
     return { threads: [], meta: { total: 0, unread_total: 0 } };
@@ -4263,7 +4309,18 @@ export async function getPayments(options?: {
     const json = await res.json();
     
     if (json.status === 'success') {
-      return json.data;
+      // Check nested format first (expected)
+      if (json.data) {
+        return json.data;
+      }
+      
+      // Check root level (legacy)
+      if (json.payments !== undefined || json.meta !== undefined) {
+        return {
+          payments: json.payments || [],
+          meta: json.meta || { total: 0, total_amount: 0, paid_amount: 0, pending_amount: 0 }
+        };
+      }
     }
 
     throw new Error(json.message || 'Failed to fetch payments');
@@ -4410,7 +4467,8 @@ export async function getServices(): Promise<Service[]> {
     const json = await res.json();
     
     if (json.status === 'success') {
-      return json.data?.services || [];
+      // Check nested format first (expected), then root level (legacy)
+      return json.data?.services || json.services || [];
     }
 
     throw new Error(json.message || 'Failed to fetch services');
