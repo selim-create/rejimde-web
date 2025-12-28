@@ -35,21 +35,33 @@ export default function ProClientsPage() {
   // Fetch clients
   const fetchClients = async () => {
     setLoading(true);
-    
-    const result = await getProClients({
-      status: activeTab,
-      search: searchTerm || undefined
-    });
-    
-    setClients(result.clients);
-    setMeta(result.meta);
-    setLoading(false);
+    try {
+      const result = await getProClients({
+        status: activeTab,
+        search: searchTerm || undefined
+      });
+      
+      // Defensive: ensure we have valid data
+      setClients(Array.isArray(result.clients) ? result.clients : []);
+      setMeta(result.meta || { total: 0, active: 0, pending: 0, archived: 0 });
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      setClients([]);
+      setMeta({ total: 0, active: 0, pending: 0, archived: 0 });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Fetch services for package selection
   const fetchServices = async () => {
-    const data = await getServices();
-    setServices(data || []);
+    try {
+      const data = await getServices();
+      setServices(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      setServices([]);
+    }
   };
 
   useEffect(() => {
