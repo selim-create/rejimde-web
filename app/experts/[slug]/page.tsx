@@ -61,6 +61,10 @@ interface ExpertDetail {
     bio?: string;
     is_claimed?: boolean;
     
+    // User ID fields (backend'den dönen user ID)
+    user_id?: number;           // Alternatif alan adı
+    related_user_id?: number;   // Backend'den dönen user ID
+    
     // Kimlik & Profil
     motto?:  string;
     
@@ -214,9 +218,13 @@ export default function ExpertProfilePage() {
                 });
                 
                 // Load expert's services
-                const servicesData = await getExpertPublicServices(data.id);
-                // Filter only active services
-                setServices(servicesData.filter(s => s.is_active));
+                // Use user_id instead of post ID (data.id)
+                const userId = (data as any).related_user_id || (data as any).user_id;
+                if (userId) {
+                    const servicesData = await getExpertPublicServices(userId);
+                    // Filter only active services
+                    setServices(servicesData.filter(s => s.is_active));
+                }
             } else {
                 setNotFound(true);
             }
