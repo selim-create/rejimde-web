@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createAppointment, getProClients, getExpertAddresses, getAvailabilitySettings } from '@/lib/api';
-import type { Appointment, ClientListItem, ExpertAddress } from '@/lib/api';
+import { createAppointment, getProClients, getExpertAddresses, getAvailabilitySettings, getExpertSettings } from '@/lib/api';
+import type { Appointment, ClientListItem, ExpertAddress, ExpertSettings } from '@/lib/api';
 import { generateTimeSlots, toISODateString } from '@/lib/calendar-utils';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 
@@ -29,6 +29,7 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [addresses, setAddresses] = useState<ExpertAddress[]>([]);
+  const [settings, setSettings] = useState<ExpertSettings | null>(null);
   const [isPersonal, setIsPersonal] = useState(false);
   const [showCustomAddress, setShowCustomAddress] = useState(false);
   const [availabilityHours, setAvailabilityHours] = useState({ start: 0, end: 24 });
@@ -70,6 +71,20 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
     setAddresses(result);
   }, []);
 
+  const loadSettings = useCallback(async () => {
+    const data = await getExpertSettings();
+    if (data) {
+      setSettings(data);
+      // Pre-fill default meeting link for online appointments
+      if (data.default_meeting_link && formData.type === 'online') {
+        setFormData(prev => ({
+          ...prev,
+          meeting_link: data.default_meeting_link || ''
+        }));
+      }
+    }
+  }, []);
+
   const loadAvailability = useCallback(async () => {
     const settings = await getAvailabilitySettings();
     if (settings && settings.schedule.length > 0) {
@@ -93,8 +108,19 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
   useEffect(() => {
     loadClients();
     loadAddresses();
+    loadSettings();
     loadAvailability();
-  }, [loadClients, loadAddresses, loadAvailability]);
+  }, [loadClients, loadAddresses, loadSettings, loadAvailability]);
+
+  // When type changes to 'online', set the default meeting link
+  useEffect(() => {
+    if (formData.type === 'online' && settings?.default_meeting_link && !formData.meeting_link) {
+      setFormData(prev => ({
+        ...prev,
+        meeting_link: settings.default_meeting_link || ''
+      }));
+    }
+  }, [formData.type, settings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +137,7 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
 
     setIsProcessing(true);
     const result = await createAppointment({
-      client_id: isPersonal ? undefined : parseInt(formData.client_id),
+      client_id: isPersonal ? 0 : parseInt(formData.client_id) || 0,
       service_id: formData.service_id ? parseInt(formData.service_id) : undefined,
       title: formData.title || (isPersonal ? 'Kişisel Randevu' : 'Randevu'),
       date: formData.date,
@@ -125,15 +151,21 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
     setIsProcessing(false);
 
     if (result.success && result.appointment) {
-      onSuccess(result.appointment);
+      // FIRST close the appointment modal
       onClose();
+      
+      // THEN call onSuccess to refresh data
+      onSuccess(result.appointment);
+      
+      // Show SUCCESS modal (not error!)
       setConfirmModal({
         isOpen: true,
-        type: 'success',
-        title: 'Başarılı!',
-        message: translateError(result.message || 'Randevu başarıyla oluşturuldu.')
+        type: 'success',  // <-- THIS MUST BE 'success', NOT 'error'
+        title: 'Başarılı',
+        message: 'Randevu başarıyla oluşturuldu!'
       });
     } else {
+      // Show ERROR modal only on actual errors
       setConfirmModal({
         isOpen: true,
         type: 'error',
@@ -368,6 +400,12 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
                 placeholder="https://zoom.us/j/..."
                 className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
               />
+              {settings?.default_meeting_link && formData.meeting_link === settings.default_meeting_link && (
+                <p className="text-xs text-slate-500 mt-1">
+                  <i className="fa-solid fa-check text-green-400 mr-1"></i>
+                  Varsayılan toplantı linkiniz kullanılıyor
+                </p>
+              )}
             </div>
           )}
 
@@ -378,30 +416,31 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
                 Lokasyon
               </label>
               
-              {/* Address Selection */}
+              {/* Address Selection Dropdown */}
               {addresses.length > 0 && (
                 <select
                   value={formData.selected_address_id}
                   onChange={handleAddressSelect}
-                  className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold mb-3"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold mb-2"
                 >
-                  <option value="">Adres Seçin veya Yeni Girin</option>
+                  <option value="">Kayıtlı Adreslerden Seç</option>
                   {addresses.map(addr => (
                     <option key={addr.id} value={addr.id}>
                       {addr.title} - {addr.address}
+                      {addr.is_default && ' (Varsayılan)'}
                     </option>
                   ))}
                   <option value="custom">+ Özel Adres Gir</option>
                 </select>
               )}
               
-              {/* Custom Address Input */}
+              {/* Manual Location Input */}
               {(showCustomAddress || addresses.length === 0) && (
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="Ofis adresi veya görüşme yeri"
+                  placeholder="Veya manuel adres girin..."
                   className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
                 />
               )}

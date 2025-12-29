@@ -15,7 +15,7 @@ export default function WeekView({
   appointments,
   onAppointmentClick,
   startHour = 8,
-  endHour = 20
+  endHour = 24
 }: WeekViewProps) {
   const weekDays = getWeekDays(currentDate);
   const hours = getDayHours(startHour, endHour);
