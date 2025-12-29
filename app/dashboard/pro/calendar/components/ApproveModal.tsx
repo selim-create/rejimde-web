@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { approveAppointmentRequest } from '@/lib/api';
+import { approveAppointmentRequest, getAvailabilitySettings } from '@/lib/api';
 import type { AppointmentRequest } from '@/lib/api';
 import { generateTimeSlots } from '@/lib/calendar-utils';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import { useEffect } from 'react';
 
 interface ApproveModalProps {
   request: AppointmentRequest;
@@ -11,6 +13,18 @@ interface ApproveModalProps {
 
 export default function ApproveModal({ request, onClose, onSuccess }: ApproveModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [availabilityHours, setAvailabilityHours] = useState({ start: 0, end: 24 });
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
   const [formData, setFormData] = useState({
     date: request.preferred_date,
     start_time: request.preferred_time,
@@ -18,11 +32,38 @@ export default function ApproveModal({ request, onClose, onSuccess }: ApproveMod
     meeting_link: ''
   });
 
+  useEffect(() => {
+    async function loadAvailability() {
+      const settings = await getAvailabilitySettings();
+      if (settings && settings.schedule.length > 0) {
+        let minHour = 24;
+        let maxHour = 0;
+        
+        settings.schedule.forEach(day => {
+          day.slots.forEach(slot => {
+            const startHour = parseInt(slot.start.split(':')[0]);
+            const endHour = parseInt(slot.end.split(':')[0]);
+            minHour = Math.min(minHour, startHour);
+            maxHour = Math.max(maxHour, endHour);
+          });
+        });
+        
+        setAvailabilityHours({ start: minHour, end: maxHour + 1 });
+      }
+    }
+    loadAvailability();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (formData.type === 'online' && !formData.meeting_link.trim()) {
-      alert('Online randevu için toplantı linki gereklidir.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Eksik Bilgi',
+        message: 'Online randevu için toplantı linki gereklidir.'
+      });
       return;
     }
 
@@ -36,15 +77,25 @@ export default function ApproveModal({ request, onClose, onSuccess }: ApproveMod
     setIsProcessing(false);
 
     if (result.success) {
-      alert('Randevu talebi onaylandı!');
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Başarılı!',
+        message: 'Randevu talebi onaylandı!'
+      });
       onSuccess();
-      onClose();
+      setTimeout(onClose, 1500);
     } else {
-      alert(result.message || 'Talep onaylanamadı.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Talep onaylanamadı.'
+      });
     }
   };
 
-  const timeSlots = generateTimeSlots(8, 20, 30);
+  const timeSlots = generateTimeSlots(availabilityHours.start, availabilityHours.end, 30);
 
   return (
     <div 
@@ -233,6 +284,15 @@ export default function ApproveModal({ request, onClose, onSuccess }: ApproveMod
           </div>
         </form>
       </div>
+      
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 }
