@@ -7,6 +7,7 @@ import { getExpertBySlug, getExpertPublicServices, type Service } from "@/lib/ap
 import { formatCurrency } from "@/lib/format-utils";
 import MascotDisplay from "@/components/MascotDisplay";
 import ExpertReviews from "@/components/CommentsExperts";
+import AppointmentRequestModal from "@/components/AppointmentRequestModal";
 import { 
   EXPERTISE_TAGS, 
   GOAL_TAGS, 
@@ -167,6 +168,7 @@ export default function ExpertProfilePage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
+  const [showRequestModal, setShowRequestModal] = useState(false);
 
   const rawSlug = params?. slug 
     ? (Array.isArray(params.slug) ? params.slug[0] : params.slug) 
@@ -528,8 +530,11 @@ export default function ExpertProfilePage() {
 
                             {/* CTA Buttons */}
                             <div className="grid grid-cols-1 gap-3">
-                                <button className="bg-rejimde-green text-white w-full py-3 rounded-xl font-extrabold text-lg shadow-btn shadow-rejimde-greenDark btn-game uppercase tracking-wide flex items-center justify-center gap-2">
-                                    <i className="fa-solid fa-calendar-check"></i> Randevu Al
+                                <button 
+                                    onClick={() => setShowRequestModal(true)}
+                                    className="bg-rejimde-green text-white w-full py-3 rounded-xl font-extrabold text-lg shadow-btn shadow-rejimde-greenDark btn-game uppercase tracking-wide flex items-center justify-center gap-2"
+                                >
+                                    <i className="fa-solid fa-calendar-plus"></i> Randevu Al
                                 </button>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button className="bg-white border-2 border-gray-200 text-gray-500 w-full py-3 rounded-xl font-extrabold text-sm shadow-btn shadow-gray-200 btn-game hover:text-rejimde-blue hover:border-rejimde-blue transition flex flex-col items-center justify-center">
@@ -943,6 +948,19 @@ export default function ExpertProfilePage() {
                 </div>
             </div>
         </div>
+        
+        {/* Appointment Request Modal */}
+        {showRequestModal && expert && (
+            <AppointmentRequestModal
+                expertId={expert.id}
+                expertName={expert.name}
+                onClose={() => setShowRequestModal(false)}
+                onSuccess={() => {
+                    setShowRequestModal(false);
+                    // Optionally show a success message
+                }}
+            />
+        )}
       </div>
     );
 }

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { getMe as getRealMe } from "@/lib/api";
-import { getProClients, ClientListItem } from "@/lib/api";
+import { getMe as getRealMe, getProClients, ClientListItem, getAppointmentRequests, AppointmentRequest } from "@/lib/api";
 // import Link from "next/link"; // Hata verdiği için kaldırıldı, <a> etiketi kullanılacak.
 
 // --- MOCK API (Bağımlılığı kaldırmak için) ---
@@ -191,6 +190,8 @@ export default function ProDashboardPage() {
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [clientsPreview, setClientsPreview] = useState<ClientListItem[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<AppointmentRequest[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
 
   // Dashboard'da sadece bugünün veya yaklaşan randevuları gösterelim (son 2 kayıt)
   const upcomingAppointments = MOCK_APPOINTMENTS.slice(0, 2);
@@ -229,6 +230,14 @@ export default function ProDashboardPage() {
         setClientsPreview(result.clients);
     }
     fetchClientsPreview();
+    
+    // Fetch pending appointment requests
+    async function fetchPendingRequests() {
+        const result = await getAppointmentRequests('pending');
+        setPendingRequests(result.requests.slice(0, 3)); // Show only first 3
+        setPendingCount(result.meta.pending);
+    }
+    fetchPendingRequests();
   }, []);
 
   const handleGiveBadge = (badgeLabel: string) => {
@@ -432,37 +441,53 @@ export default function ProDashboardPage() {
                     <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-                                <i className="fa-solid fa-bell text-yellow-400"></i> Randevu Talepleri
+                                <i className="fa-solid fa-bell text-yellow-400"></i> Bekleyen Talepler
                             </h2>
-                            <span className="bg-yellow-500/10 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-500/20">
-                                {MOCK_APPOINTMENT_REQUESTS.length} Bekleyen
-                            </span>
+                            {pendingCount > 0 && (
+                                <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                    {pendingCount}
+                                </span>
+                            )}
                         </div>
-                        <div className="space-y-3">
-                            {MOCK_APPOINTMENT_REQUESTS.map((req) => (
-                                <div key={req.id} className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 rounded-2xl">
-                                    <div className="flex items-center gap-3">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={req.avatar} className="w-10 h-10 rounded-xl" alt={req.clientName} />
-                                        <div>
-                                            <h4 className="font-bold text-white text-sm">{req.clientName}</h4>
-                                            <p className="text-xs text-slate-400 font-bold">{req.service}</p>
-                                            <div className="flex items-center gap-2 mt-1 text-xs font-bold text-blue-400">
-                                                <i className="fa-regular fa-calendar"></i> {req.date} - {req.time}
+                        
+                        {pendingRequests.length > 0 ? (
+                            <>
+                                <div className="space-y-3">
+                                    {pendingRequests.map((request) => (
+                                        <div key={request.id} className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-700 rounded-2xl hover:border-yellow-500/30 transition">
+                                            <div className="flex items-center gap-3">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img src={request.requester.avatar} className="w-10 h-10 rounded-xl" alt={request.requester.name} />
+                                                <div>
+                                                    <h4 className="font-bold text-white text-sm">{request.requester.name}</h4>
+                                                    <p className="text-xs text-slate-400 font-bold">{request.service_name || 'Randevu Talebi'}</p>
+                                                    <div className="flex items-center gap-2 mt-1 text-xs font-bold text-blue-400">
+                                                        <i className="fa-regular fa-calendar"></i> {request.preferred_date} - {request.preferred_time}
+                                                    </div>
+                                                </div>
                                             </div>
+                                            <a 
+                                                href="/dashboard/pro/calendar/requests" 
+                                                className="text-blue-400 hover:text-blue-300 font-bold text-xs px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition"
+                                            >
+                                                Görüntüle
+                                            </a>
                                         </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button className="w-9 h-9 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white transition flex items-center justify-center">
-                                            <i className="fa-solid fa-check"></i>
-                                        </button>
-                                        <button className="w-9 h-9 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white transition flex items-center justify-center">
-                                            <i className="fa-solid fa-xmark"></i>
-                                        </button>
-                                    </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
+                                <a 
+                                    href="/dashboard/pro/calendar/requests" 
+                                    className="block text-center mt-4 text-blue-400 font-bold text-sm hover:text-blue-300 transition"
+                                >
+                                    Tümünü Gör →
+                                </a>
+                            </>
+                        ) : (
+                            <div className="text-center py-8">
+                                <i className="fa-solid fa-inbox text-2xl text-slate-600 mb-2"></i>
+                                <p className="text-slate-500 text-sm font-bold">Bekleyen talep yok</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* CLIENTS SUMMARY */}
