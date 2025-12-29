@@ -6,13 +6,14 @@ import { getCalendarAppointments } from '@/lib/api';
 import type { Appointment, BlockedTime } from '@/lib/api';
 import { getWeekStart, getWeekEnd, getMonthStart, getMonthEnd, toISODateString, formatDateRange } from '@/lib/calendar-utils';
 import { addDays, subDays, addMonths, subMonths } from 'date-fns';
+import DailyView from './components/DailyView';
 import WeekView from './components/WeekView';
 import MonthView from './components/MonthView';
 import AppointmentModal from './components/AppointmentModal';
 import NewAppointmentModal from './components/NewAppointmentModal';
 
 export default function ProCalendarPage() {
-  const [viewType, setViewType] = useState<'week' | 'month'>('week');
+  const [viewType, setViewType] = useState<'day' | 'week' | 'month'>('day'); // Default: day view
   const [currentDate, setCurrentDate] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([]);
@@ -43,7 +44,9 @@ export default function ProCalendarPage() {
   };
 
   const handlePreviousPeriod = () => {
-    if (viewType === 'week') {
+    if (viewType === 'day') {
+      setCurrentDate(subDays(currentDate, 1));
+    } else if (viewType === 'week') {
       setCurrentDate(subDays(currentDate, 7));
     } else {
       setCurrentDate(subMonths(currentDate, 1));
@@ -51,7 +54,9 @@ export default function ProCalendarPage() {
   };
 
   const handleNextPeriod = () => {
-    if (viewType === 'week') {
+    if (viewType === 'day') {
+      setCurrentDate(addDays(currentDate, 1));
+    } else if (viewType === 'week') {
       setCurrentDate(addDays(currentDate, 7));
     } else {
       setCurrentDate(addMonths(currentDate, 1));
@@ -82,7 +87,9 @@ export default function ProCalendarPage() {
 
   // Get display text for current period
   const getPeriodText = () => {
-    if (viewType === 'week') {
+    if (viewType === 'day') {
+      return currentDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+    } else if (viewType === 'week') {
       return formatDateRange(getWeekStart(currentDate), getWeekEnd(currentDate));
     } else {
       return currentDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
@@ -109,6 +116,17 @@ export default function ProCalendarPage() {
             <div className="flex items-center gap-3 flex-wrap">
               {/* View Toggle */}
               <div className="flex items-center bg-slate-700 rounded-xl p-1">
+                <button
+                  onClick={() => setViewType('day')}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition ${
+                    viewType === 'day'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <i className="fa-solid fa-calendar-day mr-1"></i>
+                  Gün
+                </button>
                 <button
                   onClick={() => setViewType('week')}
                   className={`px-3 py-2 rounded-lg text-xs font-bold transition ${
@@ -203,6 +221,13 @@ export default function ProCalendarPage() {
               <p className="text-slate-400">Takvim yükleniyor...</p>
             </div>
           </div>
+        ) : viewType === 'day' ? (
+          <DailyView
+            currentDate={currentDate}
+            appointments={appointments}
+            onAppointmentClick={handleAppointmentClick}
+            onNewAppointment={() => setShowNewModal(true)}
+          />
         ) : viewType === 'week' ? (
           <WeekView
             currentDate={currentDate}
