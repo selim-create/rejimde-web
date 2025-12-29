@@ -362,9 +362,6 @@ export default function ProDashboardPage() {
             <a href="/dashboard/pro/planner" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-wand-magic-sparkles w-6 text-center text-purple-500"></i> AI Asistan
             </a>
-            <a href="/dashboard/pro/settings" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
-                <i className="fa-solid fa-gear w-6 text-center group-hover:text-gray-300"></i> Ayarlar
-            </a>
         </div>
 
         {/* MAIN CONTENT */}

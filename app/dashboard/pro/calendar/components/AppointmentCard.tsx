@@ -10,15 +10,16 @@ interface AppointmentCardProps {
 export default function AppointmentCard({ appointment, style, onClick }: AppointmentCardProps) {
   const statusColor = getStatusColor(appointment.status);
   const typeIcon = getTypeIcon(appointment.type);
+  const isPersonal = !appointment.client;
 
   return (
     <div
-      className={`absolute left-1 right-1 ${statusColor} rounded-lg p-2 cursor-pointer hover:opacity-90 transition-opacity overflow-hidden`}
+      className={`absolute left-1 right-1 ${statusColor} rounded-lg p-2 cursor-pointer hover:opacity-90 transition-opacity overflow-hidden ${isPersonal ? 'border-2 border-purple-400 border-dashed' : ''}`}
       style={style}
       onClick={onClick}
     >
       <div className="text-xs font-bold text-white truncate">
-        {appointment.client.name}
+        {appointment.client?.name || 'Kişisel Randevu'}
       </div>
       <div className="text-xs text-white/80 truncate">
         {appointment.start_time.substring(0, 5)} - {appointment.end_time.substring(0, 5)}

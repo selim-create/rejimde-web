@@ -38,6 +38,7 @@ export default function AppointmentModal({ appointment, onClose, onUpdate }: App
   const statusColor = getStatusColor(appointment.status);
   const typeIcon = getTypeIcon(appointment.type);
   const typeLabel = getTypeLabel(appointment.type);
+  const isPersonal = !appointment.client;
 
   const handleComplete = async () => {
     setConfirmModal({
@@ -173,25 +174,40 @@ export default function AppointmentModal({ appointment, onClose, onUpdate }: App
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Client Info */}
-          <div>
-            <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Danışan Bilgileri</h3>
-            <div className="flex items-center gap-4">
-              <img
-                src={appointment.client.avatar}
-                alt={appointment.client.name}
-                className="w-14 h-14 rounded-xl"
-              />
-              <div>
-                <h4 className="font-bold text-white text-lg">{appointment.client.name}</h4>
-                {appointment.client.email && (
-                  <p className="text-sm text-slate-400">{appointment.client.email}</p>
-                )}
-                {appointment.client.phone && (
-                  <p className="text-sm text-slate-400">{appointment.client.phone}</p>
-                )}
+          {!isPersonal ? (
+            <div>
+              <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Danışan Bilgileri</h3>
+              <div className="flex items-center gap-4">
+                <img
+                  src={appointment.client.avatar}
+                  alt={appointment.client.name}
+                  className="w-14 h-14 rounded-xl"
+                />
+                <div>
+                  <h4 className="font-bold text-white text-lg">{appointment.client.name}</h4>
+                  {appointment.client.email && (
+                    <p className="text-sm text-slate-400">{appointment.client.email}</p>
+                  )}
+                  {appointment.client.phone && (
+                    <p className="text-sm text-slate-400">{appointment.client.phone}</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div>
+              <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Randevu Türü</h3>
+              <div className="flex items-center gap-3 bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
+                <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                  <i className="fa-solid fa-user-clock text-purple-400 text-xl"></i>
+                </div>
+                <div>
+                  <h4 className="font-bold text-white">Kişisel Randevu</h4>
+                  <p className="text-sm text-slate-400">Danışan atanmamış</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Details Grid */}
           <div className="grid grid-cols-2 gap-4">

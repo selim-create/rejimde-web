@@ -46,6 +46,10 @@ const SIDEBAR_SECTIONS = [
   { id: 'excluded', icon: 'fa-triangle-exclamation', label: 'Çalışmadığı Durumlar' },
   { id: 'work', icon: 'fa-clock', label: 'Çalışma & İletişim' },
   { id: 'privacy', icon: 'fa-shield', label: 'Görünürlük' },
+  { id: 'bank', icon: 'fa-building-columns', label: 'Banka Bilgileri' },
+  { id: 'business', icon: 'fa-briefcase', label: 'İşletme Bilgileri' },
+  { id: 'addresses', icon: 'fa-location-dot', label: 'Adreslerim' },
+  { id: 'appointment', icon: 'fa-calendar-check', label: 'Randevu Ayarları' },
   { id: 'security', icon: 'fa-lock', label: 'Güvenlik' },
 ];
 
@@ -108,6 +112,21 @@ type FormData = {
   };
   kvkk_consent: boolean;
   emergency_disclaimer: boolean;
+
+  // Bank Information
+  bank_name: string;
+  iban: string;
+  account_holder: string;
+
+  // Business Information
+  company_name: string;
+  tax_number: string;
+  business_phone: string;
+  business_email: string;
+
+  // Appointment Settings
+  default_meeting_link: string;
+  auto_confirm_appointments: boolean;
 };
 
 export default function ProSettingsPage() {
@@ -117,6 +136,10 @@ export default function ProSettingsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const certInputRef = useRef<HTMLInputElement>(null);
+
+  const [addresses, setAddresses] = useState<any[]>([]);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<any>(null);
 
   const [formData, setFormData] = useState<FormData>({
     // Basic identity
@@ -177,6 +200,21 @@ export default function ProSettingsPage() {
     },
     kvkk_consent: false,
     emergency_disclaimer: false,
+
+    // Bank Information
+    bank_name: "",
+    iban: "",
+    account_holder: "",
+
+    // Business Information
+    company_name: "",
+    tax_number: "",
+    business_phone: "",
+    business_email: "",
+
+    // Appointment Settings
+    default_meeting_link: "",
+    auto_confirm_appointments: false,
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -281,7 +319,27 @@ export default function ProSettingsPage() {
             }),
             kvkk_consent: Boolean(userData.kvkk_consent),
             emergency_disclaimer: Boolean(userData.emergency_disclaimer),
+
+            // Bank Information
+            bank_name: userData.bank_name || "",
+            iban: userData.iban || "",
+            account_holder: userData.account_holder || "",
+
+            // Business Information
+            company_name: userData.company_name || "",
+            tax_number: userData.tax_number || "",
+            business_phone: userData.business_phone || "",
+            business_email: userData.business_email || "",
+
+            // Appointment Settings
+            default_meeting_link: userData.default_meeting_link || "",
+            auto_confirm_appointments: Boolean(userData.auto_confirm_appointments),
           });
+
+          // Load addresses if they exist
+          if (userData.addresses && Array.isArray(userData.addresses)) {
+            setAddresses(userData.addresses);
+          }
         } else {
           const fallback = getLocalStorageFallback();
           setFormData((prev) => ({ ...prev, ...fallback }));
@@ -544,6 +602,41 @@ export default function ProSettingsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Address Management Functions
+  const addNewAddress = () => {
+    setEditingAddress(null);
+    setShowAddressModal(true);
+  };
+
+  const editAddress = (address: any) => {
+    setEditingAddress(address);
+    setShowAddressModal(true);
+  };
+
+  const deleteAddress = async (addressId: number) => {
+    if (!confirm('Bu adresi silmek istediğinize emin misiniz?')) return;
+    
+    setSaving(true);
+    // Mock delete for now - will need to integrate with API
+    setAddresses(addresses.filter(a => a.id !== addressId));
+    setMessage({ type: "success", text: "Adres silindi." });
+    setSaving(false);
+  };
+
+  const saveAddress = (addressData: any) => {
+    if (editingAddress) {
+      // Update existing
+      setAddresses(addresses.map(a => a.id === editingAddress.id ? { ...addressData, id: editingAddress.id } : a));
+      setMessage({ type: "success", text: "Adres güncellendi." });
+    } else {
+      // Add new
+      const newAddress = { ...addressData, id: Date.now() };
+      setAddresses([...addresses, newAddress]);
+      setMessage({ type: "success", text: "Adres eklendi." });
+    }
+    setShowAddressModal(false);
   };
 
   if (loading) return <div className="p-8 text-center text-gray-500 font-bold">Yükleniyor...</div>;
@@ -858,6 +951,190 @@ export default function ProSettingsPage() {
 
         <PrivacySettingsSection formData={formData} setFormData={setFormData} toggleTag={toggleTag} calculateExperience={calculateExperience} />
 
+        {/* BANK INFORMATION */}
+        <div id="bank" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
+          <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
+            <i className="fa-solid fa-building-columns text-green-400"></i> Banka Bilgileri
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Banka Adı</label>
+              <input
+                type="text"
+                name="bank_name"
+                value={formData.bank_name}
+                onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                placeholder="Örn: Ziraat Bankası"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-green-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Hesap Sahibi</label>
+              <input
+                type="text"
+                name="account_holder"
+                value={formData.account_holder}
+                onChange={(e) => setFormData({ ...formData, account_holder: e.target.value })}
+                placeholder="Ad Soyad"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-green-400"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">IBAN</label>
+              <input
+                type="text"
+                name="iban"
+                value={formData.iban}
+                onChange={(e) => setFormData({ ...formData, iban: e.target.value })}
+                placeholder="TR00 0000 0000 0000 0000 0000 00"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-green-400"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* BUSINESS INFORMATION */}
+        <div id="business" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
+          <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
+            <i className="fa-solid fa-briefcase text-blue-400"></i> İşletme Bilgileri
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Şirket Adı (Opsiyonel)</label>
+              <input
+                type="text"
+                name="company_name"
+                value={formData.company_name}
+                onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Vergi Numarası (Opsiyonel)</label>
+              <input
+                type="text"
+                name="tax_number"
+                value={formData.tax_number}
+                onChange={(e) => setFormData({ ...formData, tax_number: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">İş Telefonu</label>
+              <input
+                type="tel"
+                name="business_phone"
+                value={formData.business_phone}
+                onChange={(e) => setFormData({ ...formData, business_phone: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">İş E-postası</label>
+              <input
+                type="email"
+                name="business_email"
+                value={formData.business_email}
+                onChange={(e) => setFormData({ ...formData, business_email: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-blue-400"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ADDRESSES */}
+        <div id="addresses" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+              <i className="fa-solid fa-location-dot text-red-400"></i> Adreslerim
+            </h2>
+            <button
+              onClick={addNewAddress}
+              className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-blue-500 transition"
+            >
+              <i className="fa-solid fa-plus mr-2"></i>
+              Yeni Adres
+            </button>
+          </div>
+          
+          {addresses.length > 0 ? (
+            <div className="space-y-3">
+              {addresses.map((address) => (
+                <div key={address.id} className="border border-slate-600 rounded-xl p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h4 className="font-bold text-white mb-1">{address.title}</h4>
+                      <p className="text-slate-400 text-sm mb-1">{address.address}</p>
+                      <p className="text-slate-500 text-xs">
+                        {address.district && `${address.district}, `}{address.city}
+                      </p>
+                      {address.is_default && (
+                        <span className="inline-block mt-2 text-xs font-bold text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">
+                          Varsayılan
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => editAddress(address)}
+                        className="text-blue-400 hover:text-blue-300 px-3 py-1 text-sm font-bold"
+                      >
+                        Düzenle
+                      </button>
+                      <button
+                        onClick={() => deleteAddress(address.id)}
+                        className="text-red-400 hover:text-red-300 px-3 py-1 text-sm font-bold"
+                      >
+                        Sil
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-500">
+              <i className="fa-solid fa-location-dot text-3xl mb-2 block"></i>
+              <p className="font-bold">Henüz adres eklenmemiş</p>
+            </div>
+          )}
+        </div>
+
+        {/* APPOINTMENT SETTINGS */}
+        <div id="appointment" className="bg-slate-800 border border-slate-700 rounded-3xl p-6 md:p-8 scroll-mt-24">
+          <h2 className="text-lg font-extrabold text-white mb-6 flex items-center gap-2">
+            <i className="fa-solid fa-calendar-check text-purple-400"></i> Randevu Ayarları
+          </h2>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Varsayılan Toplantı Linki</label>
+              <input
+                type="url"
+                name="default_meeting_link"
+                value={formData.default_meeting_link}
+                onChange={(e) => setFormData({ ...formData, default_meeting_link: e.target.value })}
+                placeholder="https://zoom.us/j/..."
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl py-2 px-4 font-bold text-white outline-none focus:border-purple-400"
+              />
+              <p className="text-xs text-slate-500 mt-1 font-bold">Online randevular için otomatik eklenecek</p>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                name="auto_confirm_appointments"
+                checked={formData.auto_confirm_appointments}
+                onChange={(e) => setFormData({ ...formData, auto_confirm_appointments: e.target.checked })}
+                className="w-5 h-5 rounded bg-slate-900 border-slate-600 text-purple-600 focus:ring-purple-500"
+              />
+              <label className="text-sm font-bold text-white">Randevuları otomatik onayla</label>
+            </div>
+          </div>
+        </div>
+
         {/* KAYDET BUTONU */}
         <div className="flex justify-end sticky bottom-6 z-30 pointer-events-none">
           <button
@@ -938,6 +1215,109 @@ export default function ProSettingsPage() {
         </div>
       </aside>
     </div>
+
+    {/* Address Modal */}
+    {showAddressModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn" onClick={() => setShowAddressModal(false)}>
+        <div className="bg-slate-800 rounded-3xl w-full max-w-md border border-slate-700 shadow-2xl p-6 relative" onClick={e => e.stopPropagation()}>
+          <button onClick={() => setShowAddressModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+            <i className="fa-solid fa-xmark text-xl"></i>
+          </button>
+          
+          <h2 className="text-xl font-extrabold text-white mb-1">
+            {editingAddress ? 'Adresi Düzenle' : 'Yeni Adres Ekle'}
+          </h2>
+          <p className="text-slate-400 text-xs font-bold mb-6">Adres bilgilerini doldurun</p>
+          
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            const addressData = {
+              title: formData.get('title') as string,
+              address: formData.get('address') as string,
+              city: formData.get('city') as string,
+              district: formData.get('district') as string,
+              is_default: formData.get('is_default') === 'on',
+            };
+            saveAddress(addressData);
+          }} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Adres Başlığı</label>
+              <input
+                type="text"
+                name="title"
+                defaultValue={editingAddress?.title || ''}
+                placeholder="Örn: Ofis, Stüdyo"
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Açık Adres</label>
+              <textarea
+                name="address"
+                defaultValue={editingAddress?.address || ''}
+                placeholder="Sokak, cadde, bina no, daire no..."
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 text-white focus:border-blue-500 focus:outline-none min-h-[80px] resize-none font-medium"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Şehir</label>
+                <input
+                  type="text"
+                  name="city"
+                  defaultValue={editingAddress?.city || ''}
+                  placeholder="Şehir"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">İlçe</label>
+                <input
+                  type="text"
+                  name="district"
+                  defaultValue={editingAddress?.district || ''}
+                  placeholder="İlçe"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                name="is_default"
+                defaultChecked={editingAddress?.is_default || false}
+                className="w-5 h-5 rounded bg-slate-900 border-slate-600"
+              />
+              <label className="text-sm font-bold text-white">Varsayılan adres olarak ayarla</label>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                type="submit"
+                className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-extrabold shadow-btn btn-game hover:bg-blue-500 transition"
+              >
+                {editingAddress ? 'Güncelle' : 'Ekle'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddressModal(false)}
+                className="px-6 bg-slate-700 text-white py-3 rounded-xl font-bold hover:bg-slate-600 transition"
+              >
+                İptal
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
     </div>
   );
 }
