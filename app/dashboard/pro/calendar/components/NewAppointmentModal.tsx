@@ -4,6 +4,20 @@ import type { Appointment, ClientListItem, ExpertAddress } from '@/lib/api';
 import { generateTimeSlots, toISODateString } from '@/lib/calendar-utils';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 
+// Error message translation function
+function translateError(message: string): string {
+  const translations: Record<string, string> = {
+    'Time slot is not available': 'Bu saat dilimi müsait değil. Lütfen başka bir saat seçin.',
+    'Missing required fields': 'Lütfen zorunlu alanları doldurun.',
+    'Appointment created': 'Randevu oluşturuldu',
+    'Failed to create appointment': 'Randevu oluşturulamadı.',
+    'Client not found': 'Danışan bulunamadı.',
+    'Invalid date or time': 'Geçersiz tarih veya saat.',
+    'Appointment overlaps with existing': 'Bu saat diliminde zaten bir randevunuz var.',
+  };
+  return translations[message] || message;
+}
+
 interface NewAppointmentModalProps {
   onClose: () => void;
   onSuccess: (appointment: Appointment) => void;
@@ -117,14 +131,14 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
         isOpen: true,
         type: 'success',
         title: 'Başarılı!',
-        message: 'Randevu başarıyla oluşturuldu.'
+        message: translateError(result.message || 'Randevu başarıyla oluşturuldu.')
       });
     } else {
       setConfirmModal({
         isOpen: true,
         type: 'error',
         title: 'Hata',
-        message: result.message || 'Randevu oluşturulamadı.'
+        message: translateError(result.message || 'Randevu oluşturulamadı.')
       });
     }
   };
