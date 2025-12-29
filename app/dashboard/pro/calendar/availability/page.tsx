@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getAvailabilitySettings, updateAvailabilitySettings } from '@/lib/api';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 const WEEK_DAYS = [
   { value: 1, name: 'Pazartesi' },
@@ -25,6 +26,17 @@ export default function AvailabilityPage() {
   const [saving, setSaving] = useState(false);
   const [slotDuration, setSlotDuration] = useState(60);
   const [bufferTime, setBufferTime] = useState(0);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
   const [schedule, setSchedule] = useState<DaySchedule[]>(
     WEEK_DAYS.map(day => ({
       day: day.value,
@@ -100,7 +112,12 @@ export default function AvailabilityPage() {
     // Validate
     const activeSchedule = schedule.filter(s => s.isActive);
     if (activeSchedule.length === 0) {
-      alert('En az bir gün için çalışma saatleri belirlemelisiniz.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Eksik Bilgi',
+        message: 'En az bir gün için çalışma saatleri belirlemelisiniz.'
+      });
       return;
     }
 
@@ -108,7 +125,12 @@ export default function AvailabilityPage() {
     for (const day of activeSchedule) {
       for (const slot of day.slots) {
         if (slot.start >= slot.end) {
-          alert('Başlangıç saati bitiş saatinden önce olmalıdır.');
+          setConfirmModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Geçersiz Saat Aralığı',
+            message: 'Başlangıç saati bitiş saatinden önce olmalıdır.'
+          });
           return;
         }
       }
@@ -134,9 +156,19 @@ export default function AvailabilityPage() {
     setSaving(false);
 
     if (result.success) {
-      alert('Müsaitlik ayarları kaydedildi!');
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Başarılı!',
+        message: 'Müsaitlik ayarları kaydedildi!'
+      });
     } else {
-      alert(result.message || 'Ayarlar kaydedilemedi.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Ayarlar kaydedilemedi.'
+      });
     }
   };
 
@@ -319,6 +351,15 @@ export default function AvailabilityPage() {
           </div>
         )}
       </div>
+      
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 }

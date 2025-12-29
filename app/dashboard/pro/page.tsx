@@ -332,6 +332,9 @@ export default function ProDashboardPage() {
             <a href="/dashboard/pro/reviews" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
                 <i className="fa-solid fa-star w-6 text-center group-hover:text-yellow-400"></i> Değerlendirmeler
             </a>
+            <a href="/dashboard/pro/settings" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition hover:text-white group">
+                <i className="fa-solid fa-cog w-6 text-center group-hover:text-slate-400"></i> Ayarlar
+            </a>
             
             <p className="text-[10px] font-bold text-slate-500 uppercase px-4 pt-2">İçerik & Araçlar</p>
             {/* YENİ: Medya & SSS */}

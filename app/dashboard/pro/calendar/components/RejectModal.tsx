@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { rejectAppointmentRequest } from '@/lib/api';
 import type { AppointmentRequest } from '@/lib/api';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 interface RejectModalProps {
   request: AppointmentRequest;
@@ -11,12 +12,28 @@ interface RejectModalProps {
 export default function RejectModal({ request, onClose, onSuccess }: RejectModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [reason, setReason] = useState('');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!reason.trim()) {
-      alert('Lütfen reddetme sebebi giriniz.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Eksik Bilgi',
+        message: 'Lütfen reddetme sebebi giriniz.'
+      });
       return;
     }
 
@@ -25,11 +42,21 @@ export default function RejectModal({ request, onClose, onSuccess }: RejectModal
     setIsProcessing(false);
 
     if (result.success) {
-      alert('Randevu talebi reddedildi.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Reddedildi',
+        message: 'Randevu talebi reddedildi.'
+      });
       onSuccess();
-      onClose();
+      setTimeout(onClose, 1500);
     } else {
-      alert(result.message || 'Talep reddedilemedi.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Talep reddedilemedi.'
+      });
     }
   };
 
@@ -134,6 +161,15 @@ export default function RejectModal({ request, onClose, onSuccess }: RejectModal
           </div>
         </form>
       </div>
+      
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 }
