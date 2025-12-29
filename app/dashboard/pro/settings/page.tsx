@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useRef, useState } from "react";
-import { getMe, updateUser, changePassword, uploadAvatar, uploadCertificate, ExpertAddress } from "@/lib/api";
+import { getMe, updateUser, changePassword, uploadAvatar, uploadCertificate, ExpertAddress, getExpertSettings, updateExpertSettings, addExpertAddress, updateExpertAddress, deleteExpertAddress } from "@/lib/api";
 import { CITIES } from "@/lib/locations";
 import { LANGUAGE_OPTIONS, COUNTRY_OPTIONS } from "@/lib/constants";
 import {
@@ -255,6 +255,7 @@ export default function ProSettingsPage() {
 
       try {
         const user = await getMe();
+        const expertSettings = await getExpertSettings();
 
         if (user) {
           const userData: any = user;
@@ -320,24 +321,26 @@ export default function ProSettingsPage() {
             kvkk_consent: Boolean(userData.kvkk_consent),
             emergency_disclaimer: Boolean(userData.emergency_disclaimer),
 
-            // Bank Information
-            bank_name: userData.bank_name || "",
-            iban: userData.iban || "",
-            account_holder: userData.account_holder || "",
+            // Bank Information (from expertSettings or userData)
+            bank_name: expertSettings?.bank_name || userData.bank_name || "",
+            iban: expertSettings?.iban || userData.iban || "",
+            account_holder: expertSettings?.account_holder || userData.account_holder || "",
 
-            // Business Information
-            company_name: userData.company_name || "",
-            tax_number: userData.tax_number || "",
-            business_phone: userData.business_phone || "",
-            business_email: userData.business_email || "",
+            // Business Information (from expertSettings or userData)
+            company_name: expertSettings?.company_name || userData.company_name || "",
+            tax_number: expertSettings?.tax_number || userData.tax_number || "",
+            business_phone: expertSettings?.business_phone || userData.business_phone || "",
+            business_email: expertSettings?.business_email || userData.business_email || "",
 
-            // Appointment Settings
-            default_meeting_link: userData.default_meeting_link || "",
-            auto_confirm_appointments: Boolean(userData.auto_confirm_appointments),
+            // Appointment Settings (from expertSettings or userData)
+            default_meeting_link: expertSettings?.default_meeting_link || userData.default_meeting_link || "",
+            auto_confirm_appointments: expertSettings?.auto_confirm_appointments ?? Boolean(userData.auto_confirm_appointments),
           });
 
-          // Load addresses if they exist
-          if (userData.addresses && Array.isArray(userData.addresses)) {
+          // Load addresses from expertSettings first, fallback to userData
+          if (expertSettings?.addresses && Array.isArray(expertSettings.addresses)) {
+            setAddresses(expertSettings.addresses);
+          } else if (userData.addresses && Array.isArray(userData.addresses)) {
             setAddresses(userData.addresses);
           }
         } else {
@@ -493,19 +496,39 @@ export default function ProSettingsPage() {
   };
 
   try {
+    // Save user profile data
     const result:  any = await updateUser(dataToSend);
 
-    if (result?. success) {
-      setMessage({ type: "success", text: "Uzman profiliniz güncellendi." });
+    // Save expert-specific settings (bank, business, addresses, appointment settings)
+    const expertSettingsData = {
+      bank_name: formData.bank_name,
+      iban: formData.iban,
+      account_holder: formData.account_holder,
+      company_name: formData.company_name,
+      tax_number: formData.tax_number,
+      business_phone: formData.business_phone,
+      business_email: formData.business_email,
+      default_meeting_link: formData.default_meeting_link,
+      auto_confirm_appointments: formData.auto_confirm_appointments,
+      addresses: addresses,
+    };
+    
+    const expertResult = await updateExpertSettings(expertSettingsData);
+
+    if (result?.success && expertResult?.success) {
+      setMessage({ type: "success", text: "Tüm ayarlarınız başarıyla güncellendi." });
       try {
         localStorage.setItem("user_name", formData.name);
         window.dispatchEvent(new Event("storage"));
       } catch {}
+    } else if (result?.success) {
+      setMessage({ type: "success", text: "Profil bilgileriniz güncellendi." + (expertResult?.message ? ` Ancak: ${expertResult.message}` : '') });
     } else {
-      setMessage({ type: "error", text: result?.message || "Hata oluştu." });
+      setMessage({ type: "error", text: result?.message || expertResult?.message || "Hata oluştu." });
     }
-  } catch {
-    setMessage({ type: "error", text: "Hata oluştu." });
+  } catch (error) {
+    console.error("Save error:", error);
+    setMessage({ type: "error", text: "Kaydetme sırasında bir hata oluştu." });
   } finally {
     setSaving(false);
   }
@@ -619,30 +642,53 @@ export default function ProSettingsPage() {
     if (!confirm('Bu adresi silmek istediğinize emin misiniz?')) return;
     
     setSaving(true);
-    // TODO: Integrate with API - deleteExpertAddress(addressId)
-    // For now, using local state only
-    setAddresses(addresses.filter(a => a.id !== addressId));
-    setMessage({ type: "success", text: "Adres silindi." });
-    setSaving(false);
+    try {
+      const result = await deleteExpertAddress(addressId);
+      if (result.success) {
+        setAddresses(addresses.filter(a => a.id !== addressId));
+        setMessage({ type: "success", text: "Adres başarıyla silindi." });
+      } else {
+        setMessage({ type: "error", text: result.message || "Adres silinemedi." });
+      }
+    } catch (error) {
+      console.error("Address delete error:", error);
+      setMessage({ type: "error", text: "Adres silinirken bir hata oluştu." });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const saveAddress = (addressData: Omit<ExpertAddress, 'id'>) => {
-    if (editingAddress) {
-      // Update existing
-      setAddresses(addresses.map(a => a.id === editingAddress.id ? { ...addressData, id: editingAddress.id } : a));
-      setMessage({ type: "success", text: "Adres güncellendi." });
-    } else {
-      // Add new - using crypto.randomUUID() for better ID generation
-      const newAddress: ExpertAddress = { 
-        ...addressData, 
-        id: typeof crypto !== 'undefined' && crypto.randomUUID ? 
-          parseInt(crypto.randomUUID().replace(/-/g, '').substring(0, 8), 16) : 
-          Date.now() 
-      };
-      setAddresses([...addresses, newAddress]);
-      setMessage({ type: "success", text: "Adres eklendi." });
+  const saveAddress = async (addressData: Omit<ExpertAddress, 'id'>) => {
+    setSaving(true);
+    try {
+      if (editingAddress) {
+        // Update existing
+        const result = await updateExpertAddress(editingAddress.id, addressData);
+        if (result.success) {
+          setAddresses(addresses.map(a => a.id === editingAddress.id ? { ...addressData, id: editingAddress.id } : a));
+          setMessage({ type: "success", text: "Adres başarıyla güncellendi." });
+          setShowAddressModal(false);
+        } else {
+          setMessage({ type: "error", text: result.message || "Adres güncellenemedi." });
+        }
+      } else {
+        // Add new
+        const result = await addExpertAddress(addressData);
+        if (result.success && result.id) {
+          const newAddress: ExpertAddress = { ...addressData, id: result.id };
+          setAddresses([...addresses, newAddress]);
+          setMessage({ type: "success", text: "Adres başarıyla eklendi." });
+          setShowAddressModal(false);
+        } else {
+          setMessage({ type: "error", text: result.message || "Adres eklenemedi." });
+        }
+      }
+    } catch (error) {
+      console.error("Address save error:", error);
+      setMessage({ type: "error", text: "Adres kaydedilirken bir hata oluştu." });
+    } finally {
+      setSaving(false);
     }
-    setShowAddressModal(false);
   };
 
   if (loading) return <div className="p-8 text-center text-gray-500 font-bold">Yükleniyor...</div>;
