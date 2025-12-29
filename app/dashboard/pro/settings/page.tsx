@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useRef, useState } from "react";
-import { getMe, updateUser, changePassword, uploadAvatar, uploadCertificate } from "@/lib/api";
+import { getMe, updateUser, changePassword, uploadAvatar, uploadCertificate, ExpertAddress } from "@/lib/api";
 import { CITIES } from "@/lib/locations";
 import { LANGUAGE_OPTIONS, COUNTRY_OPTIONS } from "@/lib/constants";
 import {
@@ -137,9 +137,9 @@ export default function ProSettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const certInputRef = useRef<HTMLInputElement>(null);
 
-  const [addresses, setAddresses] = useState<any[]>([]);
+  const [addresses, setAddresses] = useState<ExpertAddress[]>([]);
   const [showAddressModal, setShowAddressModal] = useState(false);
-  const [editingAddress, setEditingAddress] = useState<any>(null);
+  const [editingAddress, setEditingAddress] = useState<ExpertAddress | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     // Basic identity
@@ -610,7 +610,7 @@ export default function ProSettingsPage() {
     setShowAddressModal(true);
   };
 
-  const editAddress = (address: any) => {
+  const editAddress = (address: ExpertAddress) => {
     setEditingAddress(address);
     setShowAddressModal(true);
   };
@@ -619,20 +619,26 @@ export default function ProSettingsPage() {
     if (!confirm('Bu adresi silmek istediğinize emin misiniz?')) return;
     
     setSaving(true);
-    // Mock delete for now - will need to integrate with API
+    // TODO: Integrate with API - deleteExpertAddress(addressId)
+    // For now, using local state only
     setAddresses(addresses.filter(a => a.id !== addressId));
     setMessage({ type: "success", text: "Adres silindi." });
     setSaving(false);
   };
 
-  const saveAddress = (addressData: any) => {
+  const saveAddress = (addressData: Omit<ExpertAddress, 'id'>) => {
     if (editingAddress) {
       // Update existing
       setAddresses(addresses.map(a => a.id === editingAddress.id ? { ...addressData, id: editingAddress.id } : a));
       setMessage({ type: "success", text: "Adres güncellendi." });
     } else {
-      // Add new
-      const newAddress = { ...addressData, id: Date.now() };
+      // Add new - using crypto.randomUUID() for better ID generation
+      const newAddress: ExpertAddress = { 
+        ...addressData, 
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? 
+          parseInt(crypto.randomUUID().replace(/-/g, '').substring(0, 8), 16) : 
+          Date.now() 
+      };
       setAddresses([...addresses, newAddress]);
       setMessage({ type: "success", text: "Adres eklendi." });
     }
