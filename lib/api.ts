@@ -6224,7 +6224,7 @@ export async function addExpertAddress(data: {
   is_default?: boolean;
 }): Promise<{ success: boolean; id?: number; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/addresses`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/settings/addresses`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -6239,7 +6239,7 @@ export async function addExpertAddress(data: {
     return { success: false, message: json.message || 'Adres eklenemedi.' };
   } catch (error) {
     console.error('addExpertAddress error:', error);
-    return { success: false, message: 'Sunucu hatası.' };
+    return { success: false, message: 'Adres eklenirken bir hata oluştu.' };
   }
 }
 
