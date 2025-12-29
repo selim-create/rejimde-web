@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { requestAppointment, getExpertAvailableSlots } from '@/lib/api';
-import type { AvailableSlot } from '@/lib/api';
 import { format, addDays, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import ConfirmModal from './ui/ConfirmModal';
@@ -22,7 +21,7 @@ export default function AppointmentRequestModal({
 }: AppointmentRequestModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
-  const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -64,8 +63,8 @@ export default function AppointmentRequestModal({
   const loadAvailableSlots = async () => {
     setLoadingSlots(true);
     try {
-      const slots = await getExpertAvailableSlots(expertId, selectedDate);
-      setAvailableSlots(slots);
+      const result = await getExpertAvailableSlots(expertId, selectedDate);
+      setAvailableSlots(result.available_slots || []);
     } catch (error) {
       console.error('Error loading slots:', error);
       setAvailableSlots([]);
@@ -109,8 +108,8 @@ export default function AppointmentRequestModal({
       expert_id: expertId,
       preferred_date: selectedDate,
       preferred_time: formData.preferred_time,
-      alternate_date: formData.alternate_date || undefined,
-      alternate_time: formData.alternate_time || undefined,
+      alternative_date: formData.alternate_date || undefined,
+      alternative_time: formData.alternate_time || undefined,
       message: formData.message || undefined,
       service_id: formData.service_id ? parseInt(formData.service_id) : undefined
     });
@@ -200,18 +199,18 @@ export default function AppointmentRequestModal({
                 </div>
               ) : availableSlots.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2">
-                  {availableSlots.map((slot) => (
+                  {availableSlots.map((time) => (
                     <button
-                      key={slot.time}
+                      key={time}
                       type="button"
-                      onClick={() => setFormData({ ...formData, preferred_time: slot.time })}
+                      onClick={() => setFormData({ ...formData, preferred_time: time })}
                       className={`py-2 rounded-lg font-bold border-2 transition ${
-                        formData.preferred_time === slot.time
+                        formData.preferred_time === time
                           ? 'bg-green-600 border-green-500 text-white'
                           : 'bg-slate-900 border-slate-600 text-slate-300 hover:border-slate-500'
                       }`}
                     >
-                      {slot.time}
+                      {time}
                     </button>
                   ))}
                 </div>
