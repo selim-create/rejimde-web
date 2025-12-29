@@ -350,12 +350,12 @@ export function isTimeSlotAvailable(
 
 /**
  * Generate time slots for a day
- * @param startHour - Start hour (e.g., 9)
- * @param endHour - End hour (e.g., 18)
+ * @param startHour - Start hour (default: 0 for 00:00)
+ * @param endHour - End hour (default: 24 for 23:30)
  * @param interval - Interval in minutes (default: 30)
  * @returns Array of time strings
  */
-export function generateTimeSlots(startHour: number, endHour: number, interval: number = 30): string[] {
+export function generateTimeSlots(startHour: number = 0, endHour: number = 24, interval: number = 30): string[] {
   const slots: string[] = [];
   
   for (let hour = startHour; hour < endHour; hour++) {

@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getCalendarAppointments } from '@/lib/api';
 import type { Appointment, BlockedTime } from '@/lib/api';
-import { getWeekStart, getWeekEnd, toISODateString, formatDateRange } from '@/lib/calendar-utils';
-import { addDays, subDays } from 'date-fns';
+import { getWeekStart, getWeekEnd, getMonthStart, getMonthEnd, toISODateString, formatDateRange } from '@/lib/calendar-utils';
+import { addDays, subDays, addMonths, subMonths } from 'date-fns';
 import WeekView from './components/WeekView';
+import MonthView from './components/MonthView';
 import AppointmentModal from './components/AppointmentModal';
 import NewAppointmentModal from './components/NewAppointmentModal';
 
@@ -26,8 +27,13 @@ export default function ProCalendarPage() {
   const loadCalendarData = async () => {
     setLoading(true);
     
-    const startDate = toISODateString(getWeekStart(currentDate));
-    const endDate = toISODateString(getWeekEnd(currentDate));
+    // Get date range based on view type
+    const startDate = viewType === 'week' 
+      ? toISODateString(getWeekStart(currentDate))
+      : toISODateString(getMonthStart(currentDate));
+    const endDate = viewType === 'week'
+      ? toISODateString(getWeekEnd(currentDate))
+      : toISODateString(getMonthEnd(currentDate));
     
     const data = await getCalendarAppointments(startDate, endDate);
     setAppointments(data.appointments);
@@ -36,12 +42,20 @@ export default function ProCalendarPage() {
     setLoading(false);
   };
 
-  const handlePreviousWeek = () => {
-    setCurrentDate(subDays(currentDate, 7));
+  const handlePreviousPeriod = () => {
+    if (viewType === 'week') {
+      setCurrentDate(subDays(currentDate, 7));
+    } else {
+      setCurrentDate(subMonths(currentDate, 1));
+    }
   };
 
-  const handleNextWeek = () => {
-    setCurrentDate(addDays(currentDate, 7));
+  const handleNextPeriod = () => {
+    if (viewType === 'week') {
+      setCurrentDate(addDays(currentDate, 7));
+    } else {
+      setCurrentDate(addMonths(currentDate, 1));
+    }
   };
 
   const handleToday = () => {
@@ -58,6 +72,21 @@ export default function ProCalendarPage() {
 
   const handleNewAppointmentSuccess = (appointment: Appointment) => {
     loadCalendarData();
+  };
+
+  const handleDayClick = (date: Date) => {
+    // When clicking a day in month view, switch to week view for that day
+    setCurrentDate(date);
+    setViewType('week');
+  };
+
+  // Get display text for current period
+  const getPeriodText = () => {
+    if (viewType === 'week') {
+      return formatDateRange(getWeekStart(currentDate), getWeekEnd(currentDate));
+    } else {
+      return currentDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+    }
   };
 
   return (
@@ -98,8 +127,6 @@ export default function ProCalendarPage() {
                       ? 'bg-blue-600 text-white'
                       : 'text-slate-400 hover:text-white'
                   }`}
-                  disabled
-                  title="Yakında"
                 >
                   <i className="fa-solid fa-calendar mr-1"></i>
                   Ay
@@ -140,7 +167,7 @@ export default function ProCalendarPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button
-              onClick={handlePreviousWeek}
+              onClick={handlePreviousPeriod}
               className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition"
             >
               <i className="fa-solid fa-chevron-left"></i>
@@ -152,7 +179,7 @@ export default function ProCalendarPage() {
               Bugün
             </button>
             <button
-              onClick={handleNextWeek}
+              onClick={handleNextPeriod}
               className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition"
             >
               <i className="fa-solid fa-chevron-right"></i>
@@ -160,7 +187,7 @@ export default function ProCalendarPage() {
           </div>
 
           <div className="text-lg font-bold text-white">
-            {formatDateRange(getWeekStart(currentDate), getWeekEnd(currentDate))}
+            {getPeriodText()}
           </div>
 
           <div className="text-sm text-slate-500">
@@ -183,10 +210,12 @@ export default function ProCalendarPage() {
             onAppointmentClick={handleAppointmentClick}
           />
         ) : (
-          <div className="text-center py-20 bg-slate-800 rounded-2xl border border-slate-700">
-            <i className="fa-solid fa-calendar text-4xl text-slate-600 mb-4"></i>
-            <p className="text-slate-400">Aylık görünüm yakında eklenecek</p>
-          </div>
+          <MonthView
+            currentDate={currentDate}
+            appointments={appointments}
+            onAppointmentClick={handleAppointmentClick}
+            onDayClick={handleDayClick}
+          />
         )}
 
         {/* Empty State */}

@@ -6112,3 +6112,186 @@ export async function getAIUsage(): Promise<AIUsageStats> {
     };
   }
 }
+
+// ==========================================
+// EXPERT SETTINGS & ADDRESSES API FUNCTIONS
+// ==========================================
+
+export interface ExpertAddress {
+  id: number;
+  title: string;
+  address: string;
+  city?: string;
+  district?: string;
+  is_default: boolean;
+}
+
+export interface ExpertSettings {
+  bank_name?: string;
+  iban?: string;
+  account_holder?: string;
+  company_name?: string;
+  tax_number?: string;
+  business_phone?: string;
+  business_email?: string;
+  addresses: ExpertAddress[];
+  default_meeting_link?: string;
+  auto_confirm_appointments: boolean;
+}
+
+/**
+ * Get Expert Settings
+ */
+export async function getExpertSettings(): Promise<ExpertSettings | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/settings`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('getExpertSettings error:', error);
+    return null;
+  }
+}
+
+/**
+ * Update Expert Settings
+ */
+export async function updateExpertSettings(data: Partial<ExpertSettings>): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/settings`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Ayarlar güncellenemedi.' };
+  } catch (error) {
+    console.error('updateExpertSettings error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+/**
+ * Get Expert Addresses
+ */
+export async function getExpertAddresses(): Promise<ExpertAddress[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/addresses`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+
+    return [];
+  } catch (error) {
+    console.error('getExpertAddresses error:', error);
+    return [];
+  }
+}
+
+/**
+ * Add Expert Address
+ */
+export async function addExpertAddress(data: {
+  title: string;
+  address: string;
+  city?: string;
+  district?: string;
+  is_default?: boolean;
+}): Promise<{ success: boolean; id?: number; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/addresses`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, id: json.data?.id };
+    }
+
+    return { success: false, message: json.message || 'Adres eklenemedi.' };
+  } catch (error) {
+    console.error('addExpertAddress error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+/**
+ * Update Expert Address
+ */
+export async function updateExpertAddress(id: number, data: {
+  title?: string;
+  address?: string;
+  city?: string;
+  district?: string;
+  is_default?: boolean;
+}): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/addresses/${id}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Adres güncellenemedi.' };
+  } catch (error) {
+    console.error('updateExpertAddress error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+/**
+ * Delete Expert Address
+ */
+export async function deleteExpertAddress(id: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/addresses/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Adres silinemedi.' };
+  } catch (error) {
+    console.error('deleteExpertAddress error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}

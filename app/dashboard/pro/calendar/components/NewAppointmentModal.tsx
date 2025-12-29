@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createAppointment, getProClients } from '@/lib/api';
-import type { Appointment, ClientListItem } from '@/lib/api';
+import { createAppointment, getProClients, getExpertAddresses, getAvailabilitySettings } from '@/lib/api';
+import type { Appointment, ClientListItem, ExpertAddress } from '@/lib/api';
 import { generateTimeSlots, toISODateString } from '@/lib/calendar-utils';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 interface NewAppointmentModalProps {
   onClose: () => void;
@@ -13,6 +14,21 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
   const [isProcessing, setIsProcessing] = useState(false);
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
+  const [addresses, setAddresses] = useState<ExpertAddress[]>([]);
+  const [isPersonal, setIsPersonal] = useState(false);
+  const [showCustomAddress, setShowCustomAddress] = useState(false);
+  const [availabilityHours, setAvailabilityHours] = useState({ start: 0, end: 24 });
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
 
   const [formData, setFormData] = useState({
     client_id: '',
@@ -24,7 +40,8 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
     type: 'online' as 'online' | 'in_person' | 'phone',
     location: '',
     meeting_link: '',
-    notes: ''
+    notes: '',
+    selected_address_id: ''
   });
 
   const loadClients = useCallback(async () => {
@@ -34,23 +51,55 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
     setLoadingClients(false);
   }, []);
 
+  const loadAddresses = useCallback(async () => {
+    const result = await getExpertAddresses();
+    setAddresses(result);
+  }, []);
+
+  const loadAvailability = useCallback(async () => {
+    const settings = await getAvailabilitySettings();
+    if (settings && settings.schedule.length > 0) {
+      // Find min and max hours from schedule
+      let minHour = 24;
+      let maxHour = 0;
+      
+      settings.schedule.forEach(day => {
+        day.slots.forEach(slot => {
+          const startHour = parseInt(slot.start.split(':')[0]);
+          const endHour = parseInt(slot.end.split(':')[0]);
+          minHour = Math.min(minHour, startHour);
+          maxHour = Math.max(maxHour, endHour);
+        });
+      });
+      
+      setAvailabilityHours({ start: minHour, end: maxHour + 1 });
+    }
+  }, []);
+
   useEffect(() => {
     loadClients();
-  }, [loadClients]);
+    loadAddresses();
+    loadAvailability();
+  }, [loadClients, loadAddresses, loadAvailability]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.client_id) {
-      alert('Lütfen bir danışan seçin.');
+    if (!isPersonal && !formData.client_id) {
+      setConfirmModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Danışan Gerekli',
+        message: 'Lütfen bir danışan seçin veya kişisel randevu olarak işaretleyin.'
+      });
       return;
     }
 
     setIsProcessing(true);
     const result = await createAppointment({
-      client_id: parseInt(formData.client_id),
+      client_id: isPersonal ? undefined : parseInt(formData.client_id),
       service_id: formData.service_id ? parseInt(formData.service_id) : undefined,
-      title: formData.title,
+      title: formData.title || (isPersonal ? 'Kişisel Randevu' : 'Randevu'),
       date: formData.date,
       start_time: formData.start_time,
       duration: formData.duration,
@@ -62,15 +111,45 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
     setIsProcessing(false);
 
     if (result.success && result.appointment) {
-      alert('Randevu başarıyla oluşturuldu!');
       onSuccess(result.appointment);
       onClose();
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Başarılı!',
+        message: 'Randevu başarıyla oluşturuldu.'
+      });
     } else {
-      alert(result.message || 'Randevu oluşturulamadı.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Randevu oluşturulamadı.'
+      });
     }
   };
 
-  const timeSlots = generateTimeSlots(8, 20, 30);
+  const handleAddressSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setFormData({ ...formData, selected_address_id: value });
+    
+    if (value === 'custom') {
+      setShowCustomAddress(true);
+      setFormData({ ...formData, location: '', selected_address_id: value });
+    } else if (value) {
+      const address = addresses.find(a => a.id === parseInt(value));
+      if (address) {
+        const locationText = `${address.title} - ${address.address}${address.city ? ', ' + address.city : ''}${address.district ? '/' + address.district : ''}`;
+        setFormData({ ...formData, location: locationText, selected_address_id: value });
+        setShowCustomAddress(false);
+      }
+    } else {
+      setFormData({ ...formData, location: '', selected_address_id: '' });
+      setShowCustomAddress(false);
+    }
+  };
+
+  const timeSlots = generateTimeSlots(availabilityHours.start, availabilityHours.end, 30);
 
   return (
     <div 
@@ -96,42 +175,74 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Client Selection */}
-          <div>
-            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">
-              Danışan Seç *
+          {/* Personal Appointment Toggle */}
+          <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isPersonal}
+                onChange={(e) => {
+                  setIsPersonal(e.target.checked);
+                  if (e.target.checked) {
+                    setFormData({ ...formData, client_id: '' });
+                  }
+                }}
+                className="w-5 h-5 rounded bg-slate-800 border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
+              />
+              <div className="flex-1">
+                <span className="font-bold text-white flex items-center gap-2">
+                  <i className="fa-solid fa-user-clock text-purple-400"></i>
+                  Kişisel Randevu
+                </span>
+                <p className="text-xs text-slate-400 mt-1">Danışan olmadan kişisel bir zaman bloğu oluştur</p>
+              </div>
             </label>
-            {loadingClients ? (
-              <div className="text-slate-500 text-sm">Danışanlar yükleniyor...</div>
-            ) : (
-              <select
-                value={formData.client_id}
-                onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
-                required
-              >
-                <option value="">Danışan Seçin</option>
-                {clients.map((clientItem) => (
-                  <option key={clientItem.client.id} value={clientItem.client.id}>
-                    {clientItem.client.name}
-                  </option>
-                ))}
-              </select>
-            )}
           </div>
+
+          {/* Client Selection - Hidden if personal */}
+          {!isPersonal && (
+            <div>
+              <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">
+                Danışan Seç *
+              </label>
+              {loadingClients ? (
+                <div className="text-slate-500 text-sm">Danışanlar yükleniyor...</div>
+              ) : (
+                <select
+                  value={formData.client_id}
+                  onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
+                  required={!isPersonal}
+                >
+                  <option value="">Danışan Seçin</option>
+                  {clients.map((clientItem) => (
+                    <option key={clientItem.client.id} value={clientItem.client.id}>
+                      {clientItem.client.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
 
           {/* Title */}
           <div>
             <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">
-              Randevu Başlığı
+              Randevu Başlığı {!isPersonal && '(Opsiyonel)'}
             </label>
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Örn: Haftalık Kontrol"
+              placeholder={isPersonal ? 'Örn: Araştırma Zamanı' : 'Örn: Haftalık Kontrol'}
               className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
             />
+            {isPersonal && (
+              <p className="text-xs text-slate-500 mt-1">
+                <i className="fa-solid fa-lightbulb mr-1"></i>
+                Kişisel randevular takviminizde farklı renkte görünür
+              </p>
+            )}
           </div>
 
           {/* Date and Time */}
@@ -252,13 +363,34 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
               <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">
                 Lokasyon
               </label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Ofis adresi"
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
-              />
+              
+              {/* Address Selection */}
+              {addresses.length > 0 && (
+                <select
+                  value={formData.selected_address_id}
+                  onChange={handleAddressSelect}
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold mb-3"
+                >
+                  <option value="">Adres Seçin veya Yeni Girin</option>
+                  {addresses.map(addr => (
+                    <option key={addr.id} value={addr.id}>
+                      {addr.title} - {addr.address}
+                    </option>
+                  ))}
+                  <option value="custom">+ Özel Adres Gir</option>
+                </select>
+              )}
+              
+              {/* Custom Address Input */}
+              {(showCustomAddress || addresses.length === 0) && (
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="Ofis adresi veya görüşme yeri"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
+                />
+              )}
             </div>
           )}
 
@@ -296,6 +428,15 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
           </button>
         </form>
       </div>
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from '@/lib/calendar-utils';
 import { cancelAppointment, completeAppointment, markNoShow } from '@/lib/api';
 import { useState } from 'react';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 
 interface AppointmentModalProps {
   appointment: Appointment;
@@ -20,46 +21,98 @@ export default function AppointmentModal({ appointment, onClose, onUpdate }: App
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+    showCancel?: boolean;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
 
   const statusColor = getStatusColor(appointment.status);
   const typeIcon = getTypeIcon(appointment.type);
   const typeLabel = getTypeLabel(appointment.type);
 
   const handleComplete = async () => {
-    if (!confirm('Bu randevuyu tamamlandı olarak işaretlemek istediğinize emin misiniz?')) return;
-    
-    setIsProcessing(true);
-    const result = await completeAppointment(appointment.id);
-    setIsProcessing(false);
-    
-    if (result.success) {
-      alert('Randevu tamamlandı olarak işaretlendi.');
-      onUpdate();
-      onClose();
-    } else {
-      alert(result.message || 'Bir hata oluştu.');
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: 'warning',
+      title: 'Randevuyu Tamamla',
+      message: 'Bu randevuyu tamamlandı olarak işaretlemek istediğinize emin misiniz?',
+      showCancel: true,
+      onConfirm: async () => {
+        setIsProcessing(true);
+        const result = await completeAppointment(appointment.id);
+        setIsProcessing(false);
+        
+        if (result.success) {
+          setConfirmModal({
+            isOpen: true,
+            type: 'success',
+            title: 'Başarılı!',
+            message: 'Randevu tamamlandı olarak işaretlendi.'
+          });
+          onUpdate();
+          setTimeout(onClose, 1500);
+        } else {
+          setConfirmModal({
+            isOpen: true,
+            type: 'error',
+            title: 'Hata',
+            message: result.message || 'Bir hata oluştu.'
+          });
+        }
+      }
+    });
   };
 
   const handleNoShow = async () => {
-    if (!confirm('Danışan randevuya gelmedi mi?')) return;
-    
-    setIsProcessing(true);
-    const result = await markNoShow(appointment.id);
-    setIsProcessing(false);
-    
-    if (result.success) {
-      alert('Randevu "Gelmedi" olarak işaretlendi.');
-      onUpdate();
-      onClose();
-    } else {
-      alert(result.message || 'Bir hata oluştu.');
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: 'warning',
+      title: 'Gelmedi Olarak İşaretle',
+      message: 'Danışan randevuya gelmedi mi?',
+      showCancel: true,
+      onConfirm: async () => {
+        setIsProcessing(true);
+        const result = await markNoShow(appointment.id);
+        setIsProcessing(false);
+        
+        if (result.success) {
+          setConfirmModal({
+            isOpen: true,
+            type: 'info',
+            title: 'İşaretlendi',
+            message: 'Randevu "Gelmedi" olarak işaretlendi.'
+          });
+          onUpdate();
+          setTimeout(onClose, 1500);
+        } else {
+          setConfirmModal({
+            isOpen: true,
+            type: 'error',
+            title: 'Hata',
+            message: result.message || 'Bir hata oluştu.'
+          });
+        }
+      }
+    });
   };
 
   const handleCancel = async () => {
     if (!cancelReason.trim()) {
-      alert('Lütfen iptal sebebi giriniz.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Eksik Bilgi',
+        message: 'Lütfen iptal sebebi giriniz.'
+      });
       return;
     }
     
@@ -68,11 +121,21 @@ export default function AppointmentModal({ appointment, onClose, onUpdate }: App
     setIsProcessing(false);
     
     if (result.success) {
-      alert('Randevu iptal edildi.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        title: 'İptal Edildi',
+        message: 'Randevu iptal edildi.'
+      });
       onUpdate();
-      onClose();
+      setTimeout(onClose, 1500);
     } else {
-      alert(result.message || 'Bir hata oluştu.');
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Bir hata oluştu.'
+      });
     }
   };
 
@@ -240,6 +303,17 @@ export default function AppointmentModal({ appointment, onClose, onUpdate }: App
           </div>
         )}
       </div>
+      
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        onConfirm={confirmModal.onConfirm}
+        showCancel={confirmModal.showCancel}
+      />
     </div>
   );
 }
