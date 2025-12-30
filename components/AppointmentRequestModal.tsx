@@ -61,30 +61,52 @@ export default function AppointmentRequestModal({
 
   // Fetch user data on mount
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const profile = await getMe();
-        // Ensure profile has required name and email fields with non-empty values
-        const hasValidName = typeof profile?.name === 'string' && profile.name.trim().length > 0;
-        const hasValidEmail = typeof profile?.email === 'string' && profile.email.trim().length > 0;
-        
-        if (profile && hasValidName && hasValidEmail) {
-          setUserData({
-            name: profile.name.trim(),
-            email: profile.email.trim()
-          });
-        } else {
-          console.warn('User profile is missing name or email', { 
-            hasProfile: Boolean(profile), 
-            hasValidName,
-            hasValidEmail
-          });
-        }
-      } catch (error) {
-        console.error('User data fetch error:', error);
+    const fetchProfile = async () => {
+      const profile = await getMe();
+      console.log('Profile data:', profile); // BU SATIRI EKLE
+      if (profile) {
+        setFormData(prev => ({
+          ...prev,
+          name: profile. name?. trim() || '',
+          email: profile.email?.trim() || '',
+          phone: profile.phone?. trim() || ''
+        }));
       }
     };
+// Satır 79 civarı - fetchUserData fonksiyonu
+const fetchUserData = async () => {
+  try {
+    const profile = await getMe();
+    console.log('Profile data:', profile);
     
+    // name zaten getMe() içinde doğru şekilde dönüyor olmalı
+    // Eğer name boşsa, email'den username kısmını al
+    let userName = profile?.name?.trim() || '';
+    const userEmail = profile?.email?. trim() || '';
+    
+    // Fallback: email'den @ öncesini kullan
+    if (! userName && userEmail) {
+      userName = userEmail.split('@')[0];
+    }
+    
+    if (userName && userEmail) {
+      setUserData({
+        name:  userName,
+        email: userEmail
+      });
+    } else {
+      console. warn('User profile is missing name or email', { 
+        hasProfile: Boolean(profile), 
+        userName,
+        userEmail,
+        profileName: profile?.name,
+        profileEmail:  profile?.email
+      });
+    }
+  } catch (error) {
+    console.error('User data fetch error:', error);
+  }
+};
     fetchUserData();
   }, []);
 

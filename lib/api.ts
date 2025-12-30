@@ -3923,9 +3923,10 @@ export async function markNoShow(appointmentId: number): Promise<{ success: bool
 }
 
 // Randevu talepleri
+// lib/api.ts - getAppointmentRequests fonksiyonu (satır 3926-3955)
 export async function getAppointmentRequests(status?: string): Promise<{
   requests: AppointmentRequest[];
-  meta: { total: number; pending: number };
+  meta: { total:  number; pending: number };
 }> {
   try {
     const params = status ? `?status=${status}` : '';
@@ -3942,16 +3943,31 @@ export async function getAppointmentRequests(status?: string): Promise<{
     const json = await res.json();
     
     if (json.status === 'success') {
-      return {
-        requests: json.data?.requests || [],
-        meta: json.data?.meta || { total: 0, pending: 0 }
-      };
+      // Backend formats: 
+      // Format 1: { data: [... ], meta: {... } } - data is direct array
+      // Format 2: { data: { requests: [...], meta: {...} } } - nested format
+      
+      let requests: AppointmentRequest[] = [];
+      let meta = { total: 0, pending: 0 };
+      
+      // Check if data is an array (Format 1)
+      if (Array.isArray(json.data)) {
+        requests = json. data;
+        meta = json.meta || { total: 0, pending: 0 };
+      } 
+      // Check if data has nested requests (Format 2)
+      else if (json.data?. requests) {
+        requests = json.data.requests;
+        meta = json.data.meta || { total: 0, pending: 0 };
+      }
+      
+      return { requests, meta };
     }
 
     return { requests: [], meta: { total: 0, pending: 0 } };
   } catch (error) {
     console.error('getAppointmentRequests error:', error);
-    return { requests: [], meta: { total: 0, pending: 0 } };
+    return { requests: [], meta: { total:  0, pending:  0 } };
   }
 }
 
@@ -4055,31 +4071,41 @@ export async function unblockTime(blockId: number): Promise<{ success: boolean; 
 }
 
 // Public - Müsait slotlar
+// lib/api.ts satır 4058-4083 - GÜNCELLENMİŞ
 export async function getExpertAvailableSlots(expertId: number, date: string): Promise<{
-  expert: { id: number; name: string; avatar: string };
+  expert: { id: number; name: string; avatar:  string };
   available_slots: string[];
   slot_duration: number;
 }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/experts/${expertId}/availability?date=${date}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/experts/${expertId}/availability? date=${date}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
 
-    if (!res.ok) {
+    if (!res. ok) {
       return { expert: { id: expertId, name: '', avatar: '' }, available_slots: [], slot_duration: 60 };
     }
 
     const json = await res.json();
     
     if (json.status === 'success') {
-      return json.data;
+      // Backend returns { available_slots: { '2025-12-30': ['09:00', '10:00'] } }
+      // We need to extract the array for the specific date
+      const slotsData = json.data?. available_slots || {};
+      const slotsArray = slotsData[date] || [];
+      
+      return {
+        expert: json.data?. expert || { id: expertId, name: '', avatar: '' },
+        available_slots: Array.isArray(slotsArray) ? slotsArray :  [],
+        slot_duration: json.data?.slot_duration || 60
+      };
     }
 
     return { expert: { id: expertId, name: '', avatar: '' }, available_slots: [], slot_duration: 60 };
   } catch (error) {
     console.error('getExpertAvailableSlots error:', error);
-    return { expert: { id: expertId, name: '', avatar: '' }, available_slots: [], slot_duration: 60 };
+    return { expert: { id:  expertId, name:  '', avatar: '' }, available_slots: [], slot_duration: 60 };
   }
 }
 
