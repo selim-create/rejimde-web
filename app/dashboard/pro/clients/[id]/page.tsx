@@ -2,7 +2,14 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { getProClient, addClientNote, deleteClientNote, getClientPlans, ClientDetail } from "@/lib/api";
+import { 
+  getProClient, 
+  addClientNote, 
+  deleteClientNote, 
+  getClientPlans, 
+  updateClientPackage,
+  ClientDetail 
+} from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 
 export default function ClientManagementPage({ params }: { params: Promise<{ id: string }> }) {
@@ -25,6 +32,14 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
     is_pinned: false 
   });
   const [savingNote, setSavingNote] = useState(false);
+
+  // Add package modal state
+  const [showAddPackageModal, setShowAddPackageModal] = useState(false);
+  const [addingPackage, setAddingPackage] = useState(false);
+  const [packageData, setPackageData] = useState({
+    sessions_to_add: 5,
+    price: 0
+  });
 
   const fetchClient = async () => {
     setLoading(true);
@@ -120,6 +135,42 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
     }
   };
 
+  const handleAddPackage = async () => {
+    if (!packageData.sessions_to_add || packageData.sessions_to_add <= 0) {
+      showToast({
+        type: 'warning',
+        title: 'Uyarı',
+        message: 'Lütfen geçerli bir seans sayısı girin.'
+      });
+      return;
+    }
+
+    setAddingPackage(true);
+    const result = await updateClientPackage(clientId, {
+      action: 'extend',
+      total_sessions: packageData.sessions_to_add,
+      price: packageData.price
+    });
+
+    if (result.success) {
+      showToast({
+        type: 'success',
+        title: 'Paket Güncellendi',
+        message: `${packageData.sessions_to_add} seans başarıyla eklendi.`
+      });
+      setShowAddPackageModal(false);
+      setPackageData({ sessions_to_add: 5, price: 0 });
+      fetchClient(); // Refresh client data
+    } else {
+      showToast({
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Paket güncellenemedi.'
+      });
+    }
+    setAddingPackage(false);
+  };
+
   if (loading) {
       return (
         <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -169,6 +220,12 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                 <div className="flex gap-2">
                     <button className="bg-slate-700 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-slate-600 transition shadow-sm" title="Mesaj Gönder">
                         <i className="fa-solid fa-message"></i>
+                    </button>
+                    <button 
+                        onClick={() => setShowAddPackageModal(true)}
+                        className="bg-green-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-btn shadow-green-800 btn-game hidden sm:flex items-center gap-2 hover:bg-green-500 transition"
+                    >
+                        <i className="fa-solid fa-plus"></i> Paket Ekle
                     </button>
                     <button className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-btn shadow-blue-800 btn-game hidden sm:flex items-center gap-2 hover:bg-blue-500 transition">
                         <i className="fa-solid fa-wand-magic-sparkles"></i> Plan Oluştur
@@ -441,6 +498,56 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
             )}
 
         </div>
+
+        {/* ADD PACKAGE MODAL */}
+        {showAddPackageModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn" onClick={() => setShowAddPackageModal(false)}>
+            <div className="bg-slate-800 rounded-3xl w-full max-w-md border border-slate-700 shadow-2xl p-6 relative" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setShowAddPackageModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i className="fa-solid fa-xmark text-xl"></i>
+              </button>
+              
+              <h2 className="text-xl font-extrabold text-white mb-1">Ek Paket Ekle</h2>
+              <p className="text-slate-400 text-xs font-bold mb-6">Danışana ek seans hakkı tanıyın.</p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Eklenecek Seans Sayısı</label>
+                  <input 
+                    type="number" 
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" 
+                    placeholder="5"
+                    min="1"
+                    value={packageData.sessions_to_add}
+                    onChange={(e) => setPackageData({...packageData, sessions_to_add: parseInt(e.target.value) || 0})}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Ücret (TL)</label>
+                  <input 
+                    type="number" 
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" 
+                    placeholder="0"
+                    min="0"
+                    value={packageData.price}
+                    onChange={(e) => setPackageData({...packageData, price: parseFloat(e.target.value) || 0})}
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    onClick={handleAddPackage}
+                    disabled={addingPackage}
+                    className="w-full bg-green-600 text-white py-3 rounded-xl font-extrabold shadow-btn btn-game hover:bg-green-500 transition disabled:opacity-50"
+                  >
+                    {addingPackage ? 'Ekleniyor...' : 'Paketi Ekle'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 }

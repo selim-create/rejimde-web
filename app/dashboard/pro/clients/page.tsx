@@ -7,6 +7,7 @@ import {
   addProClient, 
   createClientInvite, 
   getServices,
+  updateClientStatus,
   type ClientListItem,
   type Service 
 } from "@/lib/api";
@@ -40,6 +41,10 @@ export default function ProClientsPage() {
   // Invite link state
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  // Dropdown menu state
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
   // Fetch clients
   const fetchClients = async () => {
@@ -147,6 +152,7 @@ export default function ProClientsPage() {
     }
 
     setInviteLoading(true);
+    setInviteError(null);
     const result = await createClientInvite({
       package_name: formData.package_name,
       package_type: formData.package_type,
@@ -163,13 +169,51 @@ export default function ProClientsPage() {
         message: 'Davet linki panoya kopyalandı. Danışana gönderebilirsiniz.'
       });
     } else {
+      const errorMsg = result.message || 'Davet linki oluşturulamadı.';
+      setInviteError(errorMsg);
       showToast({
         type: 'error',
         title: 'Hata',
-        message: result.message || 'Davet linki oluşturulamadı.'
+        message: errorMsg
       });
     }
     setInviteLoading(false);
+  };
+
+  const handleStatusChange = async (clientId: number, relationshipId: number, newStatus: 'active' | 'paused' | 'archived') => {
+    const statusLabels = {
+      active: 'Aktife',
+      paused: 'Pasife',
+      archived: 'Arşive'
+    };
+    
+    if (!confirm(`Bu danışanı ${statusLabels[newStatus]} almak istediğinize emin misiniz?`)) {
+      return;
+    }
+
+    const result = await updateClientStatus(relationshipId, newStatus);
+    
+    if (result.success) {
+      showToast({
+        type: 'success',
+        title: 'Durum Güncellendi',
+        message: `Danışan ${statusLabels[newStatus]} alındı.`
+      });
+      fetchClients(); // Refresh the list
+      setOpenDropdownId(null);
+    } else {
+      showToast({
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Durum güncellenemedi.'
+      });
+    }
+  };
+
+  const handleWhatsAppShare = (inviteUrl: string) => {
+    const message = encodeURIComponent(`Rejimde platformuna katılman için davet linkin: ${inviteUrl}`);
+    const whatsappUrl = `https://wa.me/?text=${message}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   return (
@@ -304,9 +348,55 @@ export default function ProClientsPage() {
                                 </div>
                             </div>
                         </div>
-                        <button className="text-slate-400 hover:text-white transition">
-                            <i className="fa-solid fa-ellipsis-vertical text-xl"></i>
-                        </button>
+                        <div className="relative">
+                            <button 
+                                onClick={() => setOpenDropdownId(openDropdownId === client.id ? null : client.id)}
+                                className="text-slate-400 hover:text-white transition"
+                            >
+                                <i className="fa-solid fa-ellipsis-vertical text-xl"></i>
+                            </button>
+                            
+                            {/* Dropdown Menu */}
+                            {openDropdownId === client.id && (
+                                <div className="absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-10 overflow-hidden">
+                                    <Link 
+                                        href={`/dashboard/pro/inbox/${client.relationship_id}`}
+                                        className="flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition text-slate-300 hover:text-white"
+                                        onClick={() => setOpenDropdownId(null)}
+                                    >
+                                        <i className="fa-solid fa-message w-4"></i>
+                                        <span className="text-sm font-bold">Mesaj Gönder</span>
+                                    </Link>
+                                    {client.status === 'active' && (
+                                        <button 
+                                            onClick={() => handleStatusChange(client.id, client.relationship_id, 'paused')}
+                                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition text-slate-300 hover:text-white"
+                                        >
+                                            <i className="fa-solid fa-pause w-4"></i>
+                                            <span className="text-sm font-bold">Pasife Al</span>
+                                        </button>
+                                    )}
+                                    {client.status === 'paused' && (
+                                        <button 
+                                            onClick={() => handleStatusChange(client.id, client.relationship_id, 'active')}
+                                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition text-slate-300 hover:text-white"
+                                        >
+                                            <i className="fa-solid fa-play w-4"></i>
+                                            <span className="text-sm font-bold">Aktife Al</span>
+                                        </button>
+                                    )}
+                                    {client.status !== 'archived' && (
+                                        <button 
+                                            onClick={() => handleStatusChange(client.id, client.relationship_id, 'archived')}
+                                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition text-orange-400 hover:text-orange-300"
+                                        >
+                                            <i className="fa-solid fa-box-archive w-4"></i>
+                                            <span className="text-sm font-bold">Arşivle</span>
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Progress Bar (Package Tracking) */}
@@ -461,8 +551,31 @@ export default function ProClientsPage() {
                             type="text" 
                             value={inviteUrl} 
                             readOnly 
-                            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white font-mono"
+                            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white font-mono mb-3"
                           />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => navigator.clipboard.writeText(inviteUrl)}
+                              className="flex-1 bg-slate-700 text-white py-2 rounded-lg font-bold text-xs hover:bg-slate-600 transition flex items-center justify-center gap-2"
+                            >
+                              <i className="fa-solid fa-copy"></i> Tekrar Kopyala
+                            </button>
+                            <button
+                              onClick={() => handleWhatsAppShare(inviteUrl)}
+                              className="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold text-xs hover:bg-green-500 transition flex items-center justify-center gap-2"
+                            >
+                              <i className="fa-brands fa-whatsapp"></i> WhatsApp ile Gönder
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {inviteError && (
+                        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                          <p className="text-xs font-bold text-red-400">
+                            <i className="fa-solid fa-circle-exclamation mr-1"></i>
+                            {inviteError}
+                          </p>
                         </div>
                       )}
                   </div>
