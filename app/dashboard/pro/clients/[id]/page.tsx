@@ -12,7 +12,8 @@ import {
   getProServices,
   getAppointmentRequests,
   ClientDetail,
-  ProService
+  ProService,
+  AppointmentRequest
 } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 
@@ -35,7 +36,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
   const [servicesLoading, setServicesLoading] = useState(false);
   
   // Requests state
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<AppointmentRequest[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
@@ -414,11 +415,11 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                         </div>
                     ) : requests.length > 0 ? (
                         <div className="space-y-4">
-                            {requests.map((request: any) => (
+                            {requests.map((request: AppointmentRequest) => (
                                 <div key={request.id} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card hover:border-slate-600 transition">
                                     <div className="flex items-start justify-between mb-4">
                                         <div>
-                                            <h4 className="font-extrabold text-white text-lg mb-1">{request.service_name || 'Randevu Talebi'}</h4>
+                                            <h4 className="font-extrabold text-white text-lg mb-1">{request.service?.name || 'Randevu Talebi'}</h4>
                                             <p className="text-slate-400 text-sm">{request.message || 'Danışan bir randevu talebi gönderdi.'}</p>
                                         </div>
                                         <span className={`px-3 py-1 rounded-lg text-xs font-bold ${

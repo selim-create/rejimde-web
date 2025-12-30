@@ -3003,7 +3003,8 @@ export async function getProClients(options?: {
       const normalizedMeta = {
         total: meta.total || 0,
         active: meta.active || 0,
-        paused: (meta as any).paused || (meta as any).pending || 0,
+        paused: (meta as { paused?: number; pending?: number }).paused || 
+                (meta as { paused?: number; pending?: number }).pending || 0,
         archived: meta.archived || 0
       };
       
