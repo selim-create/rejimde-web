@@ -6089,6 +6089,59 @@ export async function dismissAnnouncement(announcementId: number): Promise<{ suc
   }
 }
 
+// POST /pro/announcements
+export async function createAnnouncement(data: {
+  title: string;
+  content: string;
+  type?: 'info' | 'warning' | 'promo' | 'update';
+  priority?: number;
+  start_date?: string;
+  end_date?: string;
+  is_dismissible?: boolean;
+  action_url?: string;
+  action_text?: string;
+}): Promise<{ success: boolean; announcement?: Announcement; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/announcements`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, announcement: json.data };
+    }
+
+    return { success: false, message: json.message || 'Duyuru oluşturulamadı.' };
+  } catch (error) {
+    console.error('createAnnouncement error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
+// DELETE /pro/announcements/{id}
+export async function deleteAnnouncement(announcementId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/announcements/${announcementId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true };
+    }
+
+    return { success: false, message: json.message || 'Duyuru silinemedi.' };
+  } catch (error) {
+    console.error('deleteAnnouncement error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
 // ==========================================
 // AI PLANNER API FUNCTIONS
 // ==========================================

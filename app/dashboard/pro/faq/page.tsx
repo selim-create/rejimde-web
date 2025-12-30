@@ -1,9 +1,15 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { getMe as getRealMe, getProFAQ, createProFAQ, updateProFAQ, deleteProFAQ, FAQItem } from "@/lib/api";
 
 // --- MOCK API & DATA (Bağımsız çalışması için) ---
 const getMe = async () => {
+    // Try real API first
+    const realUser = await getRealMe();
+    if (realUser) return realUser;
+    
+    // Fallback to mock
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve({
@@ -15,13 +21,6 @@ const getMe = async () => {
         }, 500);
     });
 };
-
-const INITIAL_FAQS = [
-    { id: 1, question: "Ders iptali en geç ne zaman yapılabilir?", answer: "Ders saatinden en az 24 saat önce yapılan iptallerde ücret iadesi yapılır veya ders hakkı saklı kalır.", active: true },
-    { id: 2, question: "Online dersler hangi platform üzerinden yapılıyor?", answer: "Görüşmelerimiz Zoom veya Google Meet üzerinden gerçekleşmektedir. Randevu saatinizden 15 dk önce link iletilir.", active: true },
-    { id: 3, question: "Beslenme programları kişiye özel mi hazırlanıyor?", answer: "Evet, tüm listeler sizin yaşam tarzınıza, kan tahlillerinize ve hedeflerinize göre %100 kişiye özel planlanır.", active: true },
-    { id: 4, question: "Ödeme seçenekleri nelerdir?", answer: "Kredi kartı ile taksitli ödeme veya Havale/EFT kabul edilmektedir.", active: false },
-];
 
 const TEMPLATE_PACKAGES = [
     {
@@ -59,49 +58,105 @@ const TEMPLATE_PACKAGES = [
 export default function ProFaqPage() {
   const [pro, setPro] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [faqs, setFaqs] = useState(INITIAL_FAQS);
+  const [faqs, setFaqs] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   
   // Form State
   const [formData, setFormData] = useState({ question: "", answer: "" });
 
   useEffect(() => {
-    getMe().then((user) => {
-        setPro(user);
-        setLoading(false);
-    });
+    async function loadData() {
+      const user = await getMe();
+      setPro(user);
+      
+      // Load FAQs from API
+      const items = await getProFAQ();
+      setFaqs(items.map((item: FAQItem) => ({
+        id: item.id,
+        question: item.question,
+        answer: item.answer,
+        active: item.is_public
+      })));
+      setLoading(false);
+    }
+    loadData();
   }, []);
 
-  const handleSave = () => {
-      if (!formData.question || !formData.answer) return;
+  const handleSave = async () => {
+      if (!formData.question || !formData.answer) {
+        alert("Lütfen tüm alanları doldurun.");
+        return;
+      }
+
+      setSubmitting(true);
 
       if (editingId) {
           // Edit
-          setFaqs(faqs.map(f => f.id === editingId ? { ...f, question: formData.question, answer: formData.answer } : f));
+          const result = await updateProFAQ(editingId, {
+            question: formData.question,
+            answer: formData.answer
+          });
+          
+          if (result.success) {
+            setFaqs(faqs.map(f => f.id === editingId ? { ...f, question: formData.question, answer: formData.answer } : f));
+            closeModal();
+            alert("Soru başarıyla güncellendi!");
+          } else {
+            alert(result.message || "Soru güncellenirken bir hata oluştu.");
+          }
       } else {
           // Add
-          const newFaq = {
-              id: Date.now(),
-              question: formData.question,
-              answer: formData.answer,
-              active: true
-          };
-          setFaqs([newFaq, ...faqs]);
+          const result = await createProFAQ({
+            question: formData.question,
+            answer: formData.answer,
+            is_public: true
+          });
+          
+          if (result.success && result.item) {
+            const newFaq = {
+              id: result.item.id,
+              question: result.item.question,
+              answer: result.item.answer,
+              active: result.item.is_public
+            };
+            setFaqs([newFaq, ...faqs]);
+            closeModal();
+            alert("Soru başarıyla eklendi!");
+          } else {
+            alert(result.message || "Soru eklenirken bir hata oluştu.");
+          }
       }
-      closeModal();
+      
+      setSubmitting(false);
   };
 
-  const handleImportTemplate = (pkg: typeof TEMPLATE_PACKAGES[0]) => {
-      const newFaqs = pkg.questions.map((q, index) => ({
-          id: Date.now() + index, // Unique ID generation simulation
+  const handleImportTemplate = async (pkg: typeof TEMPLATE_PACKAGES[0]) => {
+      setSubmitting(true);
+      const newFaqs: any[] = [];
+      
+      for (const q of pkg.questions) {
+        const result = await createProFAQ({
           question: q.question,
           answer: q.answer,
-          active: true
-      }));
+          is_public: true
+        });
+        
+        if (result.success && result.item) {
+          newFaqs.push({
+            id: result.item.id,
+            question: result.item.question,
+            answer: result.item.answer,
+            active: result.item.is_public
+          });
+        }
+      }
+      
       setFaqs([...newFaqs, ...faqs]);
       setShowTemplatesModal(false);
+      setSubmitting(false);
       alert(`${pkg.title} başarıyla eklendi!`);
   };
 
@@ -111,14 +166,34 @@ export default function ProFaqPage() {
       setShowModal(true);
   };
 
-  const handleDelete = (id: number) => {
-      if (confirm("Bu soruyu silmek istediğinize emin misiniz?")) {
-          setFaqs(faqs.filter(f => f.id !== id));
+  const handleDelete = async (id: number) => {
+      if (!confirm("Bu soruyu silmek istediğinize emin misiniz?")) {
+        return;
+      }
+      
+      const result = await deleteProFAQ(id);
+      
+      if (result.success) {
+        setFaqs(faqs.filter(f => f.id !== id));
+        alert("Soru başarıyla silindi.");
+      } else {
+        alert(result.message || "Soru silinirken bir hata oluştu.");
       }
   };
 
-  const toggleStatus = (id: number) => {
-      setFaqs(faqs.map(f => f.id === id ? { ...f, active: !f.active } : f));
+  const toggleStatus = async (id: number) => {
+      const faq = faqs.find(f => f.id === id);
+      if (!faq) return;
+      
+      const result = await updateProFAQ(id, {
+        is_public: !faq.active
+      });
+      
+      if (result.success) {
+        setFaqs(faqs.map(f => f.id === id ? { ...f, active: !f.active } : f));
+      } else {
+        alert(result.message || "Durum değiştirilirken bir hata oluştu.");
+      }
   };
 
   const closeModal = () => {
@@ -347,9 +422,10 @@ export default function ProFaqPage() {
                       
                       <button 
                         onClick={handleSave}
-                        className="w-full bg-cyan-600 text-white py-3.5 rounded-xl font-extrabold shadow-btn btn-game hover:bg-cyan-500 transition mt-2"
+                        disabled={submitting}
+                        className="w-full bg-cyan-600 text-white py-3.5 rounded-xl font-extrabold shadow-btn btn-game hover:bg-cyan-500 transition mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                          {editingId ? 'Güncelle' : 'Kaydet ve Yayınla'}
+                          {submitting ? 'Kaydediliyor...' : (editingId ? 'Güncelle' : 'Kaydet ve Yayınla')}
                       </button>
                   </div>
               </div>
@@ -389,9 +465,10 @@ export default function ProFaqPage() {
                               </ul>
                               <button 
                                   onClick={() => handleImportTemplate(pkg)}
-                                  className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold text-xs border border-slate-700 hover:bg-cyan-600 hover:border-cyan-600 transition"
+                                  disabled={submitting}
+                                  className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold text-xs border border-slate-700 hover:bg-cyan-600 hover:border-cyan-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                  Paketi İçe Aktar
+                                  {submitting ? 'İçe Aktarılıyor...' : 'Paketi İçe Aktar'}
                               </button>
                           </div>
                       ))}

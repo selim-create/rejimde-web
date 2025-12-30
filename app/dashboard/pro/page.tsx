@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { getMe as getRealMe, getProClients, ClientListItem, getAppointmentRequests, AppointmentRequest } from "@/lib/api";
+import { getMe as getRealMe, getProClients, ClientListItem, getAppointmentRequests, AppointmentRequest, getAnnouncements, createAnnouncement, Announcement } from "@/lib/api";
 // import Link from "next/link"; // Hata verdiği için kaldırıldı, <a> etiketi kullanılacak.
 
 // --- MOCK API (Bağımlılığı kaldırmak için) ---
@@ -171,11 +171,6 @@ const AVAILABLE_BADGES = [
 ];
 
 // YENİ MOCK DATALAR (Duyuru, Medya, SSS)
-const MOCK_ANNOUNCEMENTS = [
-    { id: 1, title: "Ramazan Bayramı Çalışma Saatleri", date: "2 gün önce", readCount: 34, total: 42 },
-    { id: 2, title: "Yeni Grup Derslerimiz Başlıyor!", date: "5 gün önce", readCount: 28, total: 42 }
-];
-
 const MOCK_STORAGE = { used: 1.2, total: 5, unit: 'GB', percentage: 24 };
 
 const MOCK_FAQS = [
@@ -183,6 +178,20 @@ const MOCK_FAQS = [
     { id: 2, q: "Ödeme seçenekleri nelerdir?", active: true },
     { id: 3, q: "Online ders için hangi ekipmanlar gerekli?", active: false },
 ];
+
+// Helper function to format relative date
+const formatRelativeDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return "Bugün";
+  if (diffDays === 1) return "Dün";
+  if (diffDays < 7) return `${diffDays} gün önce`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} hafta önce`;
+  return `${Math.floor(diffDays / 30)} ay önce`;
+};
 
 export default function ProDashboardPage() {
   const [pro, setPro] = useState<any>(null);
@@ -192,6 +201,14 @@ export default function ProDashboardPage() {
   const [clientsPreview, setClientsPreview] = useState<ClientListItem[]>([]);
   const [pendingRequests, setPendingRequests] = useState<AppointmentRequest[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // Form state for announcement modal
+  const [announcementForm, setAnnouncementForm] = useState({
+    title: "",
+    content: ""
+  });
 
   // Dashboard'da sadece bugünün veya yaklaşan randevuları gösterelim (son 2 kayıt)
   const upcomingAppointments = MOCK_APPOINTMENTS.slice(0, 2);
@@ -238,6 +255,21 @@ export default function ProDashboardPage() {
         setPendingCount(result.meta.pending);
     }
     fetchPendingRequests();
+    
+    // Fetch announcements
+    async function fetchAnnouncements() {
+        const items = await getAnnouncements();
+        // Format announcements for display (showing last 2)
+        const formattedAnnouncements = items.slice(0, 2).map((item: Announcement) => ({
+          id: item.id,
+          title: item.title,
+          date: formatRelativeDate(item.created_at),
+          readCount: 0, // This would come from API if available
+          total: 42 // This would come from API if available
+        }));
+        setAnnouncements(formattedAnnouncements);
+    }
+    fetchAnnouncements();
   }, []);
 
   const handleGiveBadge = (badgeLabel: string) => {
@@ -245,10 +277,40 @@ export default function ProDashboardPage() {
       setShowBadgeModal(false);
   };
 
-  const handleSendAnnouncement = () => {
-      alert("Duyuru başarıyla tüm danışanlara gönderildi!");
-      setShowAnnouncementModal(false);
-  }
+  const handleSendAnnouncement = async () => {
+      if (!announcementForm.title || !announcementForm.content) {
+        alert("Lütfen başlık ve içerik alanlarını doldurun.");
+        return;
+      }
+      
+      setSubmitting(true);
+      
+      const result = await createAnnouncement({
+        title: announcementForm.title,
+        content: announcementForm.content,
+        type: 'info',
+        is_dismissible: true
+      });
+      
+      setSubmitting(false);
+      
+      if (result.success && result.announcement) {
+        // Add to local state
+        const newAnnouncement = {
+          id: result.announcement.id,
+          title: result.announcement.title,
+          date: "Şimdi",
+          readCount: 0,
+          total: 42
+        };
+        setAnnouncements([newAnnouncement, ...announcements]);
+        setShowAnnouncementModal(false);
+        setAnnouncementForm({ title: "", content: "" });
+        alert("Duyuru başarıyla tüm danışanlara gönderildi!");
+      } else {
+        alert(result.message || "Duyuru gönderilirken bir hata oluştu.");
+      }
+  };
 
   if (loading) {
       return (
@@ -422,19 +484,26 @@ export default function ProDashboardPage() {
                             </h2>
                             <button onClick={() => setShowAnnouncementModal(true)} className="text-blue-400 font-bold text-xs hover:underline">Yeni Duyuru</button>
                         </div>
-                        <div className="space-y-3">
-                            {MOCK_ANNOUNCEMENTS.map((ann) => (
-                                <div key={ann.id} className="p-4 bg-slate-900/50 border border-slate-700 rounded-2xl flex justify-between items-center">
-                                    <div>
-                                        <h4 className="font-bold text-white text-sm">{ann.title}</h4>
-                                        <span className="text-xs text-slate-500">{ann.date}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-slate-800 px-3 py-1.5 rounded-lg">
-                                        <i className="fa-regular fa-eye"></i> {ann.readCount}/{ann.total} Okunma
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        {announcements.length > 0 ? (
+                          <div className="space-y-3">
+                              {announcements.map((ann) => (
+                                  <div key={ann.id} className="p-4 bg-slate-900/50 border border-slate-700 rounded-2xl flex justify-between items-center">
+                                      <div>
+                                          <h4 className="font-bold text-white text-sm">{ann.title}</h4>
+                                          <span className="text-xs text-slate-500">{ann.date}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-slate-800 px-3 py-1.5 rounded-lg">
+                                          <i className="fa-regular fa-eye"></i> {ann.readCount}/{ann.total} Okunma
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                              <i className="fa-solid fa-bullhorn text-2xl text-slate-600 mb-2"></i>
+                              <p className="text-slate-500 text-sm font-bold">Henüz duyuru yok</p>
+                          </div>
+                        )}
                     </div>
 
                     {/* APPOINTMENT REQUESTS */}
@@ -647,10 +716,25 @@ export default function ProDashboardPage() {
                   <p className="text-slate-400 text-xs font-bold mb-6">Tüm danışanlarına toplu mesaj veya bilgilendirme gönder.</p>
                   
                   <div className="space-y-4">
-                      <input type="text" placeholder="Duyuru Başlığı" className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none font-bold" />
-                      <textarea placeholder="Duyuru içeriği..." className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 text-white focus:border-orange-500 focus:outline-none min-h-[120px] resize-none font-medium"></textarea>
-                      <button onClick={handleSendAnnouncement} className="w-full bg-orange-600 text-white py-3 rounded-xl font-extrabold shadow-btn btn-game hover:bg-orange-500 transition">
-                          <i className="fa-solid fa-paper-plane mr-2"></i> Duyuruyu Yayınla
+                      <input 
+                        type="text" 
+                        placeholder="Duyuru Başlığı" 
+                        className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:outline-none font-bold" 
+                        value={announcementForm.title}
+                        onChange={(e) => setAnnouncementForm({...announcementForm, title: e.target.value})}
+                      />
+                      <textarea 
+                        placeholder="Duyuru içeriği..." 
+                        className="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 text-white focus:border-orange-500 focus:outline-none min-h-[120px] resize-none font-medium"
+                        value={announcementForm.content}
+                        onChange={(e) => setAnnouncementForm({...announcementForm, content: e.target.value})}
+                      ></textarea>
+                      <button 
+                        onClick={handleSendAnnouncement} 
+                        disabled={submitting}
+                        className="w-full bg-orange-600 text-white py-3 rounded-xl font-extrabold shadow-btn btn-game hover:bg-orange-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                          <i className="fa-solid fa-paper-plane mr-2"></i> {submitting ? 'Gönderiliyor...' : 'Duyuruyu Yayınla'}
                       </button>
                   </div>
               </div>
