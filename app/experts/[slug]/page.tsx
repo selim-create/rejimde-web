@@ -955,16 +955,14 @@ export default function ExpertProfilePage() {
         </div>
         {showAskQuestionModal && expert && (
         <AskQuestionModal
-            expertId={expert.related_user_id ??  expert.user_id ?? expert.id}
+            expertId={expert.related_user_id ?? expert.user_id ?? expert.id}
             expertName={expert.name}
-            expertAvatar={expert. image}
+            expertAvatar={expert.image}
             onClose={() => setShowAskQuestionModal(false)}
             onSuccess={(threadId) => {
-            setShowAskQuestionModal(false);
-            // Başarılı mesaj veya yönlendirme
-            alert('Mesajınız gönderildi!  Uzman en kısa sürede yanıtlayacaktır.');
-            // Opsiyonel:  Inbox'a yönlendir
-            // router.push(`/dashboard/inbox`);
+              setShowAskQuestionModal(false);
+              // Optional: Redirect to inbox to see the message
+              // router.push(`/dashboard/inbox`);
             }}
         />
         )}
