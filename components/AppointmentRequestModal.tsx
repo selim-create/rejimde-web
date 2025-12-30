@@ -13,6 +13,11 @@ interface AppointmentRequestModalProps {
   onSuccess: () => void;
 }
 
+interface UserData {
+  name: string;
+  email: string;
+}
+
 export default function AppointmentRequestModal({
   expertId,
   expertName,
@@ -23,7 +28,7 @@ export default function AppointmentRequestModal({
   const [selectedDate, setSelectedDate] = useState('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [userData, setUserData] = useState<{name: string; email: string} | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     type: 'success' | 'error' | 'warning' | 'info';
@@ -59,11 +64,13 @@ export default function AppointmentRequestModal({
     const fetchUserData = async () => {
       try {
         const profile = await getMe();
-        if (profile) {
+        if (profile && profile.name && profile.email) {
           setUserData({
             name: profile.name,
             email: profile.email
           });
+        } else {
+          console.warn('User profile is missing name or email');
         }
       } catch (error) {
         console.error('User data fetch error:', error);
@@ -129,6 +136,17 @@ export default function AppointmentRequestModal({
       return;
     }
 
+    // Validate user data is available
+    if (!userData || !userData.name || !userData.email) {
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Kullanıcı Bilgisi Eksik',
+        message: 'Kullanıcı bilgileriniz yüklenemedi. Lütfen sayfayı yenileyin ve tekrar deneyin.'
+      });
+      return;
+    }
+
     setIsProcessing(true);
     const result = await requestAppointment({
       expert_id: expertId,
@@ -138,8 +156,8 @@ export default function AppointmentRequestModal({
       alternative_time: formData.alternate_time || undefined,
       message: formData.message || undefined,
       service_id: formData.service_id ? parseInt(formData.service_id) : undefined,
-      name: userData?.name,
-      email: userData?.email
+      name: userData.name,
+      email: userData.email
     });
     setIsProcessing(false);
 
