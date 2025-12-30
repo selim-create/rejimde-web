@@ -1,10 +1,16 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { getMe as getRealMe, getMediaLibrary, addMediaItem, deleteMediaItem, MediaItem } from "@/lib/api";
 // import Link from "next/link"; 
 
 // --- MOCK API & DATA (Bağımsız çalışması için) ---
 const getMe = async () => {
+    // Try real API first
+    const realUser = await getRealMe();
+    if (realUser) return realUser;
+    
+    // Fallback to mock
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve({
@@ -17,65 +23,39 @@ const getMe = async () => {
     });
 };
 
-const INITIAL_MEDIA = [
-    { 
-        id: 1, 
-        title: "Sabah Yoga Akışı (15 Dk)", 
-        platform: "youtube", 
-        url: "https://youtube.com/watch?v=...", 
-        date: "2 gün önce", 
-        icon: "fa-youtube", 
-        color: "text-red-500",
-        bg: "bg-red-500/10"
-    },
-    { 
-        id: 2, 
-        title: "Squat Formu Nasıl Olmalı?", 
-        platform: "instagram", 
-        url: "https://instagram.com/p/...", 
-        date: "1 hafta önce", 
-        icon: "fa-instagram", 
-        color: "text-pink-500",
-        bg: "bg-pink-500/10"
-    },
-    { 
-        id: 3, 
-        title: "Sağlıklı Smoothie Tarifi", 
-        platform: "tiktok", 
-        url: "https://tiktok.com/@...", 
-        date: "3 gün önce", 
-        icon: "fa-tiktok", 
-        color: "text-teal-400",
-        bg: "bg-teal-500/10"
-    },
-    { 
-        id: 4, 
-        title: "Meditasyon Müzik Listem", 
-        platform: "spotify", 
-        url: "https://open.spotify.com/...", 
-        date: "1 ay önce", 
-        icon: "fa-spotify", 
-        color: "text-green-500",
-        bg: "bg-green-500/10"
-    },
-    { 
-        id: 5, 
-        title: "Motivasyon Konuşması", 
-        platform: "youtube", 
-        url: "#", 
-        date: "2 ay önce", 
-        icon: "fa-youtube", 
-        color: "text-red-500",
-        bg: "bg-red-500/10"
-    },
-];
+// Helper function to map platform to icon/color
+const getPlatformStyle = (platform: string) => {
+  switch(platform) {
+      case 'youtube': return { icon: "fa-youtube", color: "text-red-500", bg: "bg-red-500/10" };
+      case 'instagram': return { icon: "fa-instagram", color: "text-pink-500", bg: "bg-pink-500/10" };
+      case 'tiktok': return { icon: "fa-tiktok", color: "text-teal-400", bg: "bg-teal-500/10" };
+      case 'spotify': return { icon: "fa-spotify", color: "text-green-500", bg: "bg-green-500/10" };
+      case 'vimeo': return { icon: "fa-vimeo", color: "text-blue-500", bg: "bg-blue-500/10" };
+      default: return { icon: "fa-link", color: "text-slate-400", bg: "bg-slate-700/50" };
+  }
+};
+
+// Helper function to format relative date
+const formatRelativeDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return "Bugün";
+  if (diffDays === 1) return "Dün";
+  if (diffDays < 7) return `${diffDays} gün önce`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} hafta önce`;
+  return `${Math.floor(diffDays / 30)} ay önce`;
+};
 
 export default function ProMediaPage() {
   const [pro, setPro] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [mediaList, setMediaList] = useState(INITIAL_MEDIA);
+  const [mediaList, setMediaList] = useState<any[]>([]);
   const [filter, setFilter] = useState<'all' | 'youtube' | 'instagram' | 'tiktok' | 'spotify'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   // Form State
   const [newLink, setNewLink] = useState({
@@ -85,45 +65,75 @@ export default function ProMediaPage() {
   });
 
   useEffect(() => {
-    getMe().then((user) => {
-        setPro(user);
-        setLoading(false);
-    });
+    async function loadData() {
+      const user = await getMe();
+      setPro(user);
+      
+      // Load media items from API
+      const result = await getMediaLibrary();
+      const items = result.items.map((item: MediaItem) => ({
+        id: item.id,
+        title: item.title,
+        platform: item.type,
+        url: item.url,
+        date: formatRelativeDate(item.created_at),
+        ...getPlatformStyle(item.type)
+      }));
+      setMediaList(items);
+      setLoading(false);
+    }
+    loadData();
   }, []);
 
-  const handleAddLink = () => {
-      if (!newLink.url || !newLink.title) return;
-
-      // Platforma göre ikon ve renk belirle
-      let icon = "fa-link";
-      let color = "text-slate-400";
-      let bg = "bg-slate-700/50";
-
-      switch(newLink.platform) {
-          case 'youtube': icon = "fa-youtube"; color = "text-red-500"; bg = "bg-red-500/10"; break;
-          case 'instagram': icon = "fa-instagram"; color = "text-pink-500"; bg = "bg-pink-500/10"; break;
-          case 'tiktok': icon = "fa-tiktok"; color = "text-teal-400"; bg = "bg-teal-500/10"; break;
-          case 'spotify': icon = "fa-spotify"; color = "text-green-500"; bg = "bg-green-500/10"; break;
+  const handleAddLink = async () => {
+      if (!newLink.url || !newLink.title) {
+        alert("Lütfen tüm alanları doldurun.");
+        return;
       }
 
-      const newItem = {
-          id: Date.now(),
-          title: newLink.title,
-          platform: newLink.platform,
-          url: newLink.url,
+      setSubmitting(true);
+      
+      // Call API to add media item
+      const result = await addMediaItem({
+        title: newLink.title,
+        type: newLink.platform as 'youtube' | 'instagram' | 'spotify' | 'vimeo' | 'custom_link',
+        url: newLink.url
+      });
+      
+      setSubmitting(false);
+      
+      if (result.success && result.item) {
+        // Add to local state
+        const newItem = {
+          id: result.item.id,
+          title: result.item.title,
+          platform: result.item.type,
+          url: result.item.url,
           date: "Şimdi",
-          icon, color, bg
-      };
-
-      setMediaList([newItem, ...mediaList]);
-      setShowAddModal(false);
-      setNewLink({ title: "", platform: "youtube", url: "" });
-      alert("İçerik başarıyla eklendi!");
+          ...getPlatformStyle(result.item.type)
+        };
+        
+        setMediaList([newItem, ...mediaList]);
+        setShowAddModal(false);
+        setNewLink({ title: "", platform: "youtube", url: "" });
+        alert("İçerik başarıyla eklendi!");
+      } else {
+        alert(result.message || "İçerik eklenirken bir hata oluştu.");
+      }
   };
 
-  const handleDelete = (id: number) => {
-      if (confirm("Bu içeriği kütüphaneden kaldırmak istediğinize emin misiniz?")) {
-          setMediaList(mediaList.filter(m => m.id !== id));
+  const handleDelete = async (id: number) => {
+      if (!confirm("Bu içeriği kütüphaneden kaldırmak istediğinize emin misiniz?")) {
+        return;
+      }
+      
+      const result = await deleteMediaItem(id);
+      
+      if (result.success) {
+        setMediaList(mediaList.filter(m => m.id !== id));
+        alert("İçerik başarıyla silindi.");
+      } else {
+        alert(result.message || "İçerik silinirken bir hata oluştu.");
       }
   };
 
@@ -392,9 +402,10 @@ export default function ProMediaPage() {
 
                       <button 
                           onClick={handleAddLink}
-                          className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-extrabold shadow-btn btn-game hover:bg-indigo-500 transition mt-2"
+                          disabled={submitting}
+                          className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-extrabold shadow-btn btn-game hover:bg-indigo-500 transition mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                          Listeye Ekle
+                          {submitting ? 'Ekleniyor...' : 'Listeye Ekle'}
                       </button>
                   </div>
               </div>
