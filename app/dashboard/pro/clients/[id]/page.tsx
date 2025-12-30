@@ -1,19 +1,25 @@
 'use client';
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   getProClient, 
   addClientNote, 
   deleteClientNote, 
   getClientPlans, 
   updateClientPackage,
-  ClientDetail 
+  getProServices,
+  getAppointmentRequests,
+  ClientDetail,
+  ProService,
+  AppointmentRequest
 } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 
 export default function ClientManagementPage({ params }: { params: Promise<{ id: string }> }) {
   const { showToast } = useToast();
+  const router = useRouter();
   const { id } = use(params);
   const clientId = parseInt(id);
   
@@ -24,6 +30,15 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
   const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'requests' | 'notes'>('overview');
   const [plans, setPlans] = useState<unknown[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
+  
+  // Services state for package modal
+  const [services, setServices] = useState<ProService[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  
+  // Requests state
+  const [requests, setRequests] = useState<AppointmentRequest[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   // Notes state
   const [newNote, setNewNote] = useState({ 
@@ -35,6 +50,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
 
   // Add package modal state
   const [showAddPackageModal, setShowAddPackageModal] = useState(false);
+  const [showServiceSelectionModal, setShowServiceSelectionModal] = useState(false);
   const [addingPackage, setAddingPackage] = useState(false);
   const [packageData, setPackageData] = useState({
     sessions_to_add: 5,
@@ -62,6 +78,23 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
     setPlansLoading(false);
   };
 
+  const fetchServices = async () => {
+    setServicesLoading(true);
+    const data = await getProServices();
+    setServices(data);
+    setServicesLoading(false);
+  };
+
+  const fetchRequests = async () => {
+    setRequestsLoading(true);
+    const result = await getAppointmentRequests('pending');
+    // Note: Currently fetches all pending requests. Backend filtering by client_id 
+    // would be more efficient if available in the API
+    setRequests(result.requests);
+    setPendingRequestsCount(result.meta.pending);
+    setRequestsLoading(false);
+  };
+
   // Fetch client data
   useEffect(() => {
     fetchClient();
@@ -72,6 +105,9 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
   useEffect(() => {
     if (activeTab === 'plans' && client) {
       fetchPlans();
+    }
+    if (activeTab === 'requests' && client) {
+      fetchRequests();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, client]);
@@ -171,6 +207,40 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
     setAddingPackage(false);
   };
 
+  const handleAssignService = async (service: ProService) => {
+    setAddingPackage(true);
+    const result = await updateClientPackage(clientId, {
+      action: 'extend',
+      package_name: service.name,
+      total_sessions: service.session_count || 1,
+      price: service.price
+    });
+
+    if (result.success) {
+      showToast({
+        type: 'success',
+        title: 'Hizmet Eklendi',
+        message: `${service.name} başarıyla danışana atandı.`
+      });
+      setShowServiceSelectionModal(false);
+      fetchClient(); // Refresh client data
+    } else {
+      showToast({
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Hizmet eklenemedi.'
+      });
+    }
+    setAddingPackage(false);
+  };
+
+  const handleCreatePlan = () => {
+    router.push(`/dashboard/pro/plans/create?client_id=${clientId}`);
+  };
+
+  // Memoize filtered active services to avoid recalculation on every render
+  const activeServices = useMemo(() => services.filter(s => s.is_active), [services]);
+
   if (loading) {
       return (
         <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -191,9 +261,6 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
         </div>
       );
   }
-
-  // Bekleyen talep sayısı - requests varsa göster, yoksa 0
-  const pendingRequestsCount = 0; // Will be implemented in Phase 2 with inbox
 
   return (
     <div className="min-h-screen bg-slate-900 pb-20 font-sans text-slate-200">
@@ -222,12 +289,24 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                         <i className="fa-solid fa-message"></i>
                     </button>
                     <button 
+                        onClick={() => {
+                            setShowServiceSelectionModal(true);
+                            fetchServices();
+                        }}
+                        className="bg-purple-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-btn shadow-purple-800 btn-game hidden sm:flex items-center gap-2 hover:bg-purple-500 transition"
+                    >
+                        <i className="fa-solid fa-briefcase"></i> Hizmet Ekle
+                    </button>
+                    <button 
                         onClick={() => setShowAddPackageModal(true)}
                         className="bg-green-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-btn shadow-green-800 btn-game hidden sm:flex items-center gap-2 hover:bg-green-500 transition"
                     >
-                        <i className="fa-solid fa-plus"></i> Paket Ekle
+                        <i className="fa-solid fa-plus"></i> Seans Ekle
                     </button>
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-btn shadow-blue-800 btn-game hidden sm:flex items-center gap-2 hover:bg-blue-500 transition">
+                    <button 
+                        onClick={handleCreatePlan}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-btn shadow-blue-800 btn-game hidden sm:flex items-center gap-2 hover:bg-blue-500 transition"
+                    >
                         <i className="fa-solid fa-wand-magic-sparkles"></i> Plan Oluştur
                     </button>
                 </div>
@@ -333,14 +412,46 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
 
             {/* 2. REQUESTS TAB */}
             {activeTab === 'requests' && (
-                <div className="text-center py-20 bg-slate-800 rounded-3xl border-2 border-dashed border-slate-700 animate-fadeIn">
-                    <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <i className="fa-solid fa-inbox text-3xl text-slate-500"></i>
-                    </div>
-                    <h3 className="text-white font-extrabold text-xl mb-2">Talepler (Yakında)</h3>
-                    <p className="text-slate-500 text-sm font-bold mb-8 max-w-sm mx-auto">
-                        Danışan talepleri Faz 2&apos;de Inbox modülü ile gelecek.
-                    </p>
+                <div className="animate-fadeIn">
+                    {requestsLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+                        </div>
+                    ) : requests.length > 0 ? (
+                        <div className="space-y-4">
+                            {requests.map((request: AppointmentRequest) => (
+                                <div key={request.id} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card hover:border-slate-600 transition">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h4 className="font-extrabold text-white text-lg mb-1">{request.service?.name || 'Randevu Talebi'}</h4>
+                                            <p className="text-slate-400 text-sm">{request.message || 'Danışan bir randevu talebi gönderdi.'}</p>
+                                        </div>
+                                        <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                                            request.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' :
+                                            request.status === 'approved' ? 'bg-green-500/10 text-green-400' :
+                                            'bg-red-500/10 text-red-400'
+                                        }`}>
+                                            {request.status === 'pending' ? 'Bekliyor' :
+                                             request.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
+                                        </span>
+                                    </div>
+                                    <div className="text-xs text-slate-500 font-bold">
+                                        {new Date(request.created_at).toLocaleDateString('tr-TR')}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 bg-slate-800 rounded-3xl border-2 border-dashed border-slate-700">
+                            <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i className="fa-solid fa-inbox text-3xl text-slate-500"></i>
+                            </div>
+                            <h3 className="text-white font-extrabold text-xl mb-2">Henüz Talep Yok</h3>
+                            <p className="text-slate-500 text-sm font-bold mb-8 max-w-sm mx-auto">
+                                Bu danışandan henüz randevu veya mesaj talebi gelmemiş.
+                            </p>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -369,7 +480,10 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                             <p className="text-slate-500 text-sm font-bold mb-8 max-w-sm mx-auto">
                                 Bu danışana atanmış diyet veya egzersiz planı bulunmuyor.
                             </p>
-                            <button className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-extrabold shadow-btn shadow-blue-900/50 btn-game hover:bg-blue-500 transition flex items-center gap-2 mx-auto">
+                            <button 
+                                onClick={handleCreatePlan}
+                                className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-extrabold shadow-btn shadow-blue-900/50 btn-game hover:bg-blue-500 transition flex items-center gap-2 mx-auto"
+                            >
                                 <i className="fa-solid fa-plus"></i> Yeni Plan Ata
                             </button>
                         </div>
@@ -435,8 +549,9 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                     {/* Notes List */}
                     <div className="space-y-4">
                         {client.notes && client.notes.length > 0 ? (
-                            client.notes.map((note) => (
-                                <div key={note.id} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card relative">
+                            client.notes.map((note, index) => (
+                                // Fallback to index only if note.id is undefined (shouldn't happen in production)
+                                <div key={note.id || `note-${index}`} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card relative">
                                     {note.is_pinned && (
                                         <div className="absolute top-4 right-4">
                                             <i className="fa-solid fa-thumbtack text-yellow-500"></i>
@@ -507,7 +622,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                 <i className="fa-solid fa-xmark text-xl"></i>
               </button>
               
-              <h2 className="text-xl font-extrabold text-white mb-1">Ek Paket Ekle</h2>
+              <h2 className="text-xl font-extrabold text-white mb-1">Seans Uzat</h2>
               <p className="text-slate-400 text-xs font-bold mb-6">Danışana ek seans hakkı tanıyın.</p>
 
               <div className="space-y-4">
@@ -541,10 +656,74 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                     disabled={addingPackage}
                     className="w-full bg-green-600 text-white py-3 rounded-xl font-extrabold shadow-btn btn-game hover:bg-green-500 transition disabled:opacity-50"
                   >
-                    {addingPackage ? 'Ekleniyor...' : 'Paketi Ekle'}
+                    {addingPackage ? 'Ekleniyor...' : 'Seansları Ekle'}
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* SERVICE SELECTION MODAL */}
+        {showServiceSelectionModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn" onClick={() => setShowServiceSelectionModal(false)}>
+            <div className="bg-slate-800 rounded-3xl w-full max-w-2xl border border-slate-700 shadow-2xl p-6 relative max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setShowServiceSelectionModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white z-10">
+                <i className="fa-solid fa-xmark text-xl"></i>
+              </button>
+              
+              <h2 className="text-xl font-extrabold text-white mb-1">Hizmet Ekle</h2>
+              <p className="text-slate-400 text-xs font-bold mb-6">Danışana mevcut hizmetlerinizden birini atayın.</p>
+
+              {servicesLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+                </div>
+              ) : activeServices.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {activeServices.map((service) => (
+                    <div 
+                      key={service.id} 
+                      onClick={() => handleAssignService(service)}
+                      className="bg-slate-900 border border-slate-700 rounded-2xl p-4 hover:border-blue-500 cursor-pointer transition group"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <h4 className="font-extrabold text-white text-base group-hover:text-blue-400 transition">{service.name}</h4>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${service.color}20`, color: service.color }}>
+                          <i className="fa-solid fa-briefcase text-sm"></i>
+                        </div>
+                      </div>
+                      {service.description && (
+                        <p className="text-slate-400 text-xs mb-3 line-clamp-2">{service.description}</p>
+                      )}
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-700">
+                        <span className="text-xs text-slate-500 font-bold">
+                          {service.session_count ? `${service.session_count} Seans` : service.type}
+                        </span>
+                        <span className="text-lg font-black text-green-400">
+                          {service.price} {service.currency}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20">
+                  <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i className="fa-solid fa-briefcase text-3xl text-slate-500"></i>
+                  </div>
+                  <h3 className="text-white font-extrabold text-xl mb-2">Henüz Hizmet Yok</h3>
+                  <p className="text-slate-500 text-sm font-bold mb-8 max-w-sm mx-auto">
+                    Önce hizmet oluşturmalısınız.
+                  </p>
+                  <Link 
+                    href="/dashboard/pro/services"
+                    className="inline-block bg-blue-600 text-white px-8 py-4 rounded-2xl font-extrabold shadow-btn shadow-blue-900/50 btn-game hover:bg-blue-500 transition"
+                  >
+                    <i className="fa-solid fa-plus mr-2"></i> Hizmet Oluştur
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         )}

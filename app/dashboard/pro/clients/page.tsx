@@ -16,12 +16,12 @@ import { useToast } from "@/components/ui/Toast";
 export default function ProClientsPage() {
   const { showToast } = useToast();
   const [clients, setClients] = useState<ClientListItem[]>([]);
-  const DEFAULT_META = { total: 0, active: 0, pending: 0, archived: 0 };
+  const DEFAULT_META = { total: 0, active: 0, paused: 0, archived: 0 };
   const [meta, setMeta] = useState(DEFAULT_META);
   const [loading, setLoading] = useState(true);
   const [services, setServices] = useState<Service[]>([]);
   
-  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'archived'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'paused' | 'archived'>('active');
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const isInitialMount = useRef(true);
@@ -250,10 +250,10 @@ export default function ProClientsPage() {
                     Aktif ({meta.active})
                 </button>
                 <button 
-                    onClick={() => setActiveTab('pending')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'pending' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                    onClick={() => setActiveTab('paused')}
+                    className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'paused' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                    Bekleyen ({meta.pending})
+                    Pasif ({meta.paused})
                 </button>
                 <button 
                     onClick={() => setActiveTab('archived')}

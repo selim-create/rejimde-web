@@ -2923,7 +2923,7 @@ export interface ClientsListResponse {
   meta: {
     total: number;
     active: number;
-    pending: number;
+    paused: number;
     archived: number;
   };
 }
@@ -2935,7 +2935,7 @@ export async function getProClients(options?: {
   limit?: number;
   offset?: number;
 }): Promise<ClientsListResponse> {
-  const defaultMeta = { total: 0, active: 0, pending: 0, archived: 0 };
+  const defaultMeta = { total: 0, active: 0, paused: 0, archived: 0 };
   
   try {
     const params = new URLSearchParams();
@@ -2998,9 +2998,20 @@ export async function getProClients(options?: {
         };
       });
       
+      // Normalize meta to use 'paused' instead of 'pending'
+      // Backend may still return 'pending', but we map it to 'paused' in the frontend
+      type MetaWithStatus = { paused?: number; pending?: number };
+      const metaWithStatus = meta as MetaWithStatus;
+      const normalizedMeta = {
+        total: meta.total || 0,
+        active: meta.active || 0,
+        paused: metaWithStatus.paused ?? metaWithStatus.pending ?? 0,
+        archived: meta.archived || 0
+      };
+      
       return {
         clients: normalizedClients,
-        meta
+        meta: normalizedMeta
       };
     }
 
