@@ -151,19 +151,21 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
     setIsProcessing(false);
 
     if (result.success && result.appointment) {
-      // FIRST close the appointment modal
-      onClose();
+      // FIRST show success modal
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Başarılı',
+        message: 'Randevu başarıyla oluşturuldu!'
+      });
       
       // THEN call onSuccess to refresh data
       onSuccess(result.appointment);
       
-      // Show SUCCESS modal (not error!)
-      setConfirmModal({
-        isOpen: true,
-        type: 'success',  // <-- THIS MUST BE 'success', NOT 'error'
-        title: 'Başarılı',
-        message: 'Randevu başarıyla oluşturuldu!'
-      });
+      // Close modal after delay to allow success message to be seen
+      setTimeout(() => {
+        onClose();
+      }, 2000);
     } else {
       // Show ERROR modal only on actual errors
       setConfirmModal({
@@ -416,23 +418,27 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
                 Lokasyon
               </label>
               
-              {/* Address Selection Dropdown */}
-              {addresses.length > 0 && (
-                <select
-                  value={formData.selected_address_id}
-                  onChange={handleAddressSelect}
-                  className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold mb-2"
-                >
-                  <option value="">Kayıtlı Adreslerden Seç</option>
-                  {addresses.map(addr => (
-                    <option key={addr.id} value={addr.id}>
-                      {addr.title} - {addr.address}
-                      {addr.is_default && ' (Varsayılan)'}
-                    </option>
-                  ))}
-                  <option value="custom">+ Özel Adres Gir</option>
-                </select>
-              )}
+              {/* Address Selection Dropdown - Always show */}
+              <select
+                value={formData.selected_address_id}
+                onChange={handleAddressSelect}
+                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold mb-2"
+              >
+                <option value="">Kayıtlı Adreslerden Seç</option>
+                {addresses.length > 0 ? (
+                  <>
+                    {addresses.map(addr => (
+                      <option key={addr.id} value={addr.id}>
+                        {addr.title} - {addr.address}
+                        {addr.is_default && ' (Varsayılan)'}
+                      </option>
+                    ))}
+                    <option value="custom">+ Özel Adres Gir</option>
+                  </>
+                ) : (
+                  <option value="" disabled>Kayıtlı adres bulunamadı</option>
+                )}
+              </select>
               
               {/* Manual Location Input */}
               {(showCustomAddress || addresses.length === 0) && (
@@ -440,7 +446,7 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="Veya manuel adres girin..."
+                  placeholder="Manuel adres girin..."
                   className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
                 />
               )}

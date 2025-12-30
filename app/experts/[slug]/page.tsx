@@ -952,7 +952,7 @@ export default function ExpertProfilePage() {
         {/* Appointment Request Modal */}
         {showRequestModal && expert && (
             <AppointmentRequestModal
-                expertId={expert.id}
+                expertId={expert.related_user_id ?? expert.user_id ?? expert.id}
                 expertName={expert.name}
                 onClose={() => setShowRequestModal(false)}
                 onSuccess={() => {

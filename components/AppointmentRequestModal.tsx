@@ -73,6 +73,11 @@ export default function AppointmentRequestModal({
     }
   };
 
+  // Helper function to check if form has valid time selection
+  const hasValidTimeSelection = () => {
+    return formData.preferred_time || (formData.alternate_date && formData.alternate_time);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -93,12 +98,13 @@ export default function AppointmentRequestModal({
       }
     }
 
-    if (!selectedDate || !formData.preferred_time) {
+    // Validate that either preferred time OR alternate date/time is provided
+    if (!selectedDate || !hasValidTimeSelection()) {
       setConfirmModal({
         isOpen: true,
         type: 'warning',
         title: 'Eksik Bilgi',
-        message: 'Lütfen tarih ve saat seçiniz.'
+        message: 'Lütfen tercih ettiğiniz tarih ve saat veya alternatif tarih ve saat bilgilerini giriniz.'
       });
       return;
     }
@@ -264,7 +270,7 @@ export default function AppointmentRequestModal({
           {/* Submit */}
           <button
             type="submit"
-            disabled={isProcessing || !selectedDate || !formData.preferred_time}
+            disabled={isProcessing || !selectedDate || !hasValidTimeSelection()}
             className="w-full bg-green-600 text-white py-4 rounded-xl font-extrabold shadow-btn btn-game hover:bg-green-500 transition mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isProcessing ? (
