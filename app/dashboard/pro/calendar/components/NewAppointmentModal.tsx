@@ -4,6 +4,9 @@ import type { Appointment, ClientListItem, ExpertAddress, ExpertSettings } from 
 import { generateTimeSlots, toISODateString } from '@/lib/calendar-utils';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 
+// Constants
+const SUCCESS_MODAL_DISPLAY_TIME = 2000; // milliseconds
+
 // Error message translation function
 function translateError(message: string): string {
   const translations: Record<string, string> = {
@@ -18,6 +21,16 @@ function translateError(message: string): string {
     'Appointment time conflict': 'Bu saat dilimi dolu. Lütfen başka bir saat seçin.',
   };
   return translations[message] || message;
+}
+
+// Helper function to detect if message indicates success (handles backend inconsistencies)
+// NOTE: This is a workaround for backend returning success messages with success=false
+function isSuccessMessage(message: string | undefined): boolean {
+  if (!message) return false;
+  const lowerMessage = message.toLowerCase();
+  return lowerMessage.includes('oluşturuldu') || 
+         lowerMessage.includes('created') ||
+         lowerMessage.includes('başarı');
 }
 
 interface NewAppointmentModalProps {
@@ -152,11 +165,6 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
     });
     setIsProcessing(false);
 
-    // Check if backend message indicates success (even if success flag is inconsistent)
-    const messageIndicatesSuccess = result.message && 
-      (result.message.toLowerCase().includes('oluşturuldu') || 
-       result.message.toLowerCase().includes('created'));
-
     if (result.success && result.appointment) {
       // FIRST show success modal
       setConfirmModal({
@@ -172,10 +180,10 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
       // Close modal after delay to allow success message to be seen
       setTimeout(() => {
         onClose();
-      }, 2000);
-    } else if (messageIndicatesSuccess) {
-      // Handle case where backend returns success message but success=false
-      // This is a backend inconsistency - treat as success
+      }, SUCCESS_MODAL_DISPLAY_TIME);
+    } else if (isSuccessMessage(result.message)) {
+      // Handle backend inconsistency: success message but success=false
+      // This is a workaround - ideally backend should fix the inconsistent response
       setConfirmModal({
         isOpen: true,
         type: 'success',
@@ -191,7 +199,7 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
       // Close modal after delay
       setTimeout(() => {
         onClose();
-      }, 2000);
+      }, SUCCESS_MODAL_DISPLAY_TIME);
     } else {
       // Show ERROR modal only on actual errors
       setConfirmModal({

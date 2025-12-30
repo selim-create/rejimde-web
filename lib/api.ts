@@ -6198,13 +6198,8 @@ export async function getExpertAddresses(): Promise<ExpertAddress[]> {
       headers: getAuthHeaders(),
     });
 
-    // Silently return empty array for 404 (no addresses configured)
-    if (!res.ok) {
-      if (res.status === 404) {
-        return [];
-      }
-      return [];
-    }
+    // Silently return empty array for any HTTP error (e.g., 404 = no addresses configured)
+    if (!res.ok) return [];
 
     const json = await res.json();
     
