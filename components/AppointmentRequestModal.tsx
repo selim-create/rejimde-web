@@ -64,6 +64,7 @@ export default function AppointmentRequestModal({
     const fetchUserData = async () => {
       try {
         const profile = await getMe();
+        // Ensure profile has required name and email fields
         if (profile && profile.name && profile.email) {
           setUserData({
             name: profile.name,
@@ -137,7 +138,7 @@ export default function AppointmentRequestModal({
     }
 
     // Validate user data is available
-    if (!userData || !userData.name || !userData.email) {
+    if (!userData) {
       setConfirmModal({
         isOpen: true,
         type: 'error',
