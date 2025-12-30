@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -88,7 +88,8 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
   const fetchRequests = async () => {
     setRequestsLoading(true);
     const result = await getAppointmentRequests('pending');
-    // Filter requests for this specific client if needed
+    // Note: Currently fetches all pending requests. Backend filtering by client_id 
+    // would be more efficient if available in the API
     setRequests(result.requests);
     setPendingRequestsCount(result.meta.pending);
     setRequestsLoading(false);
@@ -236,6 +237,9 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
   const handleCreatePlan = () => {
     router.push(`/dashboard/pro/plans/create?client_id=${clientId}`);
   };
+
+  // Memoize filtered active services to avoid recalculation on every render
+  const activeServices = useMemo(() => services.filter(s => s.is_active), [services]);
 
   if (loading) {
       return (
@@ -546,6 +550,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                     <div className="space-y-4">
                         {client.notes && client.notes.length > 0 ? (
                             client.notes.map((note, index) => (
+                                // Fallback to index only if note.id is undefined (shouldn't happen in production)
                                 <div key={note.id || `note-${index}`} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card relative">
                                     {note.is_pinned && (
                                         <div className="absolute top-4 right-4">
@@ -674,9 +679,9 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                 <div className="flex items-center justify-center py-20">
                   <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
                 </div>
-              ) : services.length > 0 ? (
+              ) : activeServices.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {services.filter(s => s.is_active).map((service) => (
+                  {activeServices.map((service) => (
                     <div 
                       key={service.id} 
                       onClick={() => handleAssignService(service)}

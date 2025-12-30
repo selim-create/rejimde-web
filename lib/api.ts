@@ -3000,11 +3000,12 @@ export async function getProClients(options?: {
       
       // Normalize meta to use 'paused' instead of 'pending'
       // Backend may still return 'pending', but we map it to 'paused' in the frontend
+      type MetaWithStatus = { paused?: number; pending?: number };
+      const metaWithStatus = meta as MetaWithStatus;
       const normalizedMeta = {
         total: meta.total || 0,
         active: meta.active || 0,
-        paused: (meta as { paused?: number; pending?: number }).paused || 
-                (meta as { paused?: number; pending?: number }).pending || 0,
+        paused: metaWithStatus.paused ?? metaWithStatus.pending ?? 0,
         archived: meta.archived || 0
       };
       
