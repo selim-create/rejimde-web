@@ -6,6 +6,11 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 
 // Constants
 const SUCCESS_MODAL_DISPLAY_TIME = 2000; // milliseconds
+// Backend success message patterns (workaround for inconsistent response format)
+const SUCCESS_MESSAGE_PATTERNS = {
+  exact: ['randevu oluşturuldu', 'appointment created'],
+  prefixes: ['randevu başarıyla', 'appointment successfully']
+} as const;
 
 // Error message translation function
 function translateError(message: string): string {
@@ -29,11 +34,14 @@ function translateError(message: string): string {
 function isSuccessMessage(message: string | undefined): boolean {
   if (!message) return false;
   const lowerMessage = message.toLowerCase();
-  // Check for exact/specific success patterns
-  return lowerMessage === 'randevu oluşturuldu' || 
-         lowerMessage === 'appointment created' ||
-         lowerMessage.startsWith('randevu başarıyla') ||
-         lowerMessage.startsWith('appointment successfully');
+  
+  // Check exact matches
+  if (SUCCESS_MESSAGE_PATTERNS.exact.some(pattern => lowerMessage === pattern)) {
+    return true;
+  }
+  
+  // Check prefix matches
+  return SUCCESS_MESSAGE_PATTERNS.prefixes.some(prefix => lowerMessage.startsWith(prefix));
 }
 
 interface NewAppointmentModalProps {
