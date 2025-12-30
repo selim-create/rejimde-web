@@ -3333,7 +3333,7 @@ export interface MessageTemplate {
 }
 
 // Thread listesi
-export async function getInboxThreads(options?: {
+export async function getInboxThreads(options?:  {
   status?: string;
   search?: string;
   limit?: number;
@@ -3346,7 +3346,7 @@ export async function getInboxThreads(options?: {
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.offset) params.append('offset', options.offset.toString());
 
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox?${params.toString()}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox? ${params.toString()}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -3358,29 +3358,33 @@ export async function getInboxThreads(options?: {
     const json = await res.json();
     
     if (json.status === 'success') {
-      // Check nested format first (expected)
-      if (json.data) {
-        return {
-          threads: json.data.threads || [],
-          meta: json.data.meta || { total: 0, unread_total: 0 }
-        };
+      // Backend returns { status: 'success', data: [...], meta: {...} }
+      // data is directly the threads array, NOT nested as { threads: [...] }
+      
+      let threads: InboxThread[] = [];
+      let meta = { total: 0, unread_total: 0 };
+      
+      // Format 1: data is directly an array of threads (CURRENT BACKEND FORMAT)
+      if (Array.isArray(json.data)) {
+        threads = json. data;
+        meta = json.meta || { total: 0, unread_total: 0 };
+      }
+      // Format 2: data has nested threads property (legacy/alternative format)
+      else if (json.data?. threads) {
+        threads = json.data.threads;
+        meta = json.data.meta || json.meta || { total: 0, unread_total: 0 };
       }
       
-      // Check root level (legacy)
-      if (json.threads !== undefined || json.meta !== undefined) {
-        return {
-          threads: json.threads || [],
-          meta: json.meta || { total: 0, unread_total: 0 }
-        };
-      }
+      return { threads, meta };
     }
 
-    return { threads: [], meta: { total: 0, unread_total: 0 } };
+    return { threads:  [], meta: { total: 0, unread_total: 0 } };
   } catch (error) {
     console.error('getInboxThreads error:', error);
-    return { threads: [], meta: { total: 0, unread_total: 0 } };
+    return { threads: [], meta: { total:  0, unread_total: 0 } };
   }
 }
+
 
 // Thread detayı ve mesajları
 export async function getInboxThread(threadId: number): Promise<{
@@ -3414,7 +3418,7 @@ export async function getInboxThread(threadId: number): Promise<{
 // Mesaj gönder
 export async function sendInboxMessage(threadId: number, data: {
   content: string;
-  content_type?: string;
+  content_type?:  string;
 }): Promise<{ success: boolean; message?: InboxMessage; error?: string }> {
   try {
     const res = await fetch(`${API_URL}/rejimde/v1/pro/inbox/${threadId}/reply`, {
@@ -3428,18 +3432,18 @@ export async function sendInboxMessage(threadId: number, data: {
     if (json.status === 'success') {
       return {
         success: true,
-        message: json.data?.message
+        message:  json.data?. message  // <-- Burada id gelmeyebilir
       };
     }
 
     return {
       success: false,
-      error: json.message || 'Mesaj gönderilemedi'
+      error: json. message || 'Mesaj gönderilemedi'
     };
   } catch (error) {
     console.error('sendInboxMessage error:', error);
     return {
-      success: false,
+      success:  false,
       error: 'Sunucu hatası'
     };
   }
@@ -5441,12 +5445,12 @@ export interface MyInboxThread {
     avatar: string;
     status: 'online' | 'offline';
   };
-  subject: string;
-  last_message: string;
-  last_message_time: string;
+  subject:  string;
+  last_message:  string;
+  last_message_time:  string;
   is_read: boolean;
   message_count: number;
-  messages?: MyInboxMessage[];
+  messages?:  MyInboxMessage[];
 }
 
 export interface MyInboxMessage {
@@ -5467,7 +5471,26 @@ export async function getMyInboxThreads(): Promise<MyInboxThread[]> {
     });
     const json = await response.json();
     if (json.status === 'success') {
-      return json.data || [];
+      const rawData = json.data || [];
+      
+      // Backend şu an 'client' döndürüyor ama 'expert' olmalı
+      // Geçici olarak veriyi dönüştür
+      return rawData.map((thread: any) => ({
+        id:  thread.id,
+        // Backend 'client' gönderiyor ama aslında bu expert bilgisi olmalı
+        // Eğer expert varsa onu kullan, yoksa client'ı expert olarak kullan (geçici)
+        expert: thread.expert || {
+          id: thread.client?. id || 0,
+          name:  thread.client?.name || 'Uzman',
+          avatar: thread.client?. avatar || 'https://api.dicebear.com/9.x/personas/svg? seed=default',
+          status: 'offline' as const
+        },
+        subject: thread.subject || '',
+        last_message:  thread.last_message?. content || '',
+        last_message_time:  thread.last_message?. created_at || thread.created_at || '',
+        is_read: thread.last_message?.is_read ??  true,
+        message_count: thread. unread_count || 0,
+      }));
     }
     return [];
   } catch (error) {
@@ -5484,7 +5507,35 @@ export async function getMyInboxThread(threadId: number): Promise<MyInboxThread 
     });
     const json = await response.json();
     if (json.status === 'success') {
-      return json.data;
+      const thread = json.data?. thread || json.data;
+      const messages = json.data?.messages || [];
+      
+      if (! thread) return null;
+      
+      // Thread verisini normalize et
+      return {
+        id: thread. id,
+        expert: thread.expert || {
+          id:  thread.client?. id || 0,
+          name: thread.client?.name || 'Uzman',
+          avatar:  thread.client?.avatar || 'https://api.dicebear.com/9.x/personas/svg? seed=default',
+          status: 'offline' as const
+        },
+        subject: thread.subject || '',
+        last_message: thread.last_message?.content || '',
+        last_message_time: thread.last_message?. created_at || thread.created_at || '',
+        is_read: thread.last_message?.is_read ??  true,
+        message_count: thread.unread_count || 0,
+        messages: messages. map((msg: any) => ({
+          id:  msg.id,
+          sender: msg.sender_type === 'client' ?  'user' : 'expert',
+          content:  msg.content,
+          content_type: msg. content_type || 'text',
+          attachments: msg.attachments,
+          created_at: msg.created_at,
+          is_read: msg. is_read
+        }))
+      };
     }
     return null;
   } catch (error) {

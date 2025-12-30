@@ -196,32 +196,38 @@ export default function UserInboxPage() {
 
                 {/* List */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    {filteredThreads.map(thread => (
-                        <div 
-                            key={thread.id}
-                            onClick={() => selectThread(thread.id)}
-                            className={`p-4 border-b border-gray-100 cursor-pointer transition hover:bg-blue-50 ${selectedThread?.id === thread.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
-                        >
-                            <div className="flex justify-between items-start mb-1">
-                                <div className="flex items-center gap-2">
-                                    <div className="relative">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={thread.expert.avatar} className="w-10 h-10 rounded-xl bg-gray-200 object-cover" alt={thread.expert.name} />
-                                        <span className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${thread.expert.status === 'online' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-                                    </div>
-                                    <div>
-                                        <h4 className={`text-sm leading-tight ${!thread.is_read ? 'font-black text-gray-900' : 'font-bold text-gray-700'}`}>{thread.expert.name}</h4>
-                                        <span className="text-[10px] font-bold text-gray-400">{thread.subject}</span>
-                                    </div>
-                                </div>
-                                <span className="text-[10px] font-bold text-gray-400 whitespace-nowrap">{formatTime(thread.last_message_time)}</span>
-                            </div>
-                            <p className={`text-xs mt-2 line-clamp-2 ${!thread.is_read ? 'font-bold text-gray-600' : 'text-gray-500'}`}>
-                                {!thread.is_read && <span className="inline-block w-2 h-2 bg-blue-500 rounded-full mr-1.5"></span>}
-                                {thread.last_message}
-                            </p>
-                        </div>
-                    ))}
+                  {filteredThreads.map(thread => (
+                      <div 
+                          key={thread.id}
+                          onClick={() => selectThread(thread. id)}
+                          className={`p-4 border-b border-gray-100 cursor-pointer transition hover:bg-blue-50 ${selectedThread?.id === thread.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
+                      >
+                          <div className="flex justify-between items-start mb-1">
+                              <div className="flex items-center gap-2">
+                                  <div className="relative">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img 
+                                          src={thread.expert?. avatar || 'https://api.dicebear.com/9.x/personas/svg? seed=default'} 
+                                          className="w-10 h-10 rounded-xl bg-gray-200 object-cover" 
+                                          alt={thread.expert?. name || 'Uzman'} 
+                                      />
+                                      <span className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${thread.expert?.status === 'online' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                                  </div>
+                                  <div>
+                                      <h4 className={`text-sm leading-tight ${! thread.is_read ? 'font-black text-gray-900' : 'font-bold text-gray-700'}`}>
+                                          {thread.expert?.name || 'Uzman'}
+                                      </h4>
+                                      <span className="text-[10px] font-bold text-gray-400">{thread.subject}</span>
+                                  </div>
+                              </div>
+                              <span className="text-[10px] font-bold text-gray-400 whitespace-nowrap">{formatTime(thread.last_message_time)}</span>
+                          </div>
+                          <p className={`text-xs mt-2 line-clamp-2 ${! thread.is_read ? 'font-bold text-gray-600' : 'text-gray-500'}`}>
+                              {! thread.is_read && <span className="inline-block w-2 h-2 bg-blue-500 rounded-full mr-1.5"></span>}
+                              {thread. last_message}
+                          </p>
+                      </div>
+                  ))}
                 </div>
             </div>
 
@@ -240,7 +246,7 @@ export default function UserInboxPage() {
                                         {selectedThread.subject}
                                         <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-bold">#{selectedThread.id}</span>
                                     </h3>
-                                    <p className="text-xs text-gray-500 font-bold">{selectedThread.expert.name} ile</p>
+                                  <p className="text-xs text-gray-500 font-bold">{selectedThread. expert?. name || 'Uzman'} ile</p>
                                 </div>
                             </div>
                         </div>

@@ -99,53 +99,61 @@ export default function ThreadDetailPage() {
     scrollToBottom();
   }, [messages]);
 
-  // Send message
-  const handleSendMessage = async (content: string) => {
-    if (!content.trim()) return;
-    
-    setSending(true);
-    
-    // Optimistic update
-    const tempMessage: InboxMessage = {
-      id: Date.now(), // temporary ID
-      sender_id: pro?.id || 0,
-      sender_type: 'expert',
-      sender_name: pro?.name || '',
-      sender_avatar: pro?.avatar_url || '',
-      content: content,
-      content_type: 'text',
-      attachments: null,
-      is_read: false,
-      is_ai_generated: false,
-      created_at: new Date().toISOString()
-    };
-    
-    setMessages(prev => [...prev, tempMessage]);
-    
-    const result = await sendInboxMessage(threadId, { content });
-    
-    if (result.success && result.message) {
-      // Replace temp message with real one
-      setMessages(prev => prev.map(m => m.id === tempMessage.id ? result.message! : m));
-      
-      showToast({
-        type: 'success',
-        title: 'Başarılı',
-        message: 'Mesaj gönderildi'
-      });
-    } else {
-      // Remove temp message on error
-      setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
-      
-      showToast({
-        type: 'error',
-        title: 'Hata',
-        message: result.error || 'Mesaj gönderilemedi'
-      });
-    }
-    
-    setSending(false);
+// Send message
+const handleSendMessage = async (content: string) => {
+  if (!content.trim()) return;
+  
+  setSending(true);
+  
+  // Optimistic update with unique temp ID
+  const tempId = `temp-${Date. now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const tempMessage:  InboxMessage = {
+    id: tempId as unknown as number, // temporary ID (will be replaced)
+    sender_id: pro?. id || 0,
+    sender_type: 'expert',
+    sender_name: pro?. name || '',
+    sender_avatar: pro?.avatar_url || '',
+    content:  content,
+    content_type: 'text',
+    attachments: null,
+    is_read: false,
+    is_ai_generated: false,
+    created_at: new Date().toISOString()
   };
+  
+  setMessages(prev => [...prev, tempMessage]);
+  
+  const result = await sendInboxMessage(threadId, { content });
+  
+  if (result.success) {
+    // Replace temp message with real one, or keep temp if no message returned
+    if (result.message && result.message.id) {
+      setMessages(prev => prev.map(m => 
+        (m.id === tempMessage.id || m.id === tempId as unknown as number) 
+          ? result.message!  
+          : m
+      ));
+    }
+    // Else keep the temp message as is (it has a valid created_at)
+    
+    showToast({
+      type: 'success',
+      title: 'Başarılı',
+      message: 'Mesaj gönderildi'
+    });
+  } else {
+    // Remove temp message on error
+    setMessages(prev => prev.filter(m => m. id !== tempMessage.id));
+    
+    showToast({
+      type: 'error',
+      title:  'Hata',
+      message:  result.error || 'Mesaj gönderilemedi'
+    });
+  }
+  
+  setSending(false);
+};
 
   // Generate AI draft
   const handleAIDraft = async () => {
@@ -297,9 +305,9 @@ export default function ThreadDetailPage() {
                 </div>
               </div>
             ) : (
-              messages.map((message) => (
+              messages.map((message, index) => (
                 <MessageBubble
-                  key={message.id}
+                  key={message.id?. toString() || `msg-${index}-${message.created_at}`}
                   message={message}
                   isOwn={message.sender_type === 'expert'}
                 />
