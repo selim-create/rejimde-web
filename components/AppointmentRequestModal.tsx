@@ -93,12 +93,13 @@ export default function AppointmentRequestModal({
       }
     }
 
-    if (!selectedDate || !formData.preferred_time) {
+    // Validate that either preferred time OR alternate date/time is provided
+    if (!selectedDate || (!formData.preferred_time && (!formData.alternate_date || !formData.alternate_time))) {
       setConfirmModal({
         isOpen: true,
         type: 'warning',
         title: 'Eksik Bilgi',
-        message: 'Lütfen tarih ve saat seçiniz.'
+        message: 'Lütfen tercih ettiğiniz tarih ve saat veya alternatif tarih ve saat bilgilerini giriniz.'
       });
       return;
     }
