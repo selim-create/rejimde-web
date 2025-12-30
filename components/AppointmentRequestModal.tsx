@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { requestAppointment, getExpertAvailableSlots } from '@/lib/api';
+import { requestAppointment, getExpertAvailableSlots, getMe } from '@/lib/api';
 import { format, addDays, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import ConfirmModal from './ui/ConfirmModal';
@@ -11,6 +11,11 @@ interface AppointmentRequestModalProps {
   expertName: string;
   onClose: () => void;
   onSuccess: () => void;
+}
+
+interface UserData {
+  name: string;
+  email: string;
 }
 
 export default function AppointmentRequestModal({
@@ -23,6 +28,7 @@ export default function AppointmentRequestModal({
   const [selectedDate, setSelectedDate] = useState('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     type: 'success' | 'error' | 'warning' | 'info';
@@ -52,6 +58,35 @@ export default function AppointmentRequestModal({
       label: format(date, 'd MMMM yyyy, EEEE', { locale: tr })
     });
   }
+
+  // Fetch user data on mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const profile = await getMe();
+        // Ensure profile has required name and email fields with non-empty values
+        const hasValidName = typeof profile?.name === 'string' && profile.name.trim().length > 0;
+        const hasValidEmail = typeof profile?.email === 'string' && profile.email.trim().length > 0;
+        
+        if (profile && hasValidName && hasValidEmail) {
+          setUserData({
+            name: profile.name.trim(),
+            email: profile.email.trim()
+          });
+        } else {
+          console.warn('User profile is missing name or email', { 
+            hasProfile: Boolean(profile), 
+            hasValidName,
+            hasValidEmail
+          });
+        }
+      } catch (error) {
+        console.error('User data fetch error:', error);
+      }
+    };
+    
+    fetchUserData();
+  }, []);
 
   // Load available slots when date is selected
   useEffect(() => {
@@ -109,6 +144,17 @@ export default function AppointmentRequestModal({
       return;
     }
 
+    // Validate user data is available
+    if (!userData) {
+      setConfirmModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Kullanıcı Bilgisi Eksik',
+        message: 'Kullanıcı bilgileriniz yüklenemedi. Lütfen sayfayı yenileyin ve tekrar deneyin.'
+      });
+      return;
+    }
+
     setIsProcessing(true);
     const result = await requestAppointment({
       expert_id: expertId,
@@ -117,7 +163,9 @@ export default function AppointmentRequestModal({
       alternative_date: formData.alternate_date || undefined,
       alternative_time: formData.alternate_time || undefined,
       message: formData.message || undefined,
-      service_id: formData.service_id ? parseInt(formData.service_id) : undefined
+      service_id: formData.service_id ? parseInt(formData.service_id) : undefined,
+      name: userData.name,
+      email: userData.email
     });
     setIsProcessing(false);
 
