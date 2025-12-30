@@ -7,13 +7,15 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 // Error message translation function
 function translateError(message: string): string {
   const translations: Record<string, string> = {
-    'Time slot is not available': 'Bu saat dilimi müsait değil. Lütfen başka bir saat seçin.',
+    'Time slot is not available': 'Bu saat dilimi dolu. Lütfen başka bir saat seçin.',
     'Missing required fields': 'Lütfen zorunlu alanları doldurun.',
     'Appointment created': 'Randevu oluşturuldu',
     'Failed to create appointment': 'Randevu oluşturulamadı.',
     'Client not found': 'Danışan bulunamadı.',
     'Invalid date or time': 'Geçersiz tarih veya saat.',
     'Appointment overlaps with existing': 'Bu saat diliminde zaten bir randevunuz var.',
+    'Time slot already booked': 'Bu saat dilimi dolu. Lütfen başka bir saat seçin.',
+    'Appointment time conflict': 'Bu saat dilimi dolu. Lütfen başka bir saat seçin.',
   };
   return translations[message] || message;
 }
@@ -150,6 +152,11 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
     });
     setIsProcessing(false);
 
+    // Check if backend message indicates success (even if success flag is inconsistent)
+    const messageIndicatesSuccess = result.message && 
+      (result.message.toLowerCase().includes('oluşturuldu') || 
+       result.message.toLowerCase().includes('created'));
+
     if (result.success && result.appointment) {
       // FIRST show success modal
       setConfirmModal({
@@ -163,6 +170,25 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
       onSuccess(result.appointment);
       
       // Close modal after delay to allow success message to be seen
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+    } else if (messageIndicatesSuccess) {
+      // Handle case where backend returns success message but success=false
+      // This is a backend inconsistency - treat as success
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Başarılı',
+        message: result.message || 'Randevu başarıyla oluşturuldu!'
+      });
+      
+      // Refresh the calendar (even without appointment object)
+      if (result.appointment) {
+        onSuccess(result.appointment);
+      }
+      
+      // Close modal after delay
       setTimeout(() => {
         onClose();
       }, 2000);
@@ -442,13 +468,21 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
               
               {/* Manual Location Input */}
               {(showCustomAddress || addresses.length === 0) && (
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="Manuel adres girin..."
-                  className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
-                />
+                <>
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="Manuel adres girin..."
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
+                  />
+                  {addresses.length === 0 && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      <i className="fa-solid fa-info-circle mr-1"></i>
+                      Kayıtlı adres bulunamadı, manuel giriş yapabilirsiniz
+                    </p>
+                  )}
+                </>
               )}
             </div>
           )}
