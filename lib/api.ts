@@ -5561,18 +5561,61 @@ export async function sendMyInboxMessage(threadId: number, content: string, atta
 }
 
 // POST /me/inbox/new - Yeni thread oluştur
-export async function createMyInboxThread(expertId: number, subject: string, content: string): Promise<{ success: boolean; thread_id?:  number }> {
+export async function createMyInboxThread(expertId: number, subject: string, content: string): Promise<{ success: boolean; thread_id?: number; message?: string; error_code?: string }> {
   try {
     const response = await fetch(`${API_URL}/rejimde/v1/me/inbox/new`, {
-      method:  'POST',
+      method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ expert_id: expertId, subject, content }),
     });
-    const json = await response.  json();
-    return { success: json.status === 'success', thread_id: json.data?. thread_id };
+    
+    const json = await response.json();
+    
+    // Success case
+    if (response.ok && json.status === 'success') {
+      return { 
+        success: true, 
+        thread_id: json.data?.thread_id,
+        message: json.message || 'Mesajınız gönderildi!'
+      };
+    }
+    
+    // Error cases - parse backend error message
+    let errorMessage = 'Mesaj gönderilemedi.';
+    let errorCode = 'unknown';
+    
+    if (response.status === 401) {
+      errorMessage = 'Mesaj göndermek için lütfen giriş yapın.';
+      errorCode = 'unauthorized';
+    } else if (response.status === 400) {
+      // Parse backend error message for specific cases
+      if (json.message) {
+        errorMessage = json.message;
+        if (json.message.toLowerCase().includes('relationship') || 
+            json.message.toLowerCase().includes('ilişki') ||
+            json.message.toLowerCase().includes('danışan')) {
+          errorCode = 'no_relationship';
+        }
+      } else {
+        errorMessage = 'Geçersiz istek. Lütfen tüm alanları doldurun.';
+        errorCode = 'bad_request';
+      }
+    } else if (json.message) {
+      errorMessage = json.message;
+    }
+    
+    return { 
+      success: false, 
+      message: errorMessage,
+      error_code: errorCode
+    };
   } catch (error) {
     console.error('createMyInboxThread error:', error);
-    return { success: false };
+    return { 
+      success: false, 
+      message: 'Bağlantı hatası. Lütfen internet bağlantınızı kontrol edin.',
+      error_code: 'network_error'
+    };
   }
 }
 
