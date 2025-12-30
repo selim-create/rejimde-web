@@ -38,8 +38,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
   const [addingPackage, setAddingPackage] = useState(false);
   const [packageData, setPackageData] = useState({
     sessions_to_add: 5,
-    price: 0,
-    description: ''
+    price: 0
   });
 
   const fetchClient = async () => {
@@ -149,9 +148,8 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
     setAddingPackage(true);
     const result = await updateClientPackage(clientId, {
       action: 'extend',
-      sessions_to_add: packageData.sessions_to_add,
-      price: packageData.price,
-      description: packageData.description
+      total_sessions: packageData.sessions_to_add,
+      price: packageData.price
     });
 
     if (result.success) {
@@ -161,7 +159,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
         message: `${packageData.sessions_to_add} seans başarıyla eklendi.`
       });
       setShowAddPackageModal(false);
-      setPackageData({ sessions_to_add: 5, price: 0, description: '' });
+      setPackageData({ sessions_to_add: 5, price: 0 });
       fetchClient(); // Refresh client data
     } else {
       showToast({
@@ -535,16 +533,6 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                     value={packageData.price}
                     onChange={(e) => setPackageData({...packageData, price: parseFloat(e.target.value) || 0})}
                   />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Açıklama (Opsiyonel)</label>
-                  <textarea 
-                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-medium text-sm min-h-[80px] resize-none" 
-                    placeholder="Ek paket hakkında notlar..."
-                    value={packageData.description}
-                    onChange={(e) => setPackageData({...packageData, description: e.target.value})}
-                  ></textarea>
                 </div>
 
                 <div className="pt-2">
