@@ -264,7 +264,11 @@ export default function AppointmentRequestModal({
           {/* Submit */}
           <button
             type="submit"
-            disabled={isProcessing || !selectedDate || !formData.preferred_time}
+            disabled={
+              isProcessing || 
+              !selectedDate || 
+              (!formData.preferred_time && (!formData.alternate_date || !formData.alternate_time))
+            }
             className="w-full bg-green-600 text-white py-4 rounded-xl font-extrabold shadow-btn btn-game hover:bg-green-500 transition mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isProcessing ? (
