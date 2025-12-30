@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { requestAppointment, getExpertAvailableSlots } from '@/lib/api';
+import { requestAppointment, getExpertAvailableSlots, getMe } from '@/lib/api';
 import { format, addDays, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import ConfirmModal from './ui/ConfirmModal';
@@ -23,6 +23,7 @@ export default function AppointmentRequestModal({
   const [selectedDate, setSelectedDate] = useState('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [userData, setUserData] = useState<{name: string; email: string} | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     type: 'success' | 'error' | 'warning' | 'info';
@@ -52,6 +53,25 @@ export default function AppointmentRequestModal({
       label: format(date, 'd MMMM yyyy, EEEE', { locale: tr })
     });
   }
+
+  // Fetch user data on mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const profile = await getMe();
+        if (profile) {
+          setUserData({
+            name: profile.name,
+            email: profile.email
+          });
+        }
+      } catch (error) {
+        console.error('User data fetch error:', error);
+      }
+    };
+    
+    fetchUserData();
+  }, []);
 
   // Load available slots when date is selected
   useEffect(() => {
@@ -117,7 +137,9 @@ export default function AppointmentRequestModal({
       alternative_date: formData.alternate_date || undefined,
       alternative_time: formData.alternate_time || undefined,
       message: formData.message || undefined,
-      service_id: formData.service_id ? parseInt(formData.service_id) : undefined
+      service_id: formData.service_id ? parseInt(formData.service_id) : undefined,
+      name: userData?.name,
+      email: userData?.email
     });
     setIsProcessing(false);
 
