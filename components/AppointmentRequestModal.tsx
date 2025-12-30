@@ -65,8 +65,8 @@ export default function AppointmentRequestModal({
       try {
         const profile = await getMe();
         // Ensure profile has required name and email fields with non-empty values
-        const hasValidName = typeof profile?.name === 'string' && profile.name.trim();
-        const hasValidEmail = typeof profile?.email === 'string' && profile.email.trim();
+        const hasValidName = typeof profile?.name === 'string' && profile.name.trim().length > 0;
+        const hasValidEmail = typeof profile?.email === 'string' && profile.email.trim().length > 0;
         
         if (profile && hasValidName && hasValidEmail) {
           setUserData({
@@ -76,8 +76,8 @@ export default function AppointmentRequestModal({
         } else {
           console.warn('User profile is missing name or email', { 
             hasProfile: Boolean(profile), 
-            hasName: Boolean(profile?.name), 
-            hasEmail: Boolean(profile?.email) 
+            hasValidName,
+            hasValidEmail
           });
         }
       } catch (error) {
