@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/format-utils";
 import MascotDisplay from "@/components/MascotDisplay";
 import ExpertReviews from "@/components/CommentsExperts";
 import AppointmentRequestModal from "@/components/AppointmentRequestModal";
+import AskQuestionModal from "@/components/AskQuestionModal";
 import { 
   EXPERTISE_TAGS, 
   GOAL_TAGS, 
@@ -169,6 +170,7 @@ export default function ExpertProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showAskQuestionModal, setShowAskQuestionModal] = useState(false);
 
   const rawSlug = params?. slug 
     ? (Array.isArray(params.slug) ? params.slug[0] : params.slug) 
@@ -537,8 +539,11 @@ export default function ExpertProfilePage() {
                                     <i className="fa-solid fa-calendar-plus"></i> Randevu Al
                                 </button>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <button className="bg-white border-2 border-gray-200 text-gray-500 w-full py-3 rounded-xl font-extrabold text-sm shadow-btn shadow-gray-200 btn-game hover:text-rejimde-blue hover:border-rejimde-blue transition flex flex-col items-center justify-center">
-                                        <i className="fa-regular fa-message text-lg block mb-1"></i> Soru Sor
+                                    <button 
+                                    onClick={() => setShowAskQuestionModal(true)}
+                                    className="bg-white border-2 border-gray-200 text-gray-500 w-full py-3 rounded-xl font-extrabold text-sm shadow-btn shadow-gray-200 btn-game hover:text-rejimde-blue hover:border-rejimde-blue transition"
+                                    >
+                                    <i className="fa-regular fa-message text-lg block mb-1"></i> Soru Sor
                                     </button>
                                     <button className="bg-white border-2 border-gray-200 text-gray-500 w-full py-3 rounded-xl font-extrabold text-sm shadow-btn shadow-gray-200 btn-game hover:text-rejimde-purple hover:border-rejimde-purple transition flex flex-col items-center justify-center">
                                         <i className="fa-solid fa-user-plus text-lg block mb-1"></i> Takip Et
@@ -948,7 +953,21 @@ export default function ExpertProfilePage() {
                 </div>
             </div>
         </div>
-        
+        {showAskQuestionModal && expert && (
+        <AskQuestionModal
+            expertId={expert.related_user_id ??  expert.user_id ?? expert.id}
+            expertName={expert.name}
+            expertAvatar={expert. image}
+            onClose={() => setShowAskQuestionModal(false)}
+            onSuccess={(threadId) => {
+            setShowAskQuestionModal(false);
+            // Başarılı mesaj veya yönlendirme
+            alert('Mesajınız gönderildi!  Uzman en kısa sürede yanıtlayacaktır.');
+            // Opsiyonel:  Inbox'a yönlendir
+            // router.push(`/dashboard/inbox`);
+            }}
+        />
+        )}
         {/* Appointment Request Modal */}
         {showRequestModal && expert && (
             <AppointmentRequestModal

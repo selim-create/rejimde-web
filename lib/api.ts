@@ -5561,15 +5561,15 @@ export async function sendMyInboxMessage(threadId: number, content: string, atta
 }
 
 // POST /me/inbox/new - Yeni thread oluştur
-export async function createMyInboxThread(expertId: number, subject: string, content: string): Promise<{ success: boolean; thread_id?: number }> {
+export async function createMyInboxThread(expertId: number, subject: string, content: string): Promise<{ success: boolean; thread_id?:  number }> {
   try {
     const response = await fetch(`${API_URL}/rejimde/v1/me/inbox/new`, {
-      method: 'POST',
+      method:  'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ expert_id: expertId, subject, content }),
     });
-    const json = await response.json();
-    return { success: json.status === 'success', thread_id: json.data?.thread_id };
+    const json = await response.  json();
+    return { success: json.status === 'success', thread_id: json.data?. thread_id };
   } catch (error) {
     console.error('createMyInboxThread error:', error);
     return { success: false };
