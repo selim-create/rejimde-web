@@ -273,7 +273,8 @@ export default function EditPrivatePlanPage() {
     }
     
     try {
-      const result = await assignPrivatePlan(planId, parseInt(selectedClientForAssign as string));
+      const clientId = typeof selectedClientForAssign === 'string' ? parseInt(selectedClientForAssign) : selectedClientForAssign;
+      const result = await assignPrivatePlan(planId, clientId);
       
       if (result.success) {
         showToast({ type: 'success', title: 'Başarılı', message: 'Plan danışana atandı.' });
