@@ -64,14 +64,18 @@ export default function AppointmentRequestModal({
     const fetchUserData = async () => {
       try {
         const profile = await getMe();
-        // Ensure profile has required name and email fields
-        if (profile && profile.name && profile.email) {
+        // Ensure profile has required name and email fields with non-empty values
+        if (profile && profile.name?.trim() && profile.email?.trim()) {
           setUserData({
-            name: profile.name,
-            email: profile.email
+            name: profile.name.trim(),
+            email: profile.email.trim()
           });
         } else {
-          console.warn('User profile is missing name or email');
+          console.warn('User profile is missing name or email', { 
+            hasProfile: !!profile, 
+            hasName: !!profile?.name, 
+            hasEmail: !!profile?.email 
+          });
         }
       } catch (error) {
         console.error('User data fetch error:', error);
