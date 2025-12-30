@@ -4,18 +4,44 @@ import type { Appointment, ClientListItem, ExpertAddress, ExpertSettings } from 
 import { generateTimeSlots, toISODateString } from '@/lib/calendar-utils';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 
+// Constants
+const SUCCESS_MODAL_DISPLAY_TIME = 2000; // milliseconds
+// Backend success message patterns (workaround for inconsistent response format)
+const SUCCESS_MESSAGE_PATTERNS = {
+  exact: ['randevu oluşturuldu', 'appointment created'],
+  prefixes: ['randevu başarıyla', 'appointment successfully']
+} as const;
+
 // Error message translation function
 function translateError(message: string): string {
   const translations: Record<string, string> = {
-    'Time slot is not available': 'Bu saat dilimi müsait değil. Lütfen başka bir saat seçin.',
+    'Time slot is not available': 'Bu saat dilimi dolu. Lütfen başka bir saat seçin.',
     'Missing required fields': 'Lütfen zorunlu alanları doldurun.',
     'Appointment created': 'Randevu oluşturuldu',
     'Failed to create appointment': 'Randevu oluşturulamadı.',
     'Client not found': 'Danışan bulunamadı.',
     'Invalid date or time': 'Geçersiz tarih veya saat.',
     'Appointment overlaps with existing': 'Bu saat diliminde zaten bir randevunuz var.',
+    'Time slot already booked': 'Bu saat dilimi dolu. Lütfen başka bir saat seçin.',
+    'Appointment time conflict': 'Bu saat dilimi dolu. Lütfen başka bir saat seçin.',
   };
   return translations[message] || message;
+}
+
+// Helper function to detect if message indicates success (handles backend inconsistencies)
+// NOTE: This is a workaround for backend returning success messages with success=false
+// Uses specific keywords to minimize false positives
+function isSuccessMessage(message: string | undefined): boolean {
+  if (!message) return false;
+  const lowerMessage = message.toLowerCase();
+  
+  // Check exact matches
+  if (SUCCESS_MESSAGE_PATTERNS.exact.some(pattern => lowerMessage === pattern)) {
+    return true;
+  }
+  
+  // Check prefix matches
+  return SUCCESS_MESSAGE_PATTERNS.prefixes.some(prefix => lowerMessage.startsWith(prefix));
 }
 
 interface NewAppointmentModalProps {
@@ -165,7 +191,27 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
       // Close modal after delay to allow success message to be seen
       setTimeout(() => {
         onClose();
-      }, 2000);
+      }, SUCCESS_MODAL_DISPLAY_TIME);
+    } else if (isSuccessMessage(result.message)) {
+      // Handle backend inconsistency: success message but success=false
+      // This is a workaround - ideally backend should fix the inconsistent response
+      setConfirmModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Başarılı',
+        message: result.message || 'Randevu başarıyla oluşturuldu!'
+      });
+      
+      // Note: Calendar refresh requires appointment object
+      // If backend doesn't provide it, user may need to manually refresh
+      if (result.appointment) {
+        onSuccess(result.appointment);
+      }
+      
+      // Close modal after delay
+      setTimeout(() => {
+        onClose();
+      }, SUCCESS_MODAL_DISPLAY_TIME);
     } else {
       // Show ERROR modal only on actual errors
       setConfirmModal({
@@ -442,13 +488,21 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
               
               {/* Manual Location Input */}
               {(showCustomAddress || addresses.length === 0) && (
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="Manuel adres girin..."
-                  className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
-                />
+                <>
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="Manuel adres girin..."
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
+                  />
+                  {addresses.length === 0 && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      <i className="fa-solid fa-info-circle mr-1"></i>
+                      Kayıtlı adres bulunamadı, manuel giriş yapabilirsiniz
+                    </p>
+                  )}
+                </>
               )}
             </div>
           )}

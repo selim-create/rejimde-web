@@ -6198,6 +6198,7 @@ export async function getExpertAddresses(): Promise<ExpertAddress[]> {
       headers: getAuthHeaders(),
     });
 
+    // Silently return empty array for any HTTP error (e.g., 404 = no addresses configured)
     if (!res.ok) return [];
 
     const json = await res.json();
@@ -6208,7 +6209,7 @@ export async function getExpertAddresses(): Promise<ExpertAddress[]> {
 
     return [];
   } catch (error) {
-    console.error('getExpertAddresses error:', error);
+    // Silently return empty array on error
     return [];
   }
 }
