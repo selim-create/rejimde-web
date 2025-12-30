@@ -500,67 +500,66 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
             )}
 
         </div>
-    </div>
 
-    {/* ADD PACKAGE MODAL */}
-    {showAddPackageModal && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn" onClick={() => setShowAddPackageModal(false)}>
-        <div className="bg-slate-800 rounded-3xl w-full max-w-md border border-slate-700 shadow-2xl p-6 relative" onClick={e => e.stopPropagation()}>
-          <button onClick={() => setShowAddPackageModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
-            <i className="fa-solid fa-xmark text-xl"></i>
-          </button>
-          
-          <h2 className="text-xl font-extrabold text-white mb-1">Ek Paket Ekle</h2>
-          <p className="text-slate-400 text-xs font-bold mb-6">Danışana ek seans hakkı tanıyın.</p>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Eklenecek Seans Sayısı</label>
-              <input 
-                type="number" 
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" 
-                placeholder="5"
-                min="1"
-                value={packageData.sessions_to_add}
-                onChange={(e) => setPackageData({...packageData, sessions_to_add: parseInt(e.target.value) || 0})}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Ücret (TL)</label>
-              <input 
-                type="number" 
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" 
-                placeholder="0"
-                min="0"
-                value={packageData.price}
-                onChange={(e) => setPackageData({...packageData, price: parseFloat(e.target.value) || 0})}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Açıklama (Opsiyonel)</label>
-              <textarea 
-                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-medium text-sm min-h-[80px] resize-none" 
-                placeholder="Ek paket hakkında notlar..."
-                value={packageData.description}
-                onChange={(e) => setPackageData({...packageData, description: e.target.value})}
-              ></textarea>
-            </div>
-
-            <div className="pt-2">
-              <button 
-                onClick={handleAddPackage}
-                disabled={addingPackage}
-                className="w-full bg-green-600 text-white py-3 rounded-xl font-extrabold shadow-btn btn-game hover:bg-green-500 transition disabled:opacity-50"
-              >
-                {addingPackage ? 'Ekleniyor...' : 'Paketi Ekle'}
+        {/* ADD PACKAGE MODAL */}
+        {showAddPackageModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn" onClick={() => setShowAddPackageModal(false)}>
+            <div className="bg-slate-800 rounded-3xl w-full max-w-md border border-slate-700 shadow-2xl p-6 relative" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setShowAddPackageModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i className="fa-solid fa-xmark text-xl"></i>
               </button>
+              
+              <h2 className="text-xl font-extrabold text-white mb-1">Ek Paket Ekle</h2>
+              <p className="text-slate-400 text-xs font-bold mb-6">Danışana ek seans hakkı tanıyın.</p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Eklenecek Seans Sayısı</label>
+                  <input 
+                    type="number" 
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" 
+                    placeholder="5"
+                    min="1"
+                    value={packageData.sessions_to_add}
+                    onChange={(e) => setPackageData({...packageData, sessions_to_add: parseInt(e.target.value) || 0})}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Ücret (TL)</label>
+                  <input 
+                    type="number" 
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" 
+                    placeholder="0"
+                    min="0"
+                    value={packageData.price}
+                    onChange={(e) => setPackageData({...packageData, price: parseFloat(e.target.value) || 0})}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Açıklama (Opsiyonel)</label>
+                  <textarea 
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-medium text-sm min-h-[80px] resize-none" 
+                    placeholder="Ek paket hakkında notlar..."
+                    value={packageData.description}
+                    onChange={(e) => setPackageData({...packageData, description: e.target.value})}
+                  ></textarea>
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    onClick={handleAddPackage}
+                    disabled={addingPackage}
+                    className="w-full bg-green-600 text-white py-3 rounded-xl font-extrabold shadow-btn btn-game hover:bg-green-500 transition disabled:opacity-50"
+                  >
+                    {addingPackage ? 'Ekleniyor...' : 'Paketi Ekle'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    )}
-  </div>
+        )}
+    </div>
   );
 }
