@@ -25,12 +25,15 @@ function translateError(message: string): string {
 
 // Helper function to detect if message indicates success (handles backend inconsistencies)
 // NOTE: This is a workaround for backend returning success messages with success=false
+// Uses specific keywords to minimize false positives
 function isSuccessMessage(message: string | undefined): boolean {
   if (!message) return false;
   const lowerMessage = message.toLowerCase();
-  return lowerMessage.includes('oluşturuldu') || 
-         lowerMessage.includes('created') ||
-         lowerMessage.includes('başarı');
+  // Check for exact/specific success patterns
+  return lowerMessage === 'randevu oluşturuldu' || 
+         lowerMessage === 'appointment created' ||
+         lowerMessage.startsWith('randevu başarıyla') ||
+         lowerMessage.startsWith('appointment successfully');
 }
 
 interface NewAppointmentModalProps {
@@ -191,7 +194,8 @@ export default function NewAppointmentModal({ onClose, onSuccess, defaultDate }:
         message: result.message || 'Randevu başarıyla oluşturuldu!'
       });
       
-      // Refresh the calendar (even without appointment object)
+      // Note: Calendar refresh requires appointment object
+      // If backend doesn't provide it, user may need to manually refresh
       if (result.appointment) {
         onSuccess(result.appointment);
       }
