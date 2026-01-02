@@ -168,10 +168,10 @@ export default function ExpertReviewsContainer({ expertId, expertSlug }: ExpertR
             average: data.stats.average || 0,
             total: data.stats.total || 0,
             distribution: data.stats.distribution || {},
-            // API'den gelen gerçek veriler
+            // Real data from API
             verifiedClientCount: data.stats.verified_client_count || 0,
             averageProcessDuration: data.stats.average_process_weeks || 0,
-            successRate: data.stats.recommend_rate || 0, // would_recommend oranı
+            successRate: data.stats.recommend_rate || 0, // would_recommend percentage
           });
         }
       }

@@ -113,7 +113,7 @@ const mapSafeComment = (c: any): CommentData => {
     return {
         id: c.id || c.comment_ID,
         content: contentText,
-        date: c. date || c.comment_date,  // Raw date for sorting
+        date: c.date || c.comment_date,  // Raw date for sorting
         timeAgo: c.timeAgo || c.human_date || 'Az önce',  // Human readable
         rating: c.rating,
         parent: parentId,
