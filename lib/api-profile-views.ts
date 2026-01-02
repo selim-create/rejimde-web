@@ -20,10 +20,20 @@ export async function trackProfileView(expertSlug: string): Promise<void> {
       localStorage.setItem('rejimde_session_id', sessionId);
     }
 
+    // Add JWT token if available - this way members are recognized
+    const token = localStorage.getItem('jwt_token');
+    const headers: Record<string, string> = { 
+      'Content-Type': 'application/json' 
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     // Send tracking request to backend
     await fetch(`${API_URL}/rejimde/v1/profile-views/track`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         expert_slug: expertSlug,
         session_id: sessionId
@@ -53,7 +63,7 @@ export interface ProfileViewStats {
  */
 export async function getMyProfileViewStats(token: string): Promise<ProfileViewStats> {
   try {
-    const response = await fetch(`${API_URL}/rejimde/v1/profile-views/stats`, {
+    const response = await fetch(`${API_URL}/rejimde/v1/profile-views/my-stats`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -147,12 +157,12 @@ export async function getProfileViewActivity(
 
     if (json.status === 'success' && json.data) {
       return {
-        data: json.data.activities || [],
-        meta: json.data.meta || {
-          current_page: 1,
-          total_pages: 1,
-          total_items: 0,
-          per_page: perPage
+        data: json.data,
+        meta: {
+          current_page: json.meta?.page || 1,
+          total_pages: json.meta?.total_pages || 1,
+          total_items: json.meta?.total || 0,
+          per_page: json.meta?.per_page || perPage
         }
       };
     }
