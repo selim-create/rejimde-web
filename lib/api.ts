@@ -3847,7 +3847,7 @@ export async function getAppointments(options?: {
     
     if (json.status === 'success') {
       return {
-        appointments: json.data?.appointments || json.data || []
+        appointments: Array.isArray(json.data) ? json.data : (json.data?.appointments || [])
       };
     }
 
