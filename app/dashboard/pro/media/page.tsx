@@ -66,21 +66,28 @@ export default function ProMediaPage() {
 
   useEffect(() => {
     async function loadData() {
-      const user = await getMe();
-      setPro(user);
-      
-      // Load media items from API
-      const result = await getMediaLibrary();
-      const items = result.items.map((item: MediaItem) => ({
-        id: item.id,
-        title: item.title,
-        platform: item.type,
-        url: item.url,
-        date: formatRelativeDate(item.created_at),
-        ...getPlatformStyle(item.type)
-      }));
-      setMediaList(items);
-      setLoading(false);
+      try {
+        const user = await getMe();
+        setPro(user);
+        
+        // Load media items from API
+        const result = await getMediaLibrary();
+        const items = result.items.map((item: MediaItem) => ({
+          id: item.id,
+          title: item.title,
+          platform: item.type,
+          url: item.url,
+          date: formatRelativeDate(item.created_at),
+          ...getPlatformStyle(item.type)
+        }));
+        setMediaList(items);
+      } catch (error) {
+        console.error("Medya yüklenirken hata oluştu:", error);
+        // Still set empty list instead of crashing
+        setMediaList([]);
+      } finally {
+        setLoading(false);
+      }
     }
     loadData();
   }, []);
