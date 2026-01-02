@@ -17,6 +17,13 @@ import {
 } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 
+// Local type for plan items in the list
+interface PlanItem {
+  id: number;
+  title: string;
+  description: string;
+}
+
 export default function ClientManagementPage({ params }: { params: Promise<{ id: string }> }) {
   const { showToast } = useToast();
   const router = useRouter();
@@ -28,12 +35,13 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
   const [error, setError] = useState<string | null>(null);
   
   const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'requests' | 'notes'>('overview');
-  const [plans, setPlans] = useState<unknown[]>([]);
+  const [plans, setPlans] = useState<PlanItem[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   
   // Services state for package modal
   const [services, setServices] = useState<ProService[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
+  const [servicesError, setServicesError] = useState(false);
   
   // Requests state
   const [requests, setRequests] = useState<AppointmentRequest[]>([]);
@@ -51,11 +59,13 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
   // Add package modal state
   const [showAddPackageModal, setShowAddPackageModal] = useState(false);
   const [showServiceSelectionModal, setShowServiceSelectionModal] = useState(false);
+  const [showEditEndDateModal, setShowEditEndDateModal] = useState(false);
   const [addingPackage, setAddingPackage] = useState(false);
   const [packageData, setPackageData] = useState({
     sessions_to_add: 5,
     price: 0
   });
+  const [newEndDate, setNewEndDate] = useState('');
 
   const fetchClient = async () => {
     setLoading(true);
@@ -80,9 +90,24 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
 
   const fetchServices = async () => {
     setServicesLoading(true);
-    const data = await getProServices();
-    setServices(data);
-    setServicesLoading(false);
+    setServicesError(false);
+    try {
+      const data = await getProServices();
+      setServices(data);
+      if (!data || data.length === 0) {
+        setServicesError(true);
+      }
+    } catch (error) {
+      console.error('Services fetch error:', error);
+      setServicesError(true);
+      showToast({
+        type: 'error',
+        title: 'Hata',
+        message: 'Hizmetler yüklenemedi. Lütfen önce hizmet oluşturun.'
+      });
+    } finally {
+      setServicesLoading(false);
+    }
   };
 
   const fetchRequests = async () => {
@@ -234,6 +259,41 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
     setAddingPackage(false);
   };
 
+  const handleUpdateEndDate = async () => {
+    if (!newEndDate) {
+      showToast({
+        type: 'warning',
+        title: 'Uyarı',
+        message: 'Lütfen bir tarih seçin.'
+      });
+      return;
+    }
+
+    setAddingPackage(true);
+    const result = await updateClientPackage(clientId, {
+      action: 'update_end_date',
+      end_date: newEndDate
+    });
+
+    if (result.success) {
+      showToast({
+        type: 'success',
+        title: 'Tarih Güncellendi',
+        message: 'Bitiş tarihi başarıyla güncellendi.'
+      });
+      setShowEditEndDateModal(false);
+      setNewEndDate('');
+      fetchClient(); // Refresh client data
+    } else {
+      showToast({
+        type: 'error',
+        title: 'Hata',
+        message: result.message || 'Tarih güncellenemedi.'
+      });
+    }
+    setAddingPackage(false);
+  };
+
   const handleCreatePlan = () => {
     router.push(`/dashboard/pro/plans/create?client_id=${clientId}`);
   };
@@ -285,9 +345,13 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button className="bg-slate-700 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-slate-600 transition shadow-sm" title="Mesaj Gönder">
+                    <Link 
+                        href={`/dashboard/pro/inbox/${clientId}`}
+                        className="bg-slate-700 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-slate-600 transition shadow-sm" 
+                        title="Mesaj Gönder"
+                    >
                         <i className="fa-solid fa-message"></i>
-                    </button>
+                    </Link>
                     <button 
                         onClick={() => {
                             setShowServiceSelectionModal(true);
@@ -371,12 +435,24 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                             </div>
                             <div className="flex justify-between border-b border-slate-700/50 pb-3 border-dashed">
                                 <span className="text-slate-500 text-xs font-bold uppercase tracking-wide">Bitiş</span>
-                                <span className="text-white text-sm font-bold">{client.agreement?.end_date || '-'}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-white text-sm font-bold">{client.agreement?.end_date || '-'}</span>
+                                    <button 
+                                        onClick={() => {
+                                            setNewEndDate(client.agreement?.end_date || '');
+                                            setShowEditEndDateModal(true);
+                                        }}
+                                        className="text-blue-400 hover:text-blue-300 text-xs transition"
+                                        title="Bitiş tarihini düzenle"
+                                    >
+                                        <i className="fa-solid fa-pen"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div className="flex justify-between pt-1">
                                 <span className="text-slate-500 text-xs font-bold uppercase tracking-wide">Kalan Hak</span>
                                 <span className="text-green-400 text-sm font-black bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
-                                    {client.package?.remaining || 0} / {client.package?.total || 0}
+                                    {client.package?.remaining ?? client.agreement?.remaining_sessions ?? 0} / {client.package?.total ?? client.agreement?.total_sessions ?? 0}
                                 </span>
                             </div>
                         </div>
@@ -464,7 +540,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                         </div>
                     ) : plans.length > 0 ? (
                         <div className="space-y-4">
-                            {plans.map((plan: any) => (
+                            {plans.map((plan) => (
                                 <div key={plan.id} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card hover:border-slate-600 transition">
                                     <h4 className="font-extrabold text-white text-lg mb-2">{plan.title}</h4>
                                     <p className="text-slate-400 text-sm">{plan.description}</p>
@@ -505,7 +581,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                                 <select 
                                     className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold"
                                     value={newNote.type}
-                                    onChange={(e) => setNewNote({...newNote, type: e.target.value as any})}
+                                    onChange={(e) => setNewNote({...newNote, type: e.target.value as 'general' | 'health' | 'progress' | 'reminder'})}
                                 >
                                     <option value="general">Genel</option>
                                     <option value="health">Sağlık</option>
@@ -664,6 +740,42 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
           </div>
         )}
 
+        {/* EDIT END DATE MODAL */}
+        {showEditEndDateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn" onClick={() => setShowEditEndDateModal(false)}>
+            <div className="bg-slate-800 rounded-3xl w-full max-w-md border border-slate-700 shadow-2xl p-6 relative" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setShowEditEndDateModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i className="fa-solid fa-xmark text-xl"></i>
+              </button>
+              
+              <h2 className="text-xl font-extrabold text-white mb-1">Bitiş Tarihini Düzenle</h2>
+              <p className="text-slate-400 text-xs font-bold mb-6">Anlaşmanın bitiş tarihini güncelleyin.</p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Yeni Bitiş Tarihi</label>
+                  <input 
+                    type="date" 
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none font-bold" 
+                    value={newEndDate}
+                    onChange={(e) => setNewEndDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    onClick={handleUpdateEndDate}
+                    disabled={addingPackage}
+                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-extrabold shadow-btn btn-game hover:bg-blue-500 transition disabled:opacity-50"
+                  >
+                    {addingPackage ? 'Kaydediliyor...' : 'Tarihi Kaydet'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* SERVICE SELECTION MODAL */}
         {showServiceSelectionModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn" onClick={() => setShowServiceSelectionModal(false)}>
@@ -678,6 +790,22 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
               {servicesLoading ? (
                 <div className="flex items-center justify-center py-20">
                   <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+                </div>
+              ) : servicesError ? (
+                <div className="text-center py-20">
+                  <div className="w-20 h-20 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i className="fa-solid fa-exclamation-triangle text-3xl text-yellow-500"></i>
+                  </div>
+                  <h3 className="text-white font-extrabold text-xl mb-2">Hizmetler Yüklenemedi</h3>
+                  <p className="text-slate-400 text-sm font-bold mb-8 max-w-sm mx-auto">
+                    Hizmetler yüklenirken bir hata oluştu. Lütfen önce hizmetler sayfasından hizmet oluşturun.
+                  </p>
+                  <Link 
+                    href="/dashboard/pro/services"
+                    className="inline-block bg-blue-600 text-white px-8 py-4 rounded-2xl font-extrabold shadow-btn shadow-blue-900/50 btn-game hover:bg-blue-500 transition"
+                  >
+                    <i className="fa-solid fa-arrow-right mr-2"></i> Hizmetler Sayfasına Git
+                  </Link>
                 </div>
               ) : activeServices.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
