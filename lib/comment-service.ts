@@ -31,6 +31,14 @@ export interface CommentData {
   context?: string;
   status?: 'approved' | 'pending';
   replies?: CommentData[];
+  // Extended fields for expert reviews
+  isAnonymous?: boolean;
+  goalTag?: string;
+  programType?: string;
+  processWeeks?: number;
+  wouldRecommend?: boolean;
+  successStory?: string;
+  is_featured?: boolean;
 }
 
 const getAuthHeaders = () => {
@@ -211,6 +219,14 @@ export async function postComment(data: {
   parent?: number;
   context: string;
   rating?: number;
+  // Extended fields for expert reviews
+  isAnonymous?: boolean;
+  goalTag?: string;
+  programType?: string;
+  processWeeks?: number;
+  wouldRecommend?: boolean;
+  hasSuccessStory?: boolean;
+  successStory?: string;
 }) {
   const res = await fetch(`${API_URL}/rejimde/v1/comments`, {
     method: 'POST',

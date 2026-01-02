@@ -389,3 +389,13 @@ export function getExpertStyle(profession: string = '') {
     const c = colors[theme];
     return { ...c, decorationIcon: icon, theme };
 }
+
+// ============================================
+// PROGRAM TYPES
+// ============================================
+export const PROGRAM_TYPES = [
+  { id: 'online', label: 'Online', icon: 'fa-video' },
+  { id: 'face_to_face', label: 'Yüz Yüze', icon: 'fa-people-arrows' },
+  { id: 'package', label: 'Paket Program', icon: 'fa-box' },
+  { id: 'group', label: 'Grup', icon: 'fa-users' },
+];
