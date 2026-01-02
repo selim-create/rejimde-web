@@ -17,6 +17,13 @@ import {
 } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 
+// Local type for plan items in the list
+interface PlanItem {
+  id: number;
+  title: string;
+  description: string;
+}
+
 export default function ClientManagementPage({ params }: { params: Promise<{ id: string }> }) {
   const { showToast } = useToast();
   const router = useRouter();
@@ -28,7 +35,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
   const [error, setError] = useState<string | null>(null);
   
   const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'requests' | 'notes'>('overview');
-  const [plans, setPlans] = useState<unknown[]>([]);
+  const [plans, setPlans] = useState<PlanItem[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   
   // Services state for package modal
@@ -533,7 +540,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
                         </div>
                     ) : plans.length > 0 ? (
                         <div className="space-y-4">
-                            {plans.map((plan: { id: number; title: string; description: string }) => (
+                            {plans.map((plan) => (
                                 <div key={plan.id} className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-card hover:border-slate-600 transition">
                                     <h4 className="font-extrabold text-white text-lg mb-2">{plan.title}</h4>
                                     <p className="text-slate-400 text-sm">{plan.description}</p>
