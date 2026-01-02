@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { getExpertBySlug, getExpertPublicServices, type Service } from "@/lib/api";
 import { formatCurrency } from "@/lib/format-utils";
 import MascotDisplay from "@/components/MascotDisplay";
-import ExpertReviews from "@/components/CommentsExperts";
+import ExpertReviewsContainer from "@/components/expert-reviews/ExpertReviewsContainer";
 import AppointmentRequestModal from "@/components/AppointmentRequestModal";
 import AskQuestionModal from "@/components/AskQuestionModal";
 import { 
@@ -947,7 +947,7 @@ export default function ExpertProfilePage() {
 
                     {/* 10. REVIEWS */}
                     <div id="comments-section" className="scroll-mt-32">
-                        <ExpertReviews expertId={expert.id} expertSlug={expert.slug} />
+                        <ExpertReviewsContainer expertId={expert.id} expertSlug={expert.slug} />
                     </div>
 
                 </div>
