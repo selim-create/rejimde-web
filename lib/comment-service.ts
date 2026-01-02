@@ -239,20 +239,23 @@ export async function postComment(data: {
   successStory?: string;
 }) {
   // Frontend camelCase -> Backend snake_case dönüşümü
-  const payload = {
+  // Sadece değeri olan alanları gönder
+  const payload: Record<string, any> = {
     post: data.post,
     content: data.content,
-    parent: data.parent,
     context: data.context,
-    rating: data.rating,
-    // Snake case'e çevir (backend bu isimleri bekliyor)
-    is_anonymous: data.isAnonymous || false,
-    goal_tag: data.goalTag || '',
-    program_type: data.programType || '',
-    process_weeks: data.processWeeks || 0,
-    would_recommend: data.wouldRecommend ?? true, // default true if undefined
-    success_story: data.hasSuccessStory && data.successStory ? data.successStory : '',
   };
+  
+  if (data.parent) payload.parent = data.parent;
+  if (data.rating) payload.rating = data.rating;
+  if (data.isAnonymous) payload.is_anonymous = true;
+  if (data.goalTag) payload.goal_tag = data.goalTag;
+  if (data.programType) payload.program_type = data.programType;
+  if (data.processWeeks && data.processWeeks > 0) payload.process_weeks = data.processWeeks;
+  if (data.wouldRecommend !== undefined) payload.would_recommend = data.wouldRecommend;
+  if (data.hasSuccessStory && data.successStory) payload.success_story = data.successStory;
+
+  console.log('📤 Posting comment with payload:', payload); // Debug log
 
   const res = await fetch(`${API_URL}/rejimde/v1/comments`, {
     method: 'POST',
