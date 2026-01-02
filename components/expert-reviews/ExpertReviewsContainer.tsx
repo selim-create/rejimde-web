@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { fetchComments, postComment, toggleLikeComment, CommentData } from "@/lib/comment-service";
 import { ReviewFormData, FilterState, ReviewStatsData, SuccessStory, CommunityImpactData } from "@/types/expert-reviews";
+import { MOCK_STATS } from "./constants";
 import ReviewStats from "./ReviewStats";
 import ReviewFilters from "./ReviewFilters";
 import FeaturedReviews from "./FeaturedReviews";
@@ -168,9 +169,9 @@ export default function ExpertReviewsContainer({ expertId, expertSlug }: ExpertR
             average: data.stats.average || 0,
             total: data.stats.total || 0,
             distribution: data.stats.distribution || {},
-            verifiedClientCount: Math.floor((data.stats.total || 0) * 0.7), // Mock: 70% verified
-            averageProcessDuration: 12, // Mock: 12 weeks average
-            successRate: 85, // Mock: 85% success rate
+            verifiedClientCount: Math.floor((data.stats.total || 0) * MOCK_STATS.VERIFIED_CLIENT_PERCENT),
+            averageProcessDuration: MOCK_STATS.AVERAGE_PROCESS_WEEKS,
+            successRate: MOCK_STATS.SUCCESS_RATE,
           });
         }
       }

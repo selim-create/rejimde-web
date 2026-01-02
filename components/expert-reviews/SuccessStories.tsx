@@ -2,22 +2,11 @@
 
 import { SuccessStory } from "@/types/expert-reviews";
 import { GOAL_TAGS } from "@/lib/constants";
+import { getDisplayName } from "./utils";
 
 interface SuccessStoriesProps {
   stories: SuccessStory[];
 }
-
-const getDisplayName = (authorName: string, isAnonymous: boolean) => {
-  if (isAnonymous) {
-    const initials = authorName
-      .split(' ')
-      .map(word => word[0])
-      .join('.')
-      .toUpperCase();
-    return initials + '.';
-  }
-  return authorName;
-};
 
 const renderStars = (score: number) => {
   return (

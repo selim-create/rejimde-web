@@ -12,7 +12,7 @@ interface ReviewFiltersProps {
 export default function ReviewFilters({ filters, onFilterChange }: ReviewFiltersProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const updateFilter = (key: keyof FilterState, value: any) => {
+  const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     onFilterChange({ ...filters, [key]: value });
   };
 

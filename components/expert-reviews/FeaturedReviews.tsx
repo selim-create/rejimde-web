@@ -1,6 +1,7 @@
 "use client";
 
 import { CommentData } from "@/lib/comment-service";
+import { getDisplayName } from "./utils";
 
 interface FeaturedReviewsProps {
   reviews: CommentData[];
@@ -32,7 +33,9 @@ export default function FeaturedReviews({ reviews }: FeaturedReviewsProps) {
       </h3>
       
       <div className={`grid grid-cols-1 ${reviews.length > 1 ? 'md:grid-cols-2' : ''} ${reviews.length > 2 ? 'lg:grid-cols-3' : ''} gap-6`}>
-        {reviews.map((review) => (
+        {reviews.map((review) => {
+          const isAnonymous = review.isAnonymous || false;
+          return (
           <div 
             key={review.id}
             className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-[2rem] p-6 shadow-lg relative overflow-hidden group hover:shadow-xl transition"
@@ -56,7 +59,7 @@ export default function FeaturedReviews({ reviews }: FeaturedReviewsProps) {
               </div>
               <div className="flex-1">
                 <span className="font-extrabold text-gray-800 text-sm block">
-                  {review.author.name}
+                  {getDisplayName(review.author.name, isAnonymous)}
                 </span>
                 <div className="flex items-center gap-2 mt-1">
                   {review.rating && renderStars(review.rating)}
@@ -84,7 +87,8 @@ export default function FeaturedReviews({ reviews }: FeaturedReviewsProps) {
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

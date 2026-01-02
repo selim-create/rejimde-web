@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CommentData } from "@/lib/comment-service";
+import { getDisplayName } from "./utils";
 
 interface ReviewCardProps {
   review: CommentData;
@@ -17,19 +18,6 @@ interface ReviewCardProps {
     role: string;
   } | null;
 }
-
-// Helper function to get display name (anonymous or full)
-const getDisplayName = (authorName: string, isAnonymous: boolean) => {
-  if (isAnonymous) {
-    const initials = authorName
-      .split(' ')
-      .map(word => word[0])
-      .join('.')
-      .toUpperCase();
-    return initials + '.';
-  }
-  return authorName;
-};
 
 const emojis = ['👍', '❤️', '🔥', '👏', '😂', '😮', '😢', '😡', '🎉', '💪'];
 
