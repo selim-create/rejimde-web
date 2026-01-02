@@ -3818,6 +3818,46 @@ export async function updateAvailabilitySettings(data: {
   }
 }
 
+// GET /pro/calendar/appointments - Uzman randevularını getir
+export async function getAppointments(options?: {
+  start_date?: string;
+  end_date?: string;
+  status?: string;
+  limit?: number;
+}): Promise<{ appointments: Appointment[] }> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.start_date) params.append('start_date', options.start_date);
+    if (options?.end_date) params.append('end_date', options.end_date);
+    if (options?.status) params.append('status', options.status);
+    if (options?.limit) params.append('limit', String(options.limit));
+    
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/appointments${queryString}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      return { appointments: [] };
+    }
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return {
+        appointments: json.data?.appointments || json.data || []
+      };
+    }
+
+    return { appointments: [] };
+  } catch (error) {
+    console.error('getAppointments error:', error);
+    return { appointments: [] };
+  }
+}
+
 // Randevu CRUD
 export async function createAppointment(data: {
   client_id: number;
