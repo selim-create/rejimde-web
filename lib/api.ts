@@ -4376,8 +4376,8 @@ export async function getProDashboard(): Promise<ProDashboardData | null> {
     
     // Check if response is HTML instead of JSON (WordPress error page)
     const text = await res.text();
-    if (text.startsWith('<')) {
-      console.error('API returned HTML instead of JSON');
+    if (!text || text.trim() === '' || text.startsWith('<')) {
+      console.error('API returned invalid response (HTML or empty)');
       return null;
     }
     
