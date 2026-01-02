@@ -1,7 +1,21 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { getMe as getRealMe, getProClients, ClientListItem, getAppointmentRequests, AppointmentRequest, getAnnouncements, createAnnouncement, Announcement } from "@/lib/api";
+import { 
+  getMe as getRealMe, 
+  getProClients, 
+  ClientListItem, 
+  getAppointmentRequests, 
+  AppointmentRequest, 
+  getAnnouncements, 
+  createAnnouncement, 
+  Announcement,
+  getProDashboard,
+  ProDashboardData,
+  getProServices,
+  ProService,
+  getAppointments
+} from "@/lib/api";
 // import Link from "next/link"; // Hata verdiği için kaldırıldı, <a> etiketi kullanılacak.
 
 // --- MOCK API (Bağımlılığı kaldırmak için) ---
@@ -23,18 +37,7 @@ const getMe = async () => {
     });
 };
 
-// --- MOCK DATA ---
-const MOCK_STATS = {
-    activeClients: 42,
-    pendingAppointments: 8,
-    pendingRevisions: 5,
-    monthlyIncome: "₺24.500",
-    weeklyGrowth: "+3",
-    totalBalance: "₺8.250",
-    pendingPayout: "₺12.000",
-    lastPayout: "₺15.000"
-};
-
+// --- MOCK DATA (Limited mock data for UI fallbacks) ---
 const MOCK_SERVICES = [
     { id: 1, title: "Online Yoga (Birebir)", price: 750, duration: 60, type: 'online', active: true },
     { id: 2, title: "Reformer Pilates (Stüdyo)", price: 1200, duration: 50, type: 'offline', active: true },
@@ -84,54 +87,6 @@ const MOCK_CLIENTS = [
     agreement: { startDate: "2025-11-01", endDate: "2025-12-20", duration: "12 Ders", price: 12000, notes: "Paket tamamlandı." },
     requests: []
   }
-];
-
-const MOCK_APPOINTMENTS = [
-  {
-    id: 1,
-    clientId: 101,
-    clientName: "Selin Yılmaz",
-    date: "2025-12-28", 
-    time: "10:00",
-    duration: 60,
-    type: "online",
-    title: "Vinyasa Flow - Seviye 2",
-    status: "confirmed", 
-    location: "https://zoom.us/j/123456"
-  },
-  {
-    id: 2,
-    clientId: 103,
-    clientName: "Merve Boluğur",
-    date: "2025-12-28",
-    time: "15:30",
-    duration: 45,
-    type: "offline",
-    title: "Haftalık Kontrol",
-    status: "confirmed",
-    location: "Nişantaşı Ofis"
-  }
-];
-
-const MOCK_APPOINTMENT_REQUESTS = [
-    {
-        id: 501,
-        clientName: "Gizem A.",
-        avatar: "https://api.dicebear.com/9.x/personas/svg?seed=Gizem",
-        service: "Online Yoga (Birebir)",
-        date: "29 Ara, Pzt",
-        time: "14:00",
-        status: "pending"
-    },
-    {
-        id: 502,
-        clientName: "Mehmet Demir",
-        avatar: "https://api.dicebear.com/9.x/personas/svg?seed=Mehmet",
-        service: "Reformer Pilates (Stüdyo)",
-        date: "30 Ara, Salı",
-        time: "09:00",
-        status: "pending"
-    }
 ];
 
 const MOCK_INBOX = [
@@ -203,15 +158,15 @@ export default function ProDashboardPage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [dashboardData, setDashboardData] = useState<ProDashboardData | null>(null);
+  const [services, setServices] = useState<ProService[]>([]);
+  const [todayAppointments, setTodayAppointments] = useState<any[]>([]);
   
   // Form state for announcement modal
   const [announcementForm, setAnnouncementForm] = useState({
     title: "",
     content: ""
   });
-
-  // Dashboard'da sadece bugünün veya yaklaşan randevuları gösterelim (son 2 kayıt)
-  const upcomingAppointments = MOCK_APPOINTMENTS.slice(0, 2);
 
   useEffect(() => {
     async function loadData() {
@@ -241,6 +196,47 @@ export default function ProDashboardPage() {
     }
     loadData();
     
+    // Fetch dashboard data
+    async function fetchDashboardData() {
+        try {
+            const data = await getProDashboard();
+            if (data) {
+                setDashboardData(data);
+            }
+        } catch (error) {
+            console.error("Dashboard verisi alınamadı:", error);
+        }
+    }
+    fetchDashboardData();
+    
+    // Fetch services
+    async function fetchServices() {
+        try {
+            const servicesData = await getProServices();
+            setServices(servicesData.slice(0, 3)); // Show only first 3
+        } catch (error) {
+            console.error("Hizmetler alınamadı:", error);
+        }
+    }
+    fetchServices();
+    
+    // Fetch today's appointments
+    async function fetchTodayAppointments() {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const appts = await getAppointments({ 
+                start_date: today, 
+                end_date: today,
+                status: 'confirmed',
+                limit: 2 
+            });
+            setTodayAppointments(appts.appointments);
+        } catch (error) {
+            console.error("Bugünkü randevular alınamadı:", error);
+        }
+    }
+    fetchTodayAppointments();
+    
     // Fetch clients preview
     async function fetchClientsPreview() {
         const result = await getProClients({ limit: 3, status: 'active' });
@@ -258,16 +254,20 @@ export default function ProDashboardPage() {
     
     // Fetch announcements
     async function fetchAnnouncements() {
-        const items = await getAnnouncements();
-        // Format announcements for display (showing last 2)
-        const formattedAnnouncements = items.slice(0, 2).map((item: Announcement) => ({
-          id: item.id,
-          title: item.title,
-          date: formatRelativeDate(item.created_at),
-          readCount: 0, // This would come from API if available
-          total: 42 // This would come from API if available
-        }));
-        setAnnouncements(formattedAnnouncements);
+        try {
+            const items = await getAnnouncements();
+            // Format announcements for display (showing last 2)
+            const formattedAnnouncements = items.slice(0, 2).map((item: Announcement) => ({
+              id: item.id,
+              title: item.title,
+              date: formatRelativeDate(item.created_at),
+              readCount: 0, // This would come from API if available
+              total: 42 // This would come from API if available
+            }));
+            setAnnouncements(formattedAnnouncements);
+        } catch (error) {
+            console.error("Duyurular alınamadı:", error);
+        }
     }
     fetchAnnouncements();
   }, []);
@@ -443,29 +443,37 @@ export default function ProDashboardPage() {
                 <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-sm hover:border-slate-600 transition">
                     <p className="text-[10px] font-black text-slate-500 uppercase mb-2 tracking-wide">Aktif Danışan</p>
                     <div className="flex items-end justify-between">
-                        <span className="text-3xl font-black text-white">{MOCK_STATS.activeClients}</span>
-                        <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">{MOCK_STATS.weeklyGrowth} bu hafta</span>
+                        <span className="text-3xl font-black text-white">{dashboardData?.clients.active ?? 0}</span>
+                        {dashboardData && dashboardData.clients.pending > 0 && (
+                            <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">
+                                +{dashboardData.clients.pending} bekliyor
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-sm hover:border-slate-600 transition">
-                    <p className="text-[10px] font-black text-slate-500 uppercase mb-2 tracking-wide">Bekleyen Randevu</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase mb-2 tracking-wide">Bugünkü Randevu</p>
                     <div className="flex items-end justify-between">
-                        <span className="text-3xl font-black text-blue-400">{MOCK_STATS.pendingAppointments}</span>
+                        <span className="text-3xl font-black text-blue-400">{dashboardData?.calendar.today_appointments ?? 0}</span>
                         <span className="text-[10px] font-bold text-slate-400">Bugün</span>
                     </div>
                 </div>
                 <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-sm hover:border-slate-600 transition">
-                    <p className="text-[10px] font-black text-slate-500 uppercase mb-2 tracking-wide">Bekleyen Revize</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase mb-2 tracking-wide">Randevu Talebi</p>
                     <div className="flex items-end justify-between">
-                        <span className="text-3xl font-black text-yellow-400">{MOCK_STATS.pendingRevisions}</span>
-                        <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded border border-red-500/20">Acil</span>
+                        <span className="text-3xl font-black text-yellow-400">{dashboardData?.calendar.pending_requests ?? 0}</span>
+                        {dashboardData && dashboardData.calendar.pending_requests > 0 && (
+                            <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded border border-red-500/20">Bekliyor</span>
+                        )}
                     </div>
                 </div>
                 <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-sm hover:border-slate-600 transition relative overflow-hidden group">
                     <div className="absolute right-0 top-0 w-16 h-16 bg-green-500/10 rounded-bl-full -mr-2 -mt-2 transition group-hover:scale-110"></div>
                     <p className="text-[10px] font-black text-slate-500 uppercase mb-2 tracking-wide">Aylık Gelir</p>
                     <div className="flex items-end justify-between relative z-10">
-                        <span className="text-3xl font-black text-white">{MOCK_STATS.monthlyIncome}</span>
+                        <span className="text-3xl font-black text-white">
+                            ₺{dashboardData?.finance.month_revenue.toLocaleString('tr-TR') ?? '0'}
+                        </span>
                         <i className="fa-solid fa-chart-line text-green-500 text-xl"></i>
                     </div>
                 </div>
@@ -646,37 +654,40 @@ export default function ProDashboardPage() {
                             </a>
                         </div>
                         <div className="space-y-2">
-                            {MOCK_SERVICES.slice(0, 3).map((svc) => (
-                                <div key={svc.id} className="flex justify-between items-center p-2 rounded-lg hover:bg-slate-700/30 transition">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-slate-300">{svc.title}</span>
-                                        <span className="text-[10px] font-bold text-slate-500">{svc.duration} dk • {svc.type}</span>
+                            {services.length > 0 ? (
+                                services.map((svc) => (
+                                    <div key={svc.id} className="flex justify-between items-center p-2 rounded-lg hover:bg-slate-700/30 transition">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-slate-300">{svc.name}</span>
+                                            <span className="text-[10px] font-bold text-slate-500">{svc.duration_minutes} dk • {svc.type}</span>
+                                        </div>
+                                        <span className="text-xs font-black text-white">{svc.price} {svc.currency}</span>
                                     </div>
-                                    <span className="text-xs font-black text-white">{svc.price} TL</span>
+                                ))
+                            ) : (
+                                <div className="text-center py-4">
+                                    <p className="text-slate-500 text-xs font-bold">Henüz paket eklenmemiş</p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
 
                     {/* MEDIA & FAQ WIDGET (YENİ) */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-slate-800 border border-slate-700 rounded-3xl p-4 shadow-card text-center group cursor-pointer hover:border-indigo-500/50 transition">
+                        <a href="/dashboard/pro/media" className="bg-slate-800 border border-slate-700 rounded-3xl p-4 shadow-card text-center group cursor-pointer hover:border-indigo-500/50 transition">
                             <div className="w-10 h-10 mx-auto bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-400 mb-2 group-hover:scale-110 transition">
                                 <i className="fa-solid fa-photo-film"></i>
                             </div>
                             <h4 className="text-xs font-extrabold text-white mb-1">Medya</h4>
-                            <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden mb-1">
-                                <div className="bg-indigo-500 h-full" style={{ width: `${MOCK_STORAGE.percentage}%` }}></div>
-                            </div>
-                            <span className="text-[9px] font-bold text-slate-500">%{MOCK_STORAGE.percentage} Dolu</span>
-                        </div>
-                        <div className="bg-slate-800 border border-slate-700 rounded-3xl p-4 shadow-card text-center group cursor-pointer hover:border-cyan-500/50 transition">
+                            <p className="text-[10px] font-bold text-slate-500">Kütüphaneye Git</p>
+                        </a>
+                        <a href="/dashboard/pro/faq" className="bg-slate-800 border border-slate-700 rounded-3xl p-4 shadow-card text-center group cursor-pointer hover:border-cyan-500/50 transition">
                             <div className="w-10 h-10 mx-auto bg-cyan-500/10 rounded-full flex items-center justify-center text-cyan-400 mb-2 group-hover:scale-110 transition">
                                 <i className="fa-solid fa-circle-question"></i>
                             </div>
                             <h4 className="text-xs font-extrabold text-white mb-1">SSS</h4>
-                            <p className="text-[10px] font-bold text-slate-500">{MOCK_FAQS.filter(f=>f.active).length} Aktif Soru</p>
-                        </div>
+                            <p className="text-[10px] font-bold text-slate-500">Yönetim Paneli</p>
+                        </a>
                     </div>
 
                     {/* Upcoming Appointments */}
@@ -685,16 +696,28 @@ export default function ProDashboardPage() {
                              <i className="fa-regular fa-clock"></i> Bugünkü Randevular
                         </h3>
                         <div className="space-y-4">
-                            {upcomingAppointments.map((apt) => (
-                                <div key={apt.id} className="flex gap-4 items-start relative pl-4 border-l-2 border-blue-500/30">
-                                    <div className="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-blue-500"></div>
-                                    <div className="text-xs font-black text-blue-400 pt-0.5">{apt.time}</div>
-                                    <div>
-                                        <p className="text-sm font-bold text-white leading-tight">{apt.clientName}</p>
-                                        <p className="text-[10px] text-slate-500 font-bold mb-1">{apt.title}</p>
-                                        <a href={apt.location} className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded hover:bg-blue-500/20 transition">
-                                            <i className="fa-solid fa-video"></i> Meet Linki
-                                        </a>
+                            {todayAppointments.length > 0 ? (
+                                todayAppointments.map((apt: any) => (
+                                    <div key={apt.id} className="flex gap-4 items-start relative pl-4 border-l-2 border-blue-500/30">
+                                        <div className="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-blue-500"></div>
+                                        <div className="text-xs font-black text-blue-400 pt-0.5">{apt.start_time}</div>
+                                        <div>
+                                            <p className="text-sm font-bold text-white leading-tight">{apt.client.name}</p>
+                                            <p className="text-[10px] text-slate-500 font-bold mb-1">{apt.title || 'Randevu'}</p>
+                                            {apt.meeting_link && (
+                                                <a href={apt.meeting_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded hover:bg-blue-500/20 transition">
+                                                    <i className="fa-solid fa-video"></i> Meet Linki
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-4">
+                                    <i className="fa-regular fa-calendar text-2xl text-slate-600 mb-2"></i>
+                                    <p className="text-slate-500 text-xs font-bold">Bugün randevu yok</p>
+                                </div>
+                            )}
                                     </div>
                                 </div>
                             ))}

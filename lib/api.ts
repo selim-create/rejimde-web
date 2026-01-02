@@ -4292,6 +4292,61 @@ export interface MonthlyReport {
   }[];
 }
 
+// ==========================================
+// PRO DASHBOARD API FUNCTIONS
+// ==========================================
+
+export interface ProDashboardData {
+  clients: {
+    total: number;
+    active: number;
+    pending: number;
+    at_risk: number;
+  };
+  inbox: {
+    unread_count: number;
+  };
+  calendar: {
+    today_appointments: number;
+    pending_requests: number;
+    this_week_count: number;
+  };
+  finance: {
+    month_revenue: number;
+    pending_payments: number;
+    overdue_payments: number;
+  };
+}
+
+/**
+ * Get Pro Dashboard Overview Data
+ * Returns summary statistics for the professional dashboard
+ */
+export async function getProDashboard(): Promise<ProDashboardData | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/dashboard`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    
+    if (!res.ok) {
+      console.warn('Pro dashboard data could not be fetched:', res.status);
+      return null;
+    }
+    
+    const json = await res.json();
+    
+    if (json.status === 'success' && json.data) {
+      return json.data;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('getProDashboard error:', error);
+    return null;
+  }
+}
+
 // Dashboard
 export async function getFinanceDashboard(period?: string, startDate?: string, endDate?: string): Promise<FinanceDashboard> {
   try {
