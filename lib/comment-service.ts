@@ -250,7 +250,7 @@ export async function postComment(data: {
     goal_tag: data.goalTag || '',
     program_type: data.programType || '',
     process_weeks: data.processWeeks || 0,
-    would_recommend: data.wouldRecommend !== false, // default true
+    would_recommend: data.wouldRecommend ?? true, // default true if undefined
     success_story: data.hasSuccessStory && data.successStory ? data.successStory : '',
   };
 
