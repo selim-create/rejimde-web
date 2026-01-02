@@ -130,10 +130,20 @@ export default function ExpertReviewsContainer({ expertId, expertSlug }: ExpertR
       filtered = filtered.filter(c => c.author.is_verified);
     }
 
-    // TODO: Add more filters when metadata is available
-    // - goalTag
-    // - programType
-    // - withStory
+    // Filter by goal tag
+    if (filters.goalTag) {
+      filtered = filtered.filter(c => c.goalTag === filters.goalTag);
+    }
+
+    // Filter by program type
+    if (filters.programType) {
+      filtered = filtered.filter(c => c.programType === filters.programType);
+    }
+
+    // Filter by success story
+    if (filters.withStory) {
+      filtered = filtered.filter(c => c.successStory && c.successStory.trim().length > 0);
+    }
 
     setFilteredComments(filtered);
   }, [comments, filters]);
@@ -146,8 +156,10 @@ export default function ExpertReviewsContainer({ expertId, expertSlug }: ExpertR
         const allComments = data.comments || [];
         setComments(allComments);
         
-        // Extract featured reviews (mock - will be based on is_featured flag)
-        const featured = allComments.filter((_, index) => index < 3 && Math.random() > 0.5).slice(0, 2);
+        // Extract featured reviews based on is_featured flag
+        const featured = allComments
+          .filter(c => c.is_featured === true)
+          .slice(0, 3); // Limit to 3 featured reviews
         setFeaturedReviews(featured);
         
         // Set stats with extended data
@@ -199,12 +211,18 @@ export default function ExpertReviewsContainer({ expertId, expertSlug }: ExpertR
 
     setIsSubmitting(true);
     try {
-      // TODO: Update API to support new fields
       const res = await postComment({
         post: expertId,
         content: formData.content,
         context: 'expert',
-        rating: formData.rating
+        rating: formData.rating,
+        isAnonymous: formData.isAnonymous,
+        goalTag: formData.goalTag,
+        programType: formData.programType,
+        processWeeks: formData.processWeeks,
+        wouldRecommend: formData.wouldRecommend,
+        hasSuccessStory: formData.hasSuccessStory,
+        successStory: formData.successStory,
       });
       
       if (res.success) {
@@ -250,9 +268,37 @@ export default function ExpertReviewsContainer({ expertId, expertSlug }: ExpertR
     }
   };
 
-  const handleReply = async (commentId: number) => {
-    // TODO: Implement reply functionality
-    console.log("Reply to comment:", commentId);
+  const handleReply = async (commentId: number, replyContent: string) => {
+    if (!user?.isLoggedIn) {
+      showAlert("Giriş Gerekli", "Yanıtlamak için giriş yapmalısınız.", "warning");
+      return;
+    }
+    
+    if (!replyContent.trim()) {
+      showAlert("Eksik Bilgi", "Lütfen bir yanıt yazın.", "warning");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await postComment({
+        post: expertId,
+        content: replyContent,
+        context: 'expert',
+        parent: commentId
+      });
+      
+      if (res.success) {
+        showAlert("Başarılı", res.message || "Yanıtınız gönderildi.", "success");
+        loadData();
+      } else {
+        showAlert("Hata", res.message || "Bir hata oluştu.", "error");
+      }
+    } catch (error: any) {
+      showAlert("Hata", error.message || "Bir hata oluştu.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

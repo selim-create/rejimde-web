@@ -59,11 +59,11 @@ export default function SuccessStories({ stories }: SuccessStoriesProps) {
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-purple-200 rounded-full flex items-center justify-center text-purple-700 font-black text-sm shadow-sm">
-                    {getDisplayName(story.authorName || 'Anonim', story.isAnonymous)}
+                    {getDisplayName(story.authorName, story.isAnonymous)}
                   </div>
                   <div>
                     <div className="font-black text-gray-800 text-sm">
-                      {getDisplayName(story.authorName || 'Anonim', story.isAnonymous)}
+                      {getDisplayName(story.authorName, story.isAnonymous)}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       {renderStars(story.rating)}

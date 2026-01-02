@@ -7,7 +7,7 @@ interface ReviewCardProps {
   review: CommentData;
   expertSlug?: string;
   onLike: (commentId: number) => void;
-  onReply?: (commentId: number) => void;
+  onReply?: (commentId: number, replyContent: string) => void;
   canReply: boolean;
   user: {
     isLoggedIn: boolean;
@@ -55,8 +55,8 @@ export default function ReviewCard({
     (review.author.name === user?.name)
   );
 
-  // Check if this is an anonymous review (we'll add metadata later)
-  const isAnonymous = false; // TODO: Get from review metadata
+  // Check if this is an anonymous review
+  const isAnonymous = review.isAnonymous || false;
 
   return (
     <div className="bg-white rounded-[2rem] p-6 border-2 border-gray-100 shadow-sm hover:border-gray-200 transition group relative">
@@ -169,7 +169,7 @@ export default function ReviewCard({
               <button 
                 onClick={() => {
                   if (onReply && replyContent.trim()) {
-                    onReply(review.id);
+                    onReply(review.id, replyContent);
                     setReplyContent("");
                     setShowReplyForm(false);
                   }

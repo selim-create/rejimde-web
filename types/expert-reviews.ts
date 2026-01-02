@@ -23,8 +23,7 @@ export interface ReviewStatsData {
 
 export interface SuccessStory {
   id: number;
-  authorInitials: string;
-  authorName?: string;
+  authorName: string;
   isAnonymous: boolean;
   goalTag: string;
   processWeeks: number;

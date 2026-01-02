@@ -7,7 +7,7 @@ interface ReviewListProps {
   reviews: CommentData[];
   expertSlug?: string;
   onLike: (commentId: number) => void;
-  onReply?: (commentId: number) => void;
+  onReply?: (commentId: number, replyContent: string) => void;
   user: {
     isLoggedIn: boolean;
     name: string;
