@@ -3818,7 +3818,7 @@ export async function updateAvailabilitySettings(data: {
   }
 }
 
-// GET /pro/calendar/appointments - Uzman randevularını getir
+// GET /pro/calendar - Uzman randevularını getir
 export async function getAppointments(options?: {
   start_date?: string;
   end_date?: string;
@@ -3834,7 +3834,7 @@ export async function getAppointments(options?: {
     
     const queryString = params.toString() ? `?${params.toString()}` : '';
     
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar/appointments${queryString}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/calendar${queryString}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -4374,7 +4374,14 @@ export async function getProDashboard(): Promise<ProDashboardData | null> {
       return null;
     }
     
-    const json = await res.json();
+    // Check if response is HTML instead of JSON (WordPress error page)
+    const text = await res.text();
+    if (text.startsWith('<')) {
+      console.error('API returned HTML instead of JSON');
+      return null;
+    }
+    
+    const json = JSON.parse(text);
     
     if (json.status === 'success' && json.data) {
       return json.data;
