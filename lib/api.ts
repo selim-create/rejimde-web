@@ -901,6 +901,21 @@ export async function deletePost(id: number) {
 export async function getExpertBySlug(slug: string) {
   try {
     const data = await fetchAPI(`/rejimde/v1/professionals/${slug}`);
+    
+    // RejiScore alanlarını varsayılan değerlerle birlikte döndür
+    if (data) {
+      return {
+        ...data,
+        reji_score: data.reji_score || 50,
+        trust_score: data.trust_score || 50,
+        contribution_score: data.contribution_score || 50,
+        freshness_score: data.freshness_score || 50,
+        trend_percentage: data.trend_percentage || 0,
+        review_count: data.review_count || 0,
+        content_count: data.content_count || 0,
+      };
+    }
+    
     return data; 
   } catch (error) {
     console.error("Uzman detayı çekilemedi", error);

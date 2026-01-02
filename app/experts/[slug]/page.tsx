@@ -9,6 +9,7 @@ import MascotDisplay from "@/components/MascotDisplay";
 import ExpertReviewsContainer from "@/components/expert-reviews/ExpertReviewsContainer";
 import AppointmentRequestModal from "@/components/AppointmentRequestModal";
 import AskQuestionModal from "@/components/AskQuestionModal";
+import RejiScore from "@/components/RejiScore";
 import { trackProfileView } from "@/lib/api-profile-views";
 import { 
   EXPERTISE_TAGS, 
@@ -112,6 +113,17 @@ interface ExpertDetail {
     // İstatistikler
     client_count?: string;
     experience?:  string;
+    
+    // RejiScore alanları
+    reji_score?: number;
+    trust_score?: number;
+    contribution_score?: number;
+    freshness_score?: number;
+    trend_percentage?: number;
+    score_level?: string;
+    score_level_label?: string;
+    review_count?: number;
+    content_count?: number;
 }
 
 // Helper:  Deneyim yılını hesapla
@@ -510,19 +522,19 @@ export default function ExpertProfilePage() {
                                 </span>
                             </div>
 
-                            {/* Rating */}
-                            <div className="flex justify-center items-center gap-2 mb-4">
-                                <div className="flex text-rejimde-yellow text-xs">
-                                    <i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star"></i><i className="fa-solid fa-star-half-stroke"></i>
-                                </div>
-                                <span className="font-extrabold text-gray-600">{expert.rating}</span>
-                                <span 
-                                    className="text-gray-400 text-xs font-bold underline cursor-pointer hover:text-rejimde-blue"
-                                    onClick={() => document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' })}
-                                >
-                                    (Değerlendirmeler)
-                                </span>
-                            </div>
+                            {/* RejiScore */}
+                            <RejiScore
+                                score={expert.reji_score || 50}
+                                trustScore={expert.trust_score || 50}
+                                contributionScore={expert.contribution_score || 50}
+                                freshnessScore={expert.freshness_score || 50}
+                                isVerified={expert.is_verified}
+                                userRating={parseFloat(expert.rating) || 0}
+                                reviewCount={expert.review_count || 0}
+                                contentCount={expert.content_count || 0}
+                                trendPercentage={expert.trend_percentage || 0}
+                                className="mb-4"
+                            />
                             
                             {/* Hizmet Dilleri */}
                             {expert.service_languages && expert.service_languages.length > 0 && (
