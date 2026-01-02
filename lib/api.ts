@@ -916,7 +916,7 @@ export async function getExpertBySlug(slug: string) {
       };
     }
     
-    return data; 
+    return null; 
   } catch (error) {
     console.error("Uzman detayı çekilemedi", error);
     return null;
