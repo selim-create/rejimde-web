@@ -58,7 +58,7 @@ export default function ReviewList({
           user?.role === 'administrator' ||
           (expertSlug && user?.slug === expertSlug)
         );
-        const canReply = canModerate || isOwnComment;
+        const canReply = !!(canModerate || isOwnComment);
 
         return (
           <ReviewCard
