@@ -62,15 +62,22 @@ export default function ProInboxPage() {
 
   // Refresh threads when page becomes visible (e.g., when user returns from thread detail)
   useEffect(() => {
+    let refreshTimeout: NodeJS.Timeout;
+    
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        fetchThreads();
+        // Debounce to avoid excessive API calls
+        clearTimeout(refreshTimeout);
+        refreshTimeout = setTimeout(() => {
+          fetchThreads();
+        }, 500); // 500ms debounce
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
+      clearTimeout(refreshTimeout);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps

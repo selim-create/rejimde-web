@@ -718,9 +718,6 @@ export default function ProDashboardPage() {
                                     <p className="text-slate-500 text-xs font-bold">Bugün randevu yok</p>
                                 </div>
                             )}
-                                    </div>
-                                </div>
-                            ))}
                         </div>
                     </div>
                 </div>
