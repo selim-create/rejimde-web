@@ -537,7 +537,7 @@ export default function ProDashboardPage() {
                                                 <img src={request.requester.avatar} className="w-10 h-10 rounded-xl" alt={request.requester.name} />
                                                 <div>
                                                     <h4 className="font-bold text-white text-sm">{request.requester.name}</h4>
-                                                    <p className="text-xs text-slate-400 font-bold">{request.service_name || 'Randevu Talebi'}</p>
+                                                    <p className="text-xs text-slate-400 font-bold">{request.service?.name || 'Randevu Talebi'}</p>
                                                     <div className="flex items-center gap-2 mt-1 text-xs font-bold text-blue-400">
                                                         <i className="fa-regular fa-calendar"></i> {request.preferred_date} - {request.preferred_time}
                                                     </div>
