@@ -20,7 +20,7 @@ export async function trackProfileView(expertSlug: string): Promise<void> {
       localStorage.setItem('rejimde_session_id', sessionId);
     }
 
-    // JWT token varsa ekle - bu sayede üye tanınır
+    // Add JWT token if available - this way members are recognized
     const token = localStorage.getItem('jwt_token');
     const headers: Record<string, string> = { 
       'Content-Type': 'application/json' 
