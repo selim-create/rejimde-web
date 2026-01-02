@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Logo from "@/components/Logo"; // Logo bileşeni import edildi
 
 export default function Footer() {
   return (
@@ -8,12 +9,11 @@ export default function Footer() {
           
           {/* Col 1: Brand */}
           <div className="col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-4 group w-fit">
-              <div className="relative">
-                <i className="fa-solid fa-leaf text-rejimde-green text-3xl group-hover:rotate-12 transition transform duration-300"></i>
-              </div>
-              <span className="text-3xl font-extrabold text-rejimde-text tracking-tight">rejimde</span>
+            {/* ESKİ YAPI SİLİNDİ, YENİ LOGO EKLENDİ */}
+            <Link href="/" className="inline-block mb-6 group focus:outline-none">
+               <Logo showText={true} />
             </Link>
+            
             <p className="text-gray-500 font-bold text-sm leading-relaxed mb-6">
               Türkiye'nin ilk sosyal sağlık ve performans platformu. Rejimde Skoru ile sağlığını oyunlaştır, klanınla birlikte başar.
             </p>
@@ -39,7 +39,6 @@ export default function Footer() {
             <h5 className="font-extrabold text-gray-700 uppercase tracking-wide text-sm mb-4">Kurumsal</h5>
             <ul className="space-y-3">
               <li><Link href="/about" className="text-gray-500 font-bold hover:text-rejimde-blue transition block hover:translate-x-1 duration-200">Hakkımızda</Link></li>
-              {/* DÜZELTİLDİ: /pro-register -> /register/pro */}
               <li><Link href="/register/pro" className="text-gray-500 font-bold hover:text-rejimde-blue transition block hover:translate-x-1 duration-200">Uzman Başvurusu</Link></li>
               <li><Link href="/contact" className="text-gray-500 font-bold hover:text-rejimde-blue transition block hover:translate-x-1 duration-200">İletişim</Link></li>
               <li><Link href="/privacy" className="text-gray-500 font-bold hover:text-rejimde-blue transition block hover:translate-x-1 duration-200">KVKK ve Gizlilik</Link></li>
