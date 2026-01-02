@@ -600,34 +600,126 @@ export default function ExpertProfilePage() {
                             BAŞARI İSTATİSTİKLERİ
                         </h2>
 
-                        <div className="grid grid-cols-1 md: grid-cols-2 gap-6">
-                            <div className="bg-rejimde-bg rounded-2xl p-4 flex items-center gap-4 border-2 border-transparent hover:border-rejimde-green transition">
-                                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-rejimde-green text-2xl shadow-sm">
-                                    <i className="fa-solid fa-arrow-trend-up"></i>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {/* 1. RejiScore */}
+                            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-4 text-center border-2 border-transparent hover:border-indigo-300 transition">
+                                <div className="w-10 h-10 mx-auto bg-white rounded-xl flex items-center justify-center text-indigo-500 text-xl shadow-sm mb-2">
+                                    <i className="fa-solid fa-chart-simple"></i>
                                 </div>
-                                <div>
-                                    <div className="text-2xl font-black text-gray-800">{expert.score_impact}</div>
-                                    <div className="text-xs font-bold text-gray-400 uppercase">Ort.  Skor Artışı</div>
+                                <div className="text-2xl font-black text-gray-800">{expert.reji_score || 50}</div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase">RejiScore</div>
+                            </div>
+                            
+                            {/* 2. Trend (Son Dönem İlgi) */}
+                            <div className={`rounded-2xl p-4 text-center border-2 border-transparent transition ${
+                                (expert.trend_percentage || 0) > 0 
+                                    ? 'bg-gradient-to-br from-green-50 to-emerald-50 hover:border-green-300' 
+                                    : (expert.trend_percentage || 0) < 0 
+                                        ? 'bg-gradient-to-br from-red-50 to-orange-50 hover:border-red-300'
+                                        : 'bg-gradient-to-br from-gray-50 to-slate-50 hover:border-gray-300'
+                            }`}>
+                                <div className={`w-10 h-10 mx-auto bg-white rounded-xl flex items-center justify-center text-xl shadow-sm mb-2 ${
+                                    (expert.trend_percentage || 0) > 0 ? 'text-green-500' : (expert.trend_percentage || 0) < 0 ? 'text-red-500' : 'text-gray-400'
+                                }`}>
+                                    <i className={`fa-solid ${(expert.trend_percentage || 0) > 0 ? 'fa-arrow-trend-up' : (expert.trend_percentage || 0) < 0 ? 'fa-arrow-trend-down' : 'fa-minus'}`}></i>
+                                </div>
+                                <div className={`text-2xl font-black ${
+                                    (expert.trend_percentage || 0) > 0 ? 'text-green-600' : (expert.trend_percentage || 0) < 0 ? 'text-red-600' : 'text-gray-600'
+                                }`}>
+                                    {(expert.trend_percentage || 0) > 0 ? '+' : ''}{expert.trend_percentage || 0}%
+                                </div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase">Son 7 Gün Trend</div>
+                            </div>
+                            
+                            {/* 3. Yorum Sayısı */}
+                            <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-2xl p-4 text-center border-2 border-transparent hover:border-yellow-300 transition">
+                                <div className="w-10 h-10 mx-auto bg-white rounded-xl flex items-center justify-center text-yellow-500 text-xl shadow-sm mb-2">
+                                    <i className="fa-solid fa-comments"></i>
+                                </div>
+                                <div className="text-2xl font-black text-gray-800">{expert.review_count || 0}</div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase">Değerlendirme</div>
+                            </div>
+                            
+                            {/* 4. İçerik Sayısı */}
+                            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4 text-center border-2 border-transparent hover:border-blue-300 transition">
+                                <div className="w-10 h-10 mx-auto bg-white rounded-xl flex items-center justify-center text-blue-500 text-xl shadow-sm mb-2">
+                                    <i className="fa-solid fa-file-lines"></i>
+                                </div>
+                                <div className="text-2xl font-black text-gray-800">{expert.content_count || 0}</div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase">İçerik</div>
+                            </div>
+                        </div>
+
+                        {/* Alt Detay Barları */}
+                        <div className="mt-6 space-y-3">
+                            {/* Trust Score Bar */}
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-bold text-gray-500 flex items-center gap-1">
+                                        <i className="fa-solid fa-heart text-red-400"></i> Kullanıcı Memnuniyeti
+                                    </span>
+                                    <span className="text-xs font-black text-gray-700">{expert.trust_score || 50}/100</span>
+                                </div>
+                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full bg-gradient-to-r from-red-400 to-pink-500 rounded-full transition-all duration-500" 
+                                        style={{ width: `${expert.trust_score || 50}%` }}
+                                    ></div>
                                 </div>
                             </div>
                             
-                            <div className="bg-rejimde-bg rounded-2xl p-4 flex items-center gap-4 border-2 border-transparent hover:border-rejimde-blue transition">
-                                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-rejimde-blue text-2xl shadow-sm">
-                                    <i className="fa-solid fa-users"></i>
+                            {/* Contribution Score Bar */}
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-bold text-gray-500 flex items-center gap-1">
+                                        <i className="fa-solid fa-brain text-purple-400"></i> Uzman Katkısı
+                                    </span>
+                                    <span className="text-xs font-black text-gray-700">{expert.contribution_score || 50}/100</span>
                                 </div>
-                                <div>
-                                    <div className="text-2xl font-black text-gray-800">%92</div>
-                                    <div className="text-xs font-bold text-gray-400 uppercase">Hedef Başarısı</div>
+                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transition-all duration-500" 
+                                        style={{ width: `${expert.contribution_score || 50}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                            
+                            {/* Freshness Score Bar */}
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-bold text-gray-500 flex items-center gap-1">
+                                        <i className="fa-solid fa-fire text-orange-400"></i> Son Dönem Aktivite
+                                    </span>
+                                    <span className="text-xs font-black text-gray-700">{expert.freshness_score || 50}/100</span>
+                                </div>
+                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full bg-gradient-to-r from-orange-400 to-yellow-500 rounded-full transition-all duration-500" 
+                                        style={{ width: `${expert.freshness_score || 50}%` }}
+                                    ></div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Mascot Tip */}
+                        {/* Onay Bonusu Badge */}
+                        {expert.is_verified && (
+                            <div className="mt-4 flex items-center gap-2 bg-green-50 text-green-700 px-3 py-2 rounded-xl text-sm font-bold">
+                                <i className="fa-solid fa-circle-check"></i>
+                                <span>Onaylı Uzman Bonusu: +20 puan</span>
+                            </div>
+                        )}
+
+                        {/* Mascot Tip - Dinamik mesaj */}
                         <div className="mt-6 flex items-start gap-4 bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                             <MascotDisplay state="success_milestone" size={48} showBubble={false} className="shrink-0" />
+                            <MascotDisplay state="success_milestone" size={48} showBubble={false} className="shrink-0" />
                             <div>
                                 <p className="font-bold text-rejimde-blueDark text-sm leading-relaxed">
-                                    &quot;{expert.name} ile çalışanlar, disiplinli ama eğlenceli bir süreç geçiriyor.  Skor artışı garanti!  😉&quot;
+                                    {(expert.trend_percentage || 0) > 10 
+                                        ? `"${expert.name} son günlerde çok popüler! 🔥 İlgi %${expert.trend_percentage} arttı!"`
+                                        : (expert.review_count || 0) > 10
+                                            ? `"${expert.name} ile çalışanlar çok memnun! ${expert.review_count} danışan değerlendirme bırakmış. 👏"`
+                                            : `"${expert.name} ile çalışanlar, disiplinli ama eğlenceli bir süreç geçiriyor. Skor artışı garanti! 😉"`
+                                    }
                                 </p>
                             </div>
                         </div>
