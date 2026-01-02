@@ -66,7 +66,11 @@ export default function ThreadDetailPage() {
       
       // Mark as read
       if (result.thread.unread_count > 0) {
-        await markThreadAsRead(threadId);
+        const success = await markThreadAsRead(threadId);
+        if (success) {
+          // Update local thread state to reflect read status
+          setThread(prev => prev ? { ...prev, unread_count: 0 } : null);
+        }
       }
     } else {
       showToast({
