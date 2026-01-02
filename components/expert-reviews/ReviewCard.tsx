@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CommentData } from "@/lib/comment-service";
 import { getDisplayName } from "./utils";
+import { GOAL_TAGS, PROGRAM_TYPES } from "@/lib/constants";
 
 interface ReviewCardProps {
   review: CommentData;
@@ -98,6 +99,43 @@ export default function ReviewCard({
       <p className="text-sm font-bold text-gray-600 leading-relaxed bg-gray-50/50 p-4 rounded-2xl border border-gray-50 whitespace-pre-line">
         {review.content}
       </p>
+
+      {/* Ek Bilgiler (goal_tag, program_type, process_weeks) */}
+      {(review.goalTag || review.programType || review.processWeeks) && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {review.goalTag && (
+            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-lg border border-purple-100">
+              <i className="fa-solid fa-bullseye mr-1"></i>
+              {GOAL_TAGS.find(g => g.id === review.goalTag)?.label || review.goalTag}
+            </span>
+          )}
+          {review.programType && (
+            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg border border-blue-100">
+              <i className="fa-solid fa-clipboard-list mr-1"></i>
+              {PROGRAM_TYPES.find(p => p.id === review.programType)?.label || review.programType}
+            </span>
+          )}
+          {review.processWeeks && review.processWeeks > 0 && (
+            <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg border border-green-100">
+              <i className="fa-solid fa-calendar-days mr-1"></i>
+              {review.processWeeks} Hafta
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Başarı Hikayesi */}
+      {review.successStory && (
+        <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+          <div className="flex items-center gap-2 mb-2">
+            <i className="fa-solid fa-book-open text-purple-500 text-xs"></i>
+            <span className="text-[10px] font-black text-purple-700 uppercase">Başarı Hikayesi</span>
+          </div>
+          <p className="text-xs font-medium text-gray-600 italic whitespace-pre-line">
+            "{review.successStory}"
+          </p>
+        </div>
+      )}
       
       <div className="flex items-center gap-4 mt-3 ml-2">
         <button 

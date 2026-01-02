@@ -1,7 +1,9 @@
 // Constants and mock data for expert reviews
 
 /**
- * Mock statistics multipliers - will be replaced with real API data
+ * Mock statistics multipliers - DEPRECATED
+ * @deprecated This constant is no longer used. Real API data is now used instead.
+ * Kept for backward compatibility only. Will be removed in future versions.
  */
 export const MOCK_STATS = {
   VERIFIED_CLIENT_PERCENT: 0.7,   // 70% of reviews are from verified clients
