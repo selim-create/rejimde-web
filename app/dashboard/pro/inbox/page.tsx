@@ -60,6 +60,22 @@ export default function ProInboxPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  // Refresh threads when page becomes visible (e.g., when user returns from thread detail)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchThreads();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, searchTerm]);
+
   // Search with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
