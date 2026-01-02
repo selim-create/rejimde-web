@@ -4765,7 +4765,7 @@ export interface ProService {
 // GET /pro/services
 export async function getProServices(): Promise<ProService[]> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/services`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -4802,7 +4802,7 @@ export async function getProServices(): Promise<ProService[]> {
 // GET /pro/services/{id}
 export async function getProService(serviceId: number): Promise<ProService | null> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/services/${serviceId}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services/${serviceId}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -4837,7 +4837,7 @@ export async function createProService(data: {
   color?: string;
 }): Promise<{ success: boolean; service?: ProService; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/services`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -4859,7 +4859,7 @@ export async function createProService(data: {
 // PATCH /pro/services/{id}
 export async function updateProService(serviceId: number, data: Partial<ProService>): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/services/${serviceId}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services/${serviceId}`, {
       method: 'PATCH',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -4881,7 +4881,7 @@ export async function updateProService(serviceId: number, data: Partial<ProServi
 // DELETE /pro/services/{id}
 export async function deleteProService(serviceId: number): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/services/${serviceId}`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services/${serviceId}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -4902,7 +4902,7 @@ export async function deleteProService(serviceId: number): Promise<{ success: bo
 // PATCH /pro/services/{id}/toggle
 export async function toggleProServiceStatus(serviceId: number): Promise<{ success: boolean; is_active?: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/services/${serviceId}/toggle`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services/${serviceId}/toggle`, {
       method: 'PATCH',
       headers: getAuthHeaders(),
     });
@@ -4923,7 +4923,7 @@ export async function toggleProServiceStatus(serviceId: number): Promise<{ succe
 // POST /pro/services/reorder
 export async function reorderProServices(serviceIds: number[]): Promise<{ success: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/rejimde/v1/pro/services/reorder`, {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/finance/services/reorder`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ service_ids: serviceIds }),
