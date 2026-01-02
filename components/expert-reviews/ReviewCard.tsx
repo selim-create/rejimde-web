@@ -68,7 +68,14 @@ export default function ReviewCard({
                   <i className="fa-solid fa-bolt"></i> RANK {review.author.rank}
                 </span>
               )}
-              {review.author.is_verified && (
+              {/* Onaylı Uzman - kullanıcı is_verified VE is_expert ise */}
+              {review.author.is_verified && review.author.is_expert && (
+                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                  <i className="fa-solid fa-certificate"></i> Onaylı Uzman
+                </span>
+              )}
+              {/* Onaylı Danışan - yorum verified_client ise (uzmanla çalışmış) */}
+              {review.verified_client && !review.author.is_expert && (
                 <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">
                   <i className="fa-solid fa-check-circle"></i> Onaylı Danışan
                 </span>

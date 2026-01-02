@@ -39,6 +39,7 @@ export interface CommentData {
   wouldRecommend?: boolean;
   successStory?: string;
   is_featured?: boolean;
+  verified_client?: boolean;  // Onaylı danışan (uzmanla çalışmış)
 }
 
 const getAuthHeaders = () => {
@@ -132,7 +133,16 @@ const mapSafeComment = (c: any): CommentData => {
             is_verified: isVerified,
             score: score
         },
-        replies: Array.isArray(c.replies) ? c.replies.map(mapSafeComment) : []
+        replies: Array.isArray(c.replies) ? c.replies.map(mapSafeComment) : [],
+        // Extended fields from API (snake_case -> camelCase)
+        isAnonymous: c.is_anonymous || false,
+        goalTag: c.goal_tag || null,
+        programType: c.program_type || null,
+        processWeeks: c.process_weeks || null,
+        wouldRecommend: c.would_recommend !== undefined ? c.would_recommend : null,
+        successStory: c.success_story || null,
+        is_featured: c.is_featured || false,
+        verified_client: c.verified_client || false,
     };
 };
 
@@ -228,10 +238,26 @@ export async function postComment(data: {
   hasSuccessStory?: boolean;
   successStory?: string;
 }) {
+  // Frontend camelCase -> Backend snake_case dönüşümü
+  const payload = {
+    post: data.post,
+    content: data.content,
+    parent: data.parent,
+    context: data.context,
+    rating: data.rating,
+    // Snake case'e çevir (backend bu isimleri bekliyor)
+    is_anonymous: data.isAnonymous || false,
+    goal_tag: data.goalTag || '',
+    program_type: data.programType || '',
+    process_weeks: data.processWeeks || 0,
+    would_recommend: data.wouldRecommend !== false, // default true
+    success_story: data.hasSuccessStory && data.successStory ? data.successStory : '',
+  };
+
   const res = await fetch(`${API_URL}/rejimde/v1/comments`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify(data)
+    body: JSON.stringify(payload)
   });
 
   if (!res.ok) {
