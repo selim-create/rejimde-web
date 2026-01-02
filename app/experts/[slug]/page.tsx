@@ -9,6 +9,7 @@ import MascotDisplay from "@/components/MascotDisplay";
 import ExpertReviewsContainer from "@/components/expert-reviews/ExpertReviewsContainer";
 import AppointmentRequestModal from "@/components/AppointmentRequestModal";
 import AskQuestionModal from "@/components/AskQuestionModal";
+import { trackProfileView } from "@/lib/api-profile-views";
 import { 
   EXPERTISE_TAGS, 
   GOAL_TAGS, 
@@ -220,6 +221,11 @@ export default function ExpertProfilePage() {
                     certificates: parseJsonField((data as any).certificates, []),
                     excluded_cases: parseJsonField((data as any).excluded_cases, []),
                 });
+                
+                // Track profile view for claimed profiles
+                if (isClaimed) {
+                    trackProfileView(slug);
+                }
                 
                 // Load expert's services
                 // Use user_id instead of post ID (data.id)
