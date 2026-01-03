@@ -162,3 +162,52 @@ export interface PlanEditData {
     featured_media_id: number;
     featured_media_url: string;
 }
+
+// Circle Settings
+export interface CircleSettings {
+    privacy: 'public' | 'invite_only';
+    chat_status: 'open' | 'closed';
+    member_approval: 'auto' | 'manual';
+    notifications: {
+        new_member: boolean;
+        new_comment: boolean;
+    };
+    visibility: {
+        show_members: boolean;
+        show_score: boolean;
+    };
+}
+
+// Circle Task
+export interface CircleTask {
+    id: string;
+    title: string;
+    description: string;
+    points: number;
+    deadline: string;
+    assigned_to: number[];
+    completed_by: number[];
+    status: 'active' | 'completed' | 'cancelled';
+    created_at: string;
+    created_by: number;
+}
+
+// Circle Task Creation Data
+export interface CreateTaskData {
+    title: string;
+    description: string;
+    points: number;
+    deadline: string;
+    assigned_to: number[];
+}
+
+// Circle Member
+export interface CircleMember {
+    id: number;
+    name: string;
+    email: string;
+    avatar: string;
+    role: 'mentor' | 'member';
+    score: number;
+    joined_at: string;
+}

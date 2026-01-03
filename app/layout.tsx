@@ -4,6 +4,7 @@ import "./globals.css";
 import LayoutWrapper from "@/components/LayoutWrapper";
 // YENİ: Google Provider Eklendi
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { ToastProvider } from "@/components/ui/Toast";
 
 const nunito = Nunito({ 
   subsets: ["latin"],
@@ -32,9 +33,11 @@ export default function RootLayout({
       <body className={`${nunito.variable} font-sans bg-[#f7f7f7] text-[#4b4b4b] flex flex-col min-h-screen`}>
         {/* Tüm uygulamayı Google Provider ile sarmalıyoruz */}
         <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-          <LayoutWrapper>
-            {children}
-          </LayoutWrapper>
+          <ToastProvider>
+            <LayoutWrapper>
+              {children}
+            </LayoutWrapper>
+          </ToastProvider>
         </GoogleOAuthProvider>
       </body>
     </html>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
 import { auth } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 
 // Hazır Circle Avatarları - Genişletilmiş Kütüphane
 const CIRCLE_AVATARS = [
@@ -32,6 +33,7 @@ const CIRCLE_AVATARS = [
 
 export default function CreateCirclePage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<{
     name: string;
@@ -56,11 +58,19 @@ export default function CreateCirclePage() {
     try {
       // API'ye gönder (logo verisiyle birlikte)
       const res = await auth.createCircle(formData);
-      alert('Circle başarıyla kuruldu! Circle Mentor sensin.');
+      showToast({ 
+        type: 'success', 
+        title: 'Başarılı', 
+        message: 'Circle başarıyla kuruldu! Circle Mentor sensin.' 
+      });
       router.push('/circles'); 
     } catch (error: any) {
       console.error(error);
-      alert('Hata: ' + (error.message || 'Circle kurulamadı.'));
+      showToast({ 
+        type: 'error', 
+        title: 'Hata', 
+        message: error.message || 'Circle kurulamadı.' 
+      });
     } finally {
       setLoading(false);
     }

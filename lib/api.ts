@@ -1,7 +1,7 @@
 export const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://api.rejimde.com/wp-json';
 
 // Import types
-import type { PlanListItem, PlanDetail, PlanEditData, BackendResponse, ApiResponse } from '@/types';
+import type { PlanListItem, PlanDetail, PlanEditData, BackendResponse, ApiResponse, CircleSettings, CircleTask, CreateTaskData, CircleMember } from '@/types';
 
 // Import helper functions
 import { calculateReadingTime, translateDifficulty } from './helpers';
@@ -1919,6 +1919,135 @@ export const updateClan = updateCircle;
 export const joinClan = joinCircle;
 export const leaveClan = leaveCircle;
 
+// Circle Settings
+export async function getCircleSettings(circleId: number): Promise<CircleSettings> {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/settings`, {
+            method: 'GET',
+            headers: getAuthHeaders()
+        });
+        const json = await res.json();
+        if (res.ok) return json;
+        throw new Error(json.message || 'Ayarlar yüklenemedi');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
+export async function updateCircleSettings(circleId: number, settings: Partial<CircleSettings>): Promise<void> {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/settings`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(settings)
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message || 'Ayarlar güncellenemedi');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
+// Circle Tasks
+export async function getCircleTasks(circleId: number): Promise<CircleTask[]> {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/tasks`, {
+            method: 'GET',
+            headers: getAuthHeaders()
+        });
+        const json = await res.json();
+        if (res.ok) return json;
+        throw new Error(json.message || 'Görevler yüklenemedi');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
+export async function createCircleTask(circleId: number, task: CreateTaskData): Promise<CircleTask> {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/tasks`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(task)
+        });
+        const json = await res.json();
+        if (res.ok) return json;
+        throw new Error(json.message || 'Görev oluşturulamadı');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
+export async function updateCircleTask(circleId: number, taskId: string, data: Partial<CircleTask>): Promise<CircleTask> {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/tasks/${taskId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        if (res.ok) return json;
+        throw new Error(json.message || 'Görev güncellenemedi');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
+export async function deleteCircleTask(circleId: number, taskId: string): Promise<void> {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/tasks/${taskId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message || 'Görev silinemedi');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
+export async function assignCircleTask(circleId: number, taskId: string, memberIds: number[]): Promise<void> {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/tasks/${taskId}/assign`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ member_ids: memberIds })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message || 'Görev atanamadı');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
+// Circle Members
+export async function getCircleMembers(circleId: number): Promise<CircleMember[]> {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/members`, {
+            method: 'GET',
+            headers: getAuthHeaders()
+        });
+        const json = await res.json();
+        if (res.ok) return json;
+        throw new Error(json.message || 'Üyeler yüklenemedi');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
+export async function removeCircleMember(circleId: number, memberId: number): Promise<void> {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/members/${memberId}/remove`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message || 'Üye çıkarılamadı');
+    } catch (error: any) {
+        throw new Error(error.message || 'Hata oluştu');
+    }
+}
+
 /**
  * ==========================================
  * LİDERLİK TABLOSU (LEADERBOARD)
@@ -2380,6 +2509,16 @@ export const auth = {
     updateCircle,
     joinCircle,
     leaveCircle,
+    // Circle Settings, Tasks, and Members
+    getCircleSettings,
+    updateCircleSettings,
+    getCircleTasks,
+    createCircleTask,
+    updateCircleTask,
+    deleteCircleTask,
+    assignCircleTask,
+    getCircleMembers,
+    removeCircleMember,
     // Backward compatibility aliases
     getClans,
     getClan: getClanBySlug, 
