@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { getExpertBySlug, getExpertPublicServices, toggleFollow, type Service } from "@/lib/api";
+import { getExpertBySlug, getExpertPublicServices, toggleFollow, getBlogPosts, getPlans, getExercisePlans, type Service } from "@/lib/api";
 import { formatCurrency } from "@/lib/format-utils";
 import MascotDisplay from "@/components/MascotDisplay";
 import ExpertReviewsContainer from "@/components/expert-reviews/ExpertReviewsContainer";
@@ -20,6 +20,7 @@ import {
   COUNTRY_OPTIONS,
   EXCLUDED_CASES_OPTIONS
 } from "@/lib/constants";
+import { renderContent } from "@/lib/markdown-utils";
 
 // Profession ID'den Label'a çevir
 const getProfessionLabel = (professionId: string): string => {
@@ -205,6 +206,12 @@ export default function ExpertProfilePage() {
   // Service request modal
   const [showServiceRequestModal, setShowServiceRequestModal] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  
+  // Expert content
+  const [blogPosts, setBlogPosts] = useState<any[]>([]);
+  const [dietPlans, setDietPlans] = useState<any[]>([]);
+  const [exercisePlans, setExercisePlans] = useState<any[]>([]);
+  const [contentLoading, setContentLoading] = useState(false);
 
   const rawSlug = params?. slug 
     ? (Array.isArray(params.slug) ? params.slug[0] : params.slug) 
@@ -272,6 +279,11 @@ export default function ExpertProfilePage() {
                     const servicesData = await getExpertPublicServices(userId);
                     // Filter only active services
                     setServices(servicesData.filter(s => s.is_active));
+                    
+                    // Load expert's content (blogs, diet plans, exercises)
+                    if (isClaimed) {
+                        loadExpertContent(userId);
+                    }
                 } else {
                     console.warn('Expert user ID (related_user_id or user_id) not found in response. Services cannot be loaded. Post ID:', data.id);
                 }
@@ -283,6 +295,25 @@ export default function ExpertProfilePage() {
             setNotFound(true);
         } finally {
             setLoading(false);
+        }
+    }
+    
+    async function loadExpertContent(userId: number) {
+        setContentLoading(true);
+        try {
+            const [posts, plans, exercises] = await Promise.all([
+                getBlogPosts(userId),
+                getPlans(undefined, undefined, userId),
+                getExercisePlans(undefined, undefined, userId)
+            ]);
+            
+            setBlogPosts(posts || []);
+            setDietPlans(plans || []);
+            setExercisePlans(exercises || []);
+        } catch (error) {
+            console.error("Expert content loading error:", error);
+        } finally {
+            setContentLoading(false);
         }
     }
 
@@ -789,7 +820,7 @@ export default function ExpertProfilePage() {
                                 className="text-gray-500 font-medium leading-relaxed mb-6 prose prose-sm max-w-none
                                            prose-strong:text-gray-700 prose-em:text-gray-600 
                                            prose-ul:list-disc prose-ol:list-decimal prose-li:ml-4"
-                                dangerouslySetInnerHTML={{ __html: expert.bio }}
+                                dangerouslySetInnerHTML={{ __html: renderContent(expert.bio) }}
                             />
                         ) : (
                             <p className="text-gray-400 italic mb-6">Uzman henüz biyografisini eklememiş.</p>
@@ -1117,7 +1148,155 @@ export default function ExpertProfilePage() {
                         </div>
                     )}
 
-                    {/* 10. REVIEWS */}
+                    {/* 10. BLOG YAZILARI */}
+                    {blogPosts.length > 0 && (
+                        <div>
+                            <h2 className="text-xl font-extrabold text-gray-800 mb-6 px-2 uppercase tracking-wide flex items-center gap-2">
+                                <i className="fa-solid fa-newspaper text-rejimde-blue"></i>
+                                Blog Yazıları
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {blogPosts.slice(0, 4).map((post) => (
+                                    <Link 
+                                        href={`/blog/${post.slug}`} 
+                                        key={post.id}
+                                        className="bg-white border-2 border-gray-200 rounded-3xl overflow-hidden shadow-card hover:shadow-xl transition-shadow group"
+                                    >
+                                        <div className="h-40 overflow-hidden bg-gray-100">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img 
+                                                src={post.image} 
+                                                alt={post.title} 
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            />
+                                        </div>
+                                        <div className="p-6">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-xs font-bold text-gray-400">{post.date}</span>
+                                                <span className="text-xs font-bold text-gray-300">•</span>
+                                                <span className="text-xs font-bold text-rejimde-blue">{post.read_time}</span>
+                                            </div>
+                                            <h3 className="text-lg font-extrabold text-gray-800 mb-2 line-clamp-2 group-hover:text-rejimde-blue transition">
+                                                {post.title}
+                                            </h3>
+                                            <p className="text-sm text-gray-500 line-clamp-2">{post.excerpt}</p>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                            {blogPosts.length > 4 && (
+                                <div className="text-center mt-6">
+                                    <span className="text-sm font-bold text-gray-400">
+                                        +{blogPosts.length - 4} yazı daha
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* 11. DİYET PLANLARI */}
+                    {dietPlans.length > 0 && (
+                        <div>
+                            <h2 className="text-xl font-extrabold text-gray-800 mb-6 px-2 uppercase tracking-wide flex items-center gap-2">
+                                <i className="fa-solid fa-utensils text-rejimde-green"></i>
+                                Diyet Planları
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {dietPlans.slice(0, 4).map((plan) => (
+                                    <Link 
+                                        href={`/diet-plans/${plan.slug}`} 
+                                        key={plan.id}
+                                        className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-card hover:shadow-xl transition-shadow group"
+                                    >
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h3 className="text-lg font-extrabold text-gray-800 group-hover:text-rejimde-green transition line-clamp-2">
+                                                {plan.title}
+                                            </h3>
+                                            {plan.difficulty && (
+                                                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-black uppercase whitespace-nowrap ml-2">
+                                                    {plan.difficulty}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {plan.description && (
+                                            <p className="text-sm text-gray-500 mb-4 line-clamp-2">{plan.description}</p>
+                                        )}
+                                        <div className="flex items-center gap-4 text-xs text-gray-400">
+                                            {plan.category && (
+                                                <span className="flex items-center gap-1">
+                                                    <i className="fa-solid fa-tag"></i>
+                                                    {plan.category}
+                                                </span>
+                                            )}
+                                            {plan.created_at && (
+                                                <span>{new Date(plan.created_at).toLocaleDateString('tr-TR')}</span>
+                                            )}
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                            {dietPlans.length > 4 && (
+                                <div className="text-center mt-6">
+                                    <span className="text-sm font-bold text-gray-400">
+                                        +{dietPlans.length - 4} plan daha
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* 12. EGZERSİZ PLANLARI */}
+                    {exercisePlans.length > 0 && (
+                        <div>
+                            <h2 className="text-xl font-extrabold text-gray-800 mb-6 px-2 uppercase tracking-wide flex items-center gap-2">
+                                <i className="fa-solid fa-dumbbell text-rejimde-red"></i>
+                                Egzersiz Planları
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {exercisePlans.slice(0, 4).map((plan) => (
+                                    <Link 
+                                        href={`/exercises/${plan.slug}`} 
+                                        key={plan.id}
+                                        className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-card hover:shadow-xl transition-shadow group"
+                                    >
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h3 className="text-lg font-extrabold text-gray-800 group-hover:text-rejimde-red transition line-clamp-2">
+                                                {plan.title}
+                                            </h3>
+                                            {plan.difficulty && (
+                                                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-black uppercase whitespace-nowrap ml-2">
+                                                    {plan.difficulty}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {plan.description && (
+                                            <p className="text-sm text-gray-500 mb-4 line-clamp-2">{plan.description}</p>
+                                        )}
+                                        <div className="flex items-center gap-4 text-xs text-gray-400">
+                                            {plan.category && (
+                                                <span className="flex items-center gap-1">
+                                                    <i className="fa-solid fa-tag"></i>
+                                                    {plan.category}
+                                                </span>
+                                            )}
+                                            {plan.created_at && (
+                                                <span>{new Date(plan.created_at).toLocaleDateString('tr-TR')}</span>
+                                            )}
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                            {exercisePlans.length > 4 && (
+                                <div className="text-center mt-6">
+                                    <span className="text-sm font-bold text-gray-400">
+                                        +{exercisePlans.length - 4} plan daha
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* 13. REVIEWS */}
                     <div id="comments-section" className="scroll-mt-32">
                         <ExpertReviewsContainer expertId={expert.id} expertSlug={expert.slug} />
                     </div>
