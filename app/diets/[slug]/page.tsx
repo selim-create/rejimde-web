@@ -191,7 +191,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
           setCurrentUser(userData);
 
           const authorSlug = planData.author?. slug || "#";
-          let authorInfo = {
+          let authorInfo: any = {
             id: 0,
             name: planData.author?.name || "Rejimde Uzman",
             slug: authorSlug,
@@ -209,12 +209,26 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
 
           try {
             const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || "http://localhost/wp-json";
-            const res = await fetch(`${apiUrl}/wp/v2/users? search=${encodeURIComponent(authorInfo.name)}`);
+            const token = localStorage.getItem('jwt_token');
+            const headers: HeadersInit = {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            };
+            
+            // Use correct API endpoint based on user type
+            const isExpert = planData.author?.is_expert || false;
+            const endpoint = isExpert 
+              ? `${apiUrl}/rejimde/v1/professionals/${authorSlug}`
+              : `${apiUrl}/rejimde/v1/profile/${authorSlug}`;
+            
+            const res = await fetch(endpoint, { headers });
+            
             if (res.ok) {
-              const users = await res.json();
-              const user = users.find((u: any) => u.slug === authorSlug) || users[0];
+              const data = await res.json();
+              const user = data.data || data;
+              
               if (user) {
-                const isPro = user.roles && user.roles.includes("rejimde_pro");
+                const isPro = isExpert || (user.roles && user.roles.includes("rejimde_pro"));
                 let profession = authorInfo.profession;
                 if (isPro) {
                   const rawProfession = user.profession || "dietitian";
@@ -222,19 +236,26 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                 }
 
                 authorInfo = {
-                  ... authorInfo,
+                  ...authorInfo,
                   id: user.id,
-                  name:  user.name,
+                  name: user.name || user.display_name,
                   avatar: user.avatar_url || authorInfo.avatar,
                   isExpert: isPro,
                   isVerified: isPro,
-                  role: isPro ?  "rejimde_pro" : "rejimde_user",
-                  profession:  profession,
-                  level: user.rejimde_level || 5,
+                  role: isPro ? "rejimde_pro" : "rejimde_user",
+                  profession: profession,
+                  level: user.rejimde_level || user.level || 5,
                   score: user.rejimde_score || 0,
-                  articleCount: user. posts_count || 12,
-                  followers_count: user. followers_count || 0,
+                  articleCount: user.posts_count || user.content_count || 12,
+                  followers_count: user.followers_count || 0,
                   high_fives: user.high_fives || 0,
+                  is_following: user.is_following || false,
+                  has_high_fived: user.has_high_fived || false,
+                  // Expert-specific fields
+                  reji_score: isPro ? user.reji_score : undefined,
+                  client_count: isPro ? user.client_count : undefined,
+                  // Normal user fields
+                  rejimde_total_score: !isPro ? user.rejimde_total_score || user.total_score : undefined,
                 };
               }
             }
