@@ -133,23 +133,19 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                   // Get initial author slug from authorDetail state
                   const authorSlug = authorDetail.slug;
                   
-                  // Determine if expert based on initial author data or post data
-                  const isExpert = post.author_is_expert || authorDetail.isExpert;
-                  
-                  // Use correct API endpoint based on user type
-                  const endpoint = isExpert 
-                    ? `${apiUrl}/rejimde/v1/professionals/${authorSlug}`
-                    : `${apiUrl}/rejimde/v1/profile/${authorSlug}`;
+                  // Use WordPress Users API which returns role information
+                  const endpoint = `${apiUrl}/wp/v2/users?slug=${authorSlug}`;
                   
                   const res = await fetch(endpoint, { headers });
                   
                   if (res.ok) {
-                      const data = await res.json();
-                      const user = data.data || data;
-                      
-                      if (user) {
-                          const isPro = isExpert || (user.roles && user.roles.includes('rejimde_pro'));
-                          const userAvatar = user.avatar_url || user.avatar_urls?.['96'] || `https://api.dicebear.com/9.x/personas/svg?seed=${user.slug}`;
+                      const users = await res.json();
+                      if (users && users.length > 0) {
+                          const user = users[0];
+                          
+                          // Detect if user is expert based on roles from WordPress API
+                          const isPro = user.roles && user.roles.includes('rejimde_pro');
+                          const userAvatar = user.avatar_urls?.['96'] || user.avatar_url || `https://api.dicebear.com/9.x/personas/svg?seed=${user.slug}`;
                           
                           setAuthorDetail({
                               id: user.id,
