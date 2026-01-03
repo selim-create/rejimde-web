@@ -3,13 +3,39 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getLevelLeaderboard, type LevelLeaderboardData, getGamificationStats } from '@/lib/api';
+import { getLevelLeaderboard, type LevelLeaderboardData, type LeaderboardUser, type LeaderboardCircle, getGamificationStats } from '@/lib/api';
 import { LEVELS, getLevelBySlug, getLevelByScore } from '@/lib/constants';
 
 // Helper function for safe avatar URL
 function getSafeAvatarUrl(url: string | null, seed: string): string {
   if (url && url.startsWith('http')) return url;
   return `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+}
+
+// Helper function to get level gradient colors
+function getLevelGradientColors(bgColor: string): { from: string; to: string } {
+  const colorMap: Record<string, { from: string; to: string }> = {
+    'bg-gray-100': { from: '#9ca3af', to: '#6b7280' },
+    'bg-orange-100': { from: '#f97316', to: '#ea580c' },
+    'bg-green-100': { from: '#22c55e', to: '#16a34a' },
+    'bg-blue-100': { from: '#3b82f6', to: '#2563eb' },
+    'bg-red-100': { from: '#ef4444', to: '#dc2626' },
+    'bg-teal-100': { from: '#14b8a6', to: '#0d9488' },
+    'bg-yellow-100': { from: '#eab308', to: '#ca8a04' },
+    'bg-purple-100': { from: '#a855f7', to: '#9333ea' },
+  };
+  
+  return colorMap[bgColor] || { from: '#a855f7', to: '#9333ea' };
+}
+
+// Type guard for LeaderboardUser
+function isLeaderboardUser(item: LeaderboardUser | LeaderboardCircle): item is LeaderboardUser {
+  return 'avatar' in item && 'is_current_user' in item;
+}
+
+// Type guard for LeaderboardCircle
+function isLeaderboardCircle(item: LeaderboardUser | LeaderboardCircle): item is LeaderboardCircle {
+  return 'logo' in item && 'member_count' in item;
 }
 
 // Countdown Timer Component
@@ -109,12 +135,14 @@ export default function LevelDetailPage() {
   const topThree = leaderboardItems.slice(0, 3);
   const restOfList = leaderboardItems.slice(3);
 
+  const gradientColors = getLevelGradientColors(level.bgColor);
+
   return (
     <div className="min-h-screen pb-20 bg-slate-50">
       {/* Header with Gradient */}
-      <div className={`bg-gradient-to-br from-${level.color.replace('text-', '')}-500 to-${level.color.replace('text-', '')}-600 py-12 relative overflow-hidden`}
+      <div className="py-12 relative overflow-hidden"
         style={{
-          background: `linear-gradient(135deg, ${level.bgColor.includes('gray') ? '#9ca3af' : level.bgColor.includes('orange') ? '#f97316' : level.bgColor.includes('green') ? '#22c55e' : level.bgColor.includes('blue') ? '#3b82f6' : level.bgColor.includes('red') ? '#ef4444' : level.bgColor.includes('teal') ? '#14b8a6' : level.bgColor.includes('yellow') ? '#eab308' : '#a855f7'} 0%, ${level.bgColor.includes('gray') ? '#6b7280' : level.bgColor.includes('orange') ? '#ea580c' : level.bgColor.includes('green') ? '#16a34a' : level.bgColor.includes('blue') ? '#2563eb' : level.bgColor.includes('red') ? '#dc2626' : level.bgColor.includes('teal') ? '#0d9488' : level.bgColor.includes('yellow') ? '#ca8a04' : '#9333ea'} 100%)`
+          background: `linear-gradient(135deg, ${gradientColors.from} 0%, ${gradientColors.to} 100%)`
         }}>
         <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(white 2px, transparent 2px)', backgroundSize: '20px 20px'}}></div>
         <div className="max-w-7xl mx-auto px-4 relative z-10">
@@ -224,9 +252,10 @@ export default function LevelDetailPage() {
                   <div className="flex flex-col items-center flex-1">
                     <div className="relative mb-3">
                       <img
-                        src={activeTab === 'users' 
-                          ? getSafeAvatarUrl((topThree[1] as any).avatar, (topThree[1] as any).name)
-                          : (topThree[1] as any).logo || getSafeAvatarUrl(null, (topThree[1] as any).name)
+                        src={
+                          isLeaderboardUser(topThree[1])
+                            ? getSafeAvatarUrl(topThree[1].avatar, topThree[1].name)
+                            : topThree[1].logo || getSafeAvatarUrl(null, topThree[1].name)
                         }
                         alt={topThree[1].name}
                         className="w-16 h-16 rounded-full border-4 border-gray-300 shadow-lg"
@@ -246,9 +275,10 @@ export default function LevelDetailPage() {
                   <div className="flex flex-col items-center flex-1">
                     <div className="relative mb-3">
                       <img
-                        src={activeTab === 'users' 
-                          ? getSafeAvatarUrl((topThree[0] as any).avatar, (topThree[0] as any).name)
-                          : (topThree[0] as any).logo || getSafeAvatarUrl(null, (topThree[0] as any).name)
+                        src={
+                          isLeaderboardUser(topThree[0])
+                            ? getSafeAvatarUrl(topThree[0].avatar, topThree[0].name)
+                            : topThree[0].logo || getSafeAvatarUrl(null, topThree[0].name)
                         }
                         alt={topThree[0].name}
                         className="w-20 h-20 rounded-full border-4 border-yellow-500 shadow-lg"
@@ -268,9 +298,10 @@ export default function LevelDetailPage() {
                   <div className="flex flex-col items-center flex-1">
                     <div className="relative mb-3">
                       <img
-                        src={activeTab === 'users' 
-                          ? getSafeAvatarUrl((topThree[2] as any).avatar, (topThree[2] as any).name)
-                          : (topThree[2] as any).logo || getSafeAvatarUrl(null, (topThree[2] as any).name)
+                        src={
+                          isLeaderboardUser(topThree[2])
+                            ? getSafeAvatarUrl(topThree[2].avatar, topThree[2].name)
+                            : topThree[2].logo || getSafeAvatarUrl(null, topThree[2].name)
                         }
                         alt={topThree[2].name}
                         className="w-16 h-16 rounded-full border-4 border-orange-300 shadow-lg"
@@ -295,7 +326,7 @@ export default function LevelDetailPage() {
                 {restOfList.map((item) => {
                   const isPromotion = item.zone === 'promotion';
                   const isRelegation = item.zone === 'relegation';
-                  const isCurrentUser = activeTab === 'users' && (item as any).is_current_user;
+                  const isCurrentUser = isLeaderboardUser(item) && item.is_current_user;
 
                   return (
                     <div
@@ -317,9 +348,10 @@ export default function LevelDetailPage() {
                       </div>
                       
                       <img
-                        src={activeTab === 'users' 
-                          ? getSafeAvatarUrl((item as any).avatar, item.name)
-                          : (item as any).logo || getSafeAvatarUrl(null, item.name)
+                        src={
+                          isLeaderboardUser(item)
+                            ? getSafeAvatarUrl(item.avatar, item.name)
+                            : item.logo || getSafeAvatarUrl(null, item.name)
                         }
                         alt={item.name}
                         className="w-12 h-12 rounded-full border-2 border-gray-200"
@@ -329,10 +361,10 @@ export default function LevelDetailPage() {
                         <p className={`font-bold truncate ${isCurrentUser ? 'text-blue-900' : 'text-gray-800'}`}>
                           {item.name}
                         </p>
-                        {activeTab === 'circles' && (
+                        {isLeaderboardCircle(item) && (
                           <p className="text-xs text-gray-500">
                             <i className="fa-solid fa-users text-gray-400 mr-1"></i>
-                            {(item as any).member_count} üye
+                            {item.member_count} üye
                           </p>
                         )}
                       </div>
