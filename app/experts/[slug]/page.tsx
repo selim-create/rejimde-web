@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { getExpertBySlug, getExpertPublicServices, type Service } from "@/lib/api";
+import { getExpertBySlug, getExpertPublicServices, toggleFollow, type Service } from "@/lib/api";
 import { formatCurrency } from "@/lib/format-utils";
 import MascotDisplay from "@/components/MascotDisplay";
 import ExpertReviewsContainer from "@/components/expert-reviews/ExpertReviewsContainer";
 import AppointmentRequestModal from "@/components/AppointmentRequestModal";
 import AskQuestionModal from "@/components/AskQuestionModal";
+import ServiceRequestModal from "@/components/ServiceRequestModal";
 import RejiScore from "@/components/RejiScore";
 import { trackProfileView } from "@/lib/api-profile-views";
 import { 
@@ -16,7 +17,8 @@ import {
   GOAL_TAGS, 
   AGE_GROUP_OPTIONS, 
   LANGUAGE_OPTIONS,
-  COUNTRY_OPTIONS 
+  COUNTRY_OPTIONS,
+  EXCLUDED_CASES_OPTIONS
 } from "@/lib/constants";
 
 // Profession ID'den Label'a çevir
@@ -124,6 +126,11 @@ interface ExpertDetail {
     score_level_label?: string;
     review_count?: number;
     content_count?: number;
+    
+    // Social fields
+    followers_count?: number;
+    following_count?: number;
+    is_following?: boolean;
 }
 
 // Helper:  Deneyim yılını hesapla
@@ -141,6 +148,11 @@ const calculateExperienceYears = (startDate: string | undefined): string => {
 // Helper: Tag ID'den Label al
 const getTagLabel = (id: string, tagList: Array<{ id: string; label:  string }>): string => {
     return tagList.find(t => t.id === id)?.label || id;
+};
+
+// Helper: Çalışmadığı durumlar ID'den Label al
+const getExcludedCaseLabel = (caseId: string): string => {
+    return EXCLUDED_CASES_OPTIONS.find(c => c.id === caseId)?.label || caseId;
 };
 
 // Helper: Yanıt süresi formatla
@@ -184,6 +196,15 @@ export default function ExpertProfilePage() {
   const [services, setServices] = useState<Service[]>([]);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showAskQuestionModal, setShowAskQuestionModal] = useState(false);
+  
+  // Follow functionality
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [actionLoading, setActionLoading] = useState(false);
+  
+  // Service request modal
+  const [showServiceRequestModal, setShowServiceRequestModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   const rawSlug = params?. slug 
     ? (Array.isArray(params.slug) ? params.slug[0] : params.slug) 
@@ -218,7 +239,7 @@ export default function ExpertProfilePage() {
                     image: data.image && data.image !== 'https://placehold.co/150' && data.image !== 'https://placehold.co/300'
                             ? data.image 
                             : `https://api.dicebear.com/9.x/personas/svg?seed=${data.slug}`,
-                    client_count: (data as any).client_count || '10+',
+                    client_count: (data as any).client_count || 0,
                     experience: calculateExperienceYears((data as any).career_start_date),
                     response_time: (data as any).response_time || '24h',
                     // JSON alanları parse
@@ -233,6 +254,10 @@ export default function ExpertProfilePage() {
                     certificates: parseJsonField((data as any).certificates, []),
                     excluded_cases: parseJsonField((data as any).excluded_cases, []),
                 });
+                
+                // Initialize follow states
+                setIsFollowing((data as any).is_following || false);
+                setFollowersCount((data as any).followers_count || 0);
                 
                 // Track profile view for claimed profiles
                 if (isClaimed) {
@@ -263,6 +288,28 @@ export default function ExpertProfilePage() {
 
     fetchExpert();
   }, [slug]);
+
+  // Handle follow toggle
+  const handleFollow = async () => {
+    if (!expert) return;
+    const userId = expert.related_user_id ?? expert.user_id;
+    if (!userId) return;
+    
+    setActionLoading(true);
+    const res = await toggleFollow(userId);
+    
+    if (res && res.success) {
+        setIsFollowing(res.is_following);
+        setFollowersCount(res.followers_count);
+    }
+    setActionLoading(false);
+  };
+  
+  // Handle service request modal
+  const handleRequestService = (service: Service) => {
+    setSelectedService(service);
+    setShowServiceRequestModal(true);
+  };
 
   // Yükleniyor
   if (loading) {
@@ -563,15 +610,24 @@ export default function ExpertProfilePage() {
                                     >
                                     <i className="fa-regular fa-message text-lg block mb-1"></i> Soru Sor
                                     </button>
-                                    <button className="bg-white border-2 border-gray-200 text-gray-500 w-full py-3 rounded-xl font-extrabold text-sm shadow-btn shadow-gray-200 btn-game hover:text-rejimde-purple hover:border-rejimde-purple transition flex flex-col items-center justify-center">
-                                        <i className="fa-solid fa-user-plus text-lg block mb-1"></i> Takip Et
+                                    <button 
+                                        onClick={handleFollow}
+                                        disabled={actionLoading}
+                                        className={`bg-white border-2 ${isFollowing ? 'border-purple-500 text-purple-500' : 'border-gray-200 text-gray-500'} w-full py-3 rounded-xl font-extrabold text-sm shadow-btn ${isFollowing ? 'shadow-purple-200' : 'shadow-gray-200'} btn-game hover:text-rejimde-purple hover:border-rejimde-purple transition flex flex-col items-center justify-center ${actionLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        <i className={`fa-solid ${isFollowing ? 'fa-user-check' : 'fa-user-plus'} text-lg block mb-1`}></i> 
+                                        {isFollowing ? 'Takip Ediliyor' : 'Takip Et'}
                                     </button>
                                 </div>
                             </div>
                         </div>
 
                         {/* Quick Stats Footer */}
-                        <div className="bg-gray-50 border-t-2 border-gray-100 p-4 grid grid-cols-3 divide-x divide-gray-200 text-center">
+                        <div className="bg-gray-50 border-t-2 border-gray-100 p-4 grid grid-cols-4 divide-x divide-gray-200 text-center">
+                            <div>
+                                <div className="text-xl font-black text-rejimde-text">{followersCount}</div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase">Takipçi</div>
+                            </div>
                             <div>
                                 <div className="text-xl font-black text-rejimde-text">{expert.client_count}</div>
                                 <div className="text-[10px] font-bold text-gray-400 uppercase">Danışan</div>
@@ -730,8 +786,10 @@ export default function ExpertProfilePage() {
                         <h2 className="text-xl font-extrabold text-gray-800 mb-4 uppercase tracking-wide">HAKKINDA</h2>
                         {expert.bio ?  (
                             <div 
-                                className="text-gray-500 font-medium leading-relaxed mb-6 prose prose-sm max-w-none"
-                                dangerouslySetInnerHTML={{ __html: expert.bio. replace(/\n/g, '<br/>') }}
+                                className="text-gray-500 font-medium leading-relaxed mb-6 prose prose-sm max-w-none
+                                           prose-strong:text-gray-700 prose-em:text-gray-600 
+                                           prose-ul:list-disc prose-ol:list-decimal prose-li:ml-4"
+                                dangerouslySetInnerHTML={{ __html: expert.bio }}
                             />
                         ) : (
                             <p className="text-gray-400 italic mb-6">Uzman henüz biyografisini eklememiş.</p>
@@ -966,7 +1024,7 @@ export default function ExpertProfilePage() {
                                         className="px-3 py-2 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs font-bold"
                                     >
                                         <i className="fa-solid fa-xmark mr-1"></i>
-                                        {caseId}
+                                        {getExcludedCaseLabel(caseId)}
                                     </span>
                                 ))}
                             </div>
@@ -1045,8 +1103,12 @@ export default function ExpertProfilePage() {
                                             </div>
                                             
                                             {/* CTA Button */}
-                                            <button className="w-full border-2 border-rejimde-blue text-rejimde-blue hover:bg-rejimde-blue hover:text-white py-3 rounded-xl font-extrabold uppercase text-sm transition">
-                                                Detayları Gör
+                                            <button 
+                                                onClick={() => handleRequestService(service)}
+                                                className="w-full border-2 border-rejimde-green text-rejimde-green hover:bg-rejimde-green hover:text-white py-3 rounded-xl font-extrabold uppercase transition"
+                                            >
+                                                <i className="fa-solid fa-paper-plane mr-2"></i>
+                                                Talep Et
                                             </button>
                                         </div>
                                     );
@@ -1085,6 +1147,25 @@ export default function ExpertProfilePage() {
                 onSuccess={() => {
                     setShowRequestModal(false);
                     // Optionally show a success message
+                }}
+            />
+        )}
+        
+        {/* Service Request Modal */}
+        {showServiceRequestModal && selectedService && expert && (
+            <ServiceRequestModal
+                expertId={expert.related_user_id ?? expert.user_id ?? expert.id}
+                expertName={expert.name}
+                service={selectedService}
+                onClose={() => {
+                    setShowServiceRequestModal(false);
+                    setSelectedService(null);
+                }}
+                onSuccess={() => {
+                    setShowServiceRequestModal(false);
+                    setSelectedService(null);
+                    // Toast göster
+                    alert('Talebiniz başarıyla gönderildi!');
                 }}
             />
         )}
