@@ -215,20 +215,18 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
               ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             };
             
-            // Use correct API endpoint based on user type
-            const isExpert = planData.author?.is_expert || false;
-            const endpoint = isExpert 
-              ? `${apiUrl}/rejimde/v1/professionals/${authorSlug}`
-              : `${apiUrl}/rejimde/v1/profile/${authorSlug}`;
+            // Use WordPress Users API which returns role information
+            const endpoint = `${apiUrl}/wp/v2/users?slug=${authorSlug}`;
             
             const res = await fetch(endpoint, { headers });
             
             if (res.ok) {
-              const data = await res.json();
-              const user = data.data || data;
-              
-              if (user) {
-                const isPro = isExpert || (user.roles && user.roles.includes("rejimde_pro"));
+              const users = await res.json();
+              if (users && users.length > 0) {
+                const user = users[0];
+                
+                // Detect if user is expert based on roles from WordPress API
+                const isPro = user.roles && user.roles.includes('rejimde_pro');
                 let profession = authorInfo.profession;
                 if (isPro) {
                   const rawProfession = user.profession || "dietitian";
@@ -239,7 +237,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                   ...authorInfo,
                   id: user.id,
                   name: user.name || user.display_name,
-                  avatar: user.avatar_url || authorInfo.avatar,
+                  avatar: user.avatar_urls?.['96'] || user.avatar_url || authorInfo.avatar,
                   isExpert: isPro,
                   isVerified: isPro,
                   role: isPro ? "rejimde_pro" : "rejimde_user",

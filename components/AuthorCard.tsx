@@ -50,72 +50,6 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
     const [highFives, setHighFives] = useState(author.high_fives || 0);
     const [hasHighFived, setHasHighFived] = useState(Boolean(author.has_high_fived));
     
-    // Complete author data states
-    const [rejiScore, setRejiScore] = useState(author.reji_score);
-    const [clientCount, setClientCount] = useState(author.client_count);
-    const [rejimdeTotalScore, setRejimdeTotalScore] = useState(author.rejimde_total_score);
-    
-    // Fetch complete author data from correct API endpoint
-    useEffect(() => {
-        const fetchAuthorData = async () => {
-            if (!author.slug) return;
-            
-            try {
-                const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
-                const token = localStorage.getItem('jwt_token');
-                const headers: HeadersInit = {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                };
-                
-                // Use correct API endpoint based on user type
-                const endpoint = isExpert 
-                    ? `${apiUrl}/rejimde/v1/professionals/${author.slug}`
-                    : `${apiUrl}/rejimde/v1/profile/${author.slug}`;
-                
-                const res = await fetch(endpoint, { headers });
-                
-                if (res.ok) {
-                    const data = await res.json();
-                    const userData = data.data || data;
-                    
-                    // Update states with real values from API
-                    if (userData.is_following !== undefined) {
-                        setIsFollowing(Boolean(userData.is_following));
-                    }
-                    if (userData.has_high_fived !== undefined) {
-                        setHasHighFived(Boolean(userData.has_high_fived));
-                    }
-                    if (userData.followers_count !== undefined) {
-                        setFollowerCount(userData.followers_count);
-                    }
-                    if (userData.high_fives !== undefined) {
-                        setHighFives(userData.high_fives);
-                    }
-                    
-                    // Expert-specific fields
-                    if (isExpert) {
-                        if (userData.reji_score !== undefined) {
-                            setRejiScore(userData.reji_score);
-                        }
-                        if (userData.client_count !== undefined) {
-                            setClientCount(userData.client_count);
-                        }
-                    }
-                    
-                    // Normal user fields
-                    if (!isExpert && userData.rejimde_total_score !== undefined) {
-                        setRejimdeTotalScore(userData.rejimde_total_score);
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching author data:', error);
-            }
-        };
-        
-        fetchAuthorData();
-    }, [author.slug, isExpert]);
-    
     // Deneyim yılı hesaplama
     const experienceYears = author.career_start_date 
         ? Math.max(0, new Date().getFullYear() - new Date(author.career_start_date).getFullYear())
@@ -248,7 +182,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                         <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center mb-1 text-sm shadow-sm">
                             <i className="fa-solid fa-chart-simple"></i>
                         </div>
-                        <span className="font-black text-gray-700 text-sm">{rejiScore ?? '--'}</span>
+                        <span className="font-black text-gray-700 text-sm">{author.reji_score ?? '--'}</span>
                         <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">RejiScore</span>
                     </div>
                     
@@ -257,7 +191,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                         <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center mb-1 text-sm shadow-sm">
                             <i className="fa-solid fa-users"></i>
                         </div>
-                        <span className="font-black text-gray-700 text-sm">{clientCount ?? 0}</span>
+                        <span className="font-black text-gray-700 text-sm">{author.client_count ?? 0}</span>
                         <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Danışan</span>
                     </div>
                     
@@ -336,7 +270,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                  {/* Rejimde Skoru */}
                  <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-wide">Rejimde Skoru</span>
-                    <span className="text-sm font-black text-blue-500">{rejimdeTotalScore || author.score || 0} XP</span>
+                    <span className="text-sm font-black text-blue-500">{author.rejimde_total_score || author.score || 0} XP</span>
                  </div>
                  <div className="w-full bg-gray-100 rounded-full h-3 mb-6 border border-gray-200 overflow-hidden relative">
                      <div className="absolute top-0 left-0 h-full bg-blue-400 w-2/3 shadow-[0_2px_0_rgba(0,0,0,0.1) inset]"></div>
