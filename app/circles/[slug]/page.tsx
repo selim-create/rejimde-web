@@ -3,7 +3,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import LayoutWrapper from '@/components/LayoutWrapper';
-import { auth, getComments, createComment } from '@/lib/api';
+import { auth, getComments, createComment, getCircleTasks } from '@/lib/api';
+import TaskCard from '@/components/tasks/TaskCard';
+import type { CircleTask as GamificationCircleTask } from '@/types/gamification';
 
 // Hazır Circle Avatarları
 const CIRCLE_AVATARS = [
@@ -73,6 +75,10 @@ export default function CircleDetailPage() {
       comment_status: 'open' 
   });
 
+  // Circle Tasks State
+  const [circleTasks, setCircleTasks] = useState<GamificationCircleTask[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+
   // Verileri Çek
   useEffect(() => {
     const fetchData = async () => {
@@ -95,6 +101,19 @@ export default function CircleDetailPage() {
             setIsMember(true);
             if (circleData.leader_id && user.id === circleData.leader_id) {
                 setIsMentor(true);
+            }
+          }
+          
+          // Fetch circle tasks
+          if (circleData.id) {
+            setTasksLoading(true);
+            try {
+              const tasks: GamificationCircleTask[] = await getCircleTasks(circleData.id);
+              setCircleTasks(tasks);
+            } catch (error) {
+              console.error('Circle tasks error:', error);
+            } finally {
+              setTasksLoading(false);
             }
           }
         } else {
@@ -299,41 +318,27 @@ export default function CircleDetailPage() {
       <LayoutWrapper>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 pb-12">
             
-            {/* SOL KOLON: QUEST & MEMBERS */}
+            {/* SOL KOLON: TASKS & MEMBERS */}
             <div className="lg:col-span-8 space-y-8">
-                {/* QUEST CARD (Dummy) */}
-                <div className="bg-white border-2 border-gray-200 rounded-3xl p-6 relative overflow-hidden shadow-[0_4px_0_rgba(229,231,235,0.8)] group hover:border-green-500 transition-colors cursor-pointer">
-                    <div className="absolute top-0 right-0 bg-green-500 text-white text-xs font-black px-4 py-2 rounded-bl-2xl uppercase shadow-sm">Haftalık Görev</div>
-                    <div className="flex items-start gap-4 mb-6">
-                        <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center text-green-600 text-3xl group-hover:scale-110 transition border-2 border-green-200"><i className="fa-solid fa-shoe-prints"></i></div>
-                        <div>
-                            <h2 className="text-xl font-extrabold text-gray-800">Büyük Yürüyüş</h2>
-                            <p className="text-gray-500 font-bold text-sm">Circle olarak toplam <span className="text-gray-800 font-extrabold">500.000 adım</span> atın.</p>
-                            <p className="text-xs font-bold text-gray-400 mt-1 flex items-center gap-1"><i className="fa-regular fa-clock"></i> Bitiş: 2 Gün 14 Saat</p>
-                        </div>
-                    </div>
-                    <div className="relative h-8 bg-gray-200 rounded-full mb-2 border-2 border-gray-100 overflow-hidden">
-                        <div className="absolute top-0 left-0 h-full bg-green-500 flex items-center justify-center text-white text-xs font-black tracking-wider transition-all duration-1000" style={{width: '75%'}}>
-                            <div className="w-full h-full opacity-20 absolute top-0 left-0 animate-[pulse_2s_infinite]" style={{backgroundImage: "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9InAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTTAgMjBMMjAgMEgwTDIwIDIwIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNwKSIvPjwvc3ZnPg==')"}}></div>
-                        </div>
-                        <span className="absolute inset-0 flex items-center justify-center text-xs font-black text-gray-600 mix-blend-multiply z-10">375.000 / 500.000</span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center mt-4">
-                        <div className="flex -space-x-3 pl-2">
-                            <img src="https://api.dicebear.com/9.x/personas/svg?seed=1" className="w-8 h-8 rounded-full border-2 border-white bg-gray-200" title="Katkı: 50k" alt="" />
-                            <img src="https://api.dicebear.com/9.x/personas/svg?seed=2" className="w-8 h-8 rounded-full border-2 border-white bg-gray-200" title="Katkı: 42k" alt="" />
-                            <img src="https://api.dicebear.com/9.x/personas/svg?seed=3" className="w-8 h-8 rounded-full border-2 border-green-500 bg-gray-200" title="Sen: 12k" alt="" />
-                            <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-black text-gray-500">+8</div>
-                        </div>
-                        <div className="text-right">
-                            <span className="text-xs font-bold text-gray-400 uppercase">Ödül</span>
-                            <div className="flex items-center gap-1 text-yellow-600 font-black">
-                                <i className="fa-solid fa-gem"></i> 1000 Elmas
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {/* CIRCLE TASKS */}
+                {tasksLoading ? (
+                  <div className="bg-white border-2 border-gray-200 rounded-3xl p-12 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                    <p className="text-gray-500 font-bold mt-4">Görevler yükleniyor...</p>
+                  </div>
+                ) : circleTasks.length > 0 ? (
+                  <div className="space-y-6">
+                    {circleTasks.map((task) => (
+                      <TaskCard key={task.id} task={task} type="circle" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white border-2 border-dashed border-gray-200 rounded-3xl p-12 text-center">
+                    <i className="fa-solid fa-clipboard-list text-4xl text-gray-300 mb-3"></i>
+                    <p className="text-gray-500 font-bold">Henüz aktif görev yok</p>
+                    <p className="text-sm text-gray-400 mt-2">Mentor yeni görevler ekleyebilir</p>
+                  </div>
+                )}
 
                 {/* MEMBER LIST */}
                 <div className="bg-white border-2 border-gray-200 rounded-3xl overflow-hidden shadow-[0_4px_0_rgba(229,231,235,0.8)]">
