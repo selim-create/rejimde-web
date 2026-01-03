@@ -102,7 +102,7 @@ export default function ExpertCard({ name, title, image, rating, scoreImpact, tr
             <div className="flex justify-center gap-4 mb-4 border-y-2 border-gray-50 py-3">
                 <div>
                     <div className="flex items-center justify-center gap-1 text-indigo-500 text-sm font-black">
-                        <i className="fa-solid fa-chart-simple"></i> {rejiScore || 50}
+                        <i className="fa-solid fa-chart-simple"></i> {rejiScore ?? '--'}
                     </div>
                     <div className="text-[9px] font-bold text-gray-400 uppercase">RejiScore</div>
                 </div>
