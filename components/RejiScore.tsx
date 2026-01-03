@@ -84,22 +84,22 @@ export default function RejiScore({
         {/* Mini İstatistikler */}
         <div className="grid grid-cols-4 gap-2 text-center border-t border-indigo-100 pt-3">
           <div className="group">
-            <div className="flex items-center justify-center gap-1 text-rejimde-yellow text-xs">
-              <i className="fa-solid fa-star"></i>
+            <div className="flex items-center justify-center gap-1 text-red-400 text-xs">
+              <i className="fa-solid fa-heart"></i>
               <span className="font-bold text-gray-700">{userRating.toFixed(1)}</span>
             </div>
             <div className="text-[8px] font-bold text-gray-400 uppercase">Memnuniyet</div>
           </div>
           <div>
-            <div className="flex items-center justify-center gap-1 text-indigo-500 text-xs">
-              <i className="fa-solid fa-comment"></i>
+            <div className="flex items-center justify-center gap-1 text-yellow-500 text-xs">
+              <i className="fa-solid fa-star"></i>
               <span className="font-bold text-gray-700">{reviewCount}</span>
             </div>
-            <div className="text-[8px] font-bold text-gray-400 uppercase">Yorum</div>
+            <div className="text-[8px] font-bold text-gray-400 uppercase">Değerlendirme</div>
           </div>
           <div>
             <div className="flex items-center justify-center gap-1 text-purple-500 text-xs">
-              <i className="fa-solid fa-file-lines"></i>
+              <i className="fa-solid fa-brain"></i>
               <span className="font-bold text-gray-700">{contentCount}</span>
             </div>
             <div className="text-[8px] font-bold text-gray-400 uppercase">Katkı</div>
@@ -137,13 +137,13 @@ export default function RejiScore({
             <div>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-xs font-bold text-gray-500 flex items-center gap-1">
-                  <i className="fa-solid fa-star text-yellow-400"></i> Kullanıcı Memnuniyeti
+                  <i className="fa-solid fa-heart text-red-400"></i> Kullanıcı Memnuniyeti
                 </span>
                 <span className="text-xs font-black text-gray-700">{trustScore}/100</span>
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-red-400 to-pink-500 rounded-full transition-all duration-500"
                   style={{ width: `${trustScore}%` }}
                 ></div>
               </div>
