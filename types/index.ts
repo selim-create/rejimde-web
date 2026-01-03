@@ -212,6 +212,20 @@ export interface CircleMember {
     joined_at: string;
 }
 
+// Following User
+export interface FollowingUser {
+    id: number;
+    name: string;
+    slug: string;
+    avatar_url: string;
+    last_activity: {
+        type: string;      // Activity type, e.g., "water_added", "workout_completed"
+        label: string;     // Human-readable activity description, e.g., "Su hedefini tamamladı"
+        icon: string;      // Emoji icon representing the activity, e.g., "💧"
+        time_ago: string;  // Relative time since activity, e.g., "5 dakika önce"
+    } | null;
+}
+
 // Export gamification types (selective to avoid naming conflicts)
 export type {
   TaskType,
