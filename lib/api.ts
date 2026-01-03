@@ -52,12 +52,9 @@ export async function fetchWithRetry(
   // Eğer buraya geldiyse, tüm denemeler 429 döndürmüş demektir
   // (Network hataları zaten yukarıda throw edilmiştir)
   // Son 429 response'u döndür ki çağıran taraf status'u kontrol edebilsin
-  if (lastResponse) {
-    return lastResponse;
-  }
-  
-  // Bu noktaya teorik olarak ulaşılmamalı, ama tip güvenliği için
-  throw new Error(`Maximum retry attempts (${retries}) reached for ${url}`);
+  // lastResponse kesinlikle set edilmiştir çünkü 429 aldığımızda her zaman set ediyoruz
+  return lastResponse!; // Non-null assertion: lastResponse her zaman tanımlıdır bu noktada
+}
 }
 
 // --- TYPE GUARDS ---
