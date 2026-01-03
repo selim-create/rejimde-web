@@ -6,6 +6,57 @@ import type { PlanListItem, PlanDetail, PlanEditData, BackendResponse, ApiRespon
 // Import helper functions
 import { calculateReadingTime, translateDifficulty } from './helpers';
 
+/**
+ * Rate limiting ve network hatalarında otomatik retry yapan fetch wrapper
+ * @param url - Fetch URL
+ * @param options - Fetch options
+ * @param retries - Maksimum deneme sayısı (varsayılan: 3)
+ * @param delay - İlk bekleme süresi ms (varsayılan: 1000ms, her denemede 2x artar)
+ */
+export async function fetchWithRetry(
+  url: string, 
+  options: RequestInit = {}, 
+  retries = 3, 
+  delay = 1000
+): Promise<Response> {
+  let lastResponse: Response | null = null;
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      
+      // Rate limited (429) - bekle ve tekrar dene
+      if (res.status === 429) {
+        lastResponse = res;
+        if (attempt < retries - 1) {
+          const waitTime = delay * Math.pow(2, attempt); // Exponential backoff
+          console.warn(`Rate limited. Retrying in ${waitTime}ms... (attempt ${attempt + 1}/${retries})`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+      }
+      
+      return res;
+    } catch (error) {
+      // Network hatası - son deneme değilse tekrar dene
+      if (attempt < retries - 1) {
+        const waitTime = delay * Math.pow(2, attempt);
+        console.warn(`Network error. Retrying in ${waitTime}ms... (attempt ${attempt + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      throw error;
+    }
+  }
+  
+  // Eğer buraya geldiyse, tüm denemeler 429 döndürmüş demektir
+  // (Network hataları zaten yukarıda throw edilmiştir)
+  // Son 429 response'u döndür ki çağıran taraf status'u kontrol edebilsin
+  // lastResponse kesinlikle set edilmiştir çünkü 429 aldığımızda her zaman set ediyoruz
+  return lastResponse!; // Non-null assertion: lastResponse her zaman tanımlıdır bu noktada
+}
+}
+
 // --- TYPE GUARDS ---
 /**
  * Type guard to check if response is a BackendResponse with success status

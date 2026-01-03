@@ -1,4 +1,4 @@
-import { API_URL } from './api';
+import { API_URL, fetchWithRetry } from './api';
 
 export interface CommentUser {
   name: string;
@@ -148,7 +148,7 @@ const mapSafeComment = (c: any): CommentData => {
 
 export async function fetchComments(postId: number, context: string): Promise<{ comments: CommentData[], stats?: any }> {
   try {
-  const res = await fetch(`${API_URL}/rejimde/v1/comments?post=${postId}&context=${context}`, {
+  const res = await fetchWithRetry(`${API_URL}/rejimde/v1/comments?post=${postId}&context=${context}`, {
     method: 'GET',
     headers: getAuthHeaders(),  // Auth header eklendi
     cache: 'no-store'
