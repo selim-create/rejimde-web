@@ -6,6 +6,49 @@ import type { PlanListItem, PlanDetail, PlanEditData, BackendResponse, ApiRespon
 // Import helper functions
 import { calculateReadingTime, translateDifficulty } from './helpers';
 
+/**
+ * Rate limiting ve network hatalarında otomatik retry yapan fetch wrapper
+ * @param url - Fetch URL
+ * @param options - Fetch options
+ * @param retries - Maksimum deneme sayısı (varsayılan: 3)
+ * @param delay - İlk bekleme süresi ms (varsayılan: 1000ms, her denemede 2x artar)
+ */
+export async function fetchWithRetry(
+  url: string, 
+  options: RequestInit = {}, 
+  retries = 3, 
+  delay = 1000
+): Promise<Response> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      
+      // Rate limited (429) - bekle ve tekrar dene
+      if (res.status === 429) {
+        if (attempt < retries - 1) {
+          const waitTime = delay * Math.pow(2, attempt); // Exponential backoff
+          console.warn(`Rate limited. Retrying in ${waitTime}ms... (attempt ${attempt + 1}/${retries})`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+      }
+      
+      return res;
+    } catch (error) {
+      // Network hatası - son deneme değilse tekrar dene
+      if (attempt < retries - 1) {
+        const waitTime = delay * Math.pow(2, attempt);
+        console.warn(`Network error. Retrying in ${waitTime}ms... (attempt ${attempt + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      throw error;
+    }
+  }
+  
+  throw new Error('Maximum retry attempts reached');
+}
+
 // --- TYPE GUARDS ---
 /**
  * Type guard to check if response is a BackendResponse with success status

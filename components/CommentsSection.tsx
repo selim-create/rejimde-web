@@ -132,12 +132,20 @@ export default function CommentsSection({
   // Gamification Hook
   const { dispatchAction, lastResult, showToast, closeToast } = useGamification();
 
+  const loadComments = useCallback(async () => {
+    setIsLoading(true);
+    const result = await fetchComments(postId, context);
+    const data = Array.isArray(result) ? result : (result.comments || []);
+    setComments(data); 
+    setIsLoading(false);
+  }, [postId, context]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('jwt_token');
       if (token) {
         const storedRank = localStorage.getItem('user_rank') || localStorage.getItem('user_level');
-        const storedScore = localStorage. getItem('user_score');
+        const storedScore = localStorage.getItem('user_score');
         setUser({
           isLoggedIn: true,
           name: localStorage.getItem('user_name') || 'Kullanıcı',
@@ -145,20 +153,12 @@ export default function CommentsSection({
           avatar: localStorage.getItem('user_avatar') || `https://api.dicebear.com/9.x/avataaars/svg?seed=User`,
           role: localStorage.getItem('user_role') || 'rejimde_user',
           rank: storedRank ? parseInt(storedRank) : 1,
-          score: storedScore ?  parseInt(storedScore) : 0
+          score: storedScore ? parseInt(storedScore) : 0
         });
       }
     }
     loadComments();
-  }, [postId]);
-
-  const loadComments = async () => {
-    setIsLoading(true);
-    const result = await fetchComments(postId, context);
-    const data = Array.isArray(result) ? result : (result. comments || []);
-    setComments(data); 
-    setIsLoading(false);
-  };
+  }, [postId, loadComments]);
 
   const handlePostComment = useCallback(async (content: string, rating:  number) => {
     try {
