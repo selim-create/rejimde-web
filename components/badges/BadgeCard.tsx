@@ -26,8 +26,16 @@ export default function BadgeCard({ badge, size = 'md', showProgress = true }: B
     platinum: 'border-purple-300'
   };
   
+  const tierProgressColors: Record<BadgeTier, string> = {
+    bronze: 'text-orange-500',
+    silver: 'text-gray-500',
+    gold: 'text-yellow-500',
+    platinum: 'text-purple-500'
+  };
+  
   const gradient = tierGradients[badge.tier] || tierGradients.bronze;
   const borderColor = tierBorderColors[badge.tier] || tierBorderColors.bronze;
+  const progressColor = tierProgressColors[badge.tier] || tierProgressColors.bronze;
   
   // Size classes
   const sizeClasses = {
@@ -70,7 +78,7 @@ export default function BadgeCard({ badge, size = 'md', showProgress = true }: B
               strokeDasharray={strokeDasharray}
               strokeDashoffset={strokeDashoffset}
               strokeLinecap="round"
-              className={`text-${badge.tier === 'gold' ? 'yellow' : badge.tier === 'silver' ? 'gray' : badge.tier === 'platinum' ? 'purple' : 'orange'}-500 transition-all duration-500`}
+              className={`${progressColor} transition-all duration-500`}
             />
           </svg>
         )}
@@ -147,7 +155,7 @@ export default function BadgeCard({ badge, size = 'md', showProgress = true }: B
         )}
         
         {/* Tooltip Arrow */}
-        <div className="absolute top-full left-1/2 -ml-2 w-4 h-4 bg-gray-900 dark:bg-gray-950 transform rotate-45"></div>
+        <div className="absolute top-full left-1/2 -ml-2 w-4 h-4 bg-gray-900 dark:bg-gray-950 transform rotate-45" aria-hidden="true"></div>
       </div>
     </div>
   );

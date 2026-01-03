@@ -2751,7 +2751,7 @@ export const auth = {
     // Circle Settings, Tasks, and Members
     getCircleSettings,
     updateCircleSettings,
-    getCircleTasks: getCircleManagedTasks, // For task management (mentor use)
+    getCircleTasksForManagement: getCircleManagedTasks, // For task management (mentor use)
     createCircleTask,
     updateCircleTask,
     deleteCircleTask,

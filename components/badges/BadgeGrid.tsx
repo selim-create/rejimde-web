@@ -83,6 +83,7 @@ export default function BadgeGrid({ badges, showFilter = true }: BadgeGridProps)
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'earned' | 'progress')}
+              aria-label="Rozet sıralama seçeneği"
               className="px-3 py-2 rounded-xl font-bold text-sm bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-blue-500"
             >
               <option value="earned">Kazanılanlar Önce</option>

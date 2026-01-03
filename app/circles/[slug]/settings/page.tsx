@@ -134,7 +134,7 @@ export default function CircleSettingsPage() {
           if (circleData.id) {
             try {
               const [tasksData, membersData, settingsData] = await Promise.all([
-                auth.getCircleTasks(circleData.id),
+                auth.getCircleTasksForManagement(circleData.id),
                 auth.getCircleMembers(circleData.id),
                 auth.getCircleSettings(circleData.id),
               ]);
