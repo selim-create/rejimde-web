@@ -211,3 +211,6 @@ export interface CircleMember {
     score: number;
     joined_at: string;
 }
+
+// Export gamification types
+export * from './gamification';

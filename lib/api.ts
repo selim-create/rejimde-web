@@ -1,7 +1,24 @@
 export const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://api.rejimde.com/wp-json';
 
 // Import types
-import type { PlanListItem, PlanDetail, PlanEditData, BackendResponse, ApiResponse, CircleSettings, CircleTask, CreateTaskData, CircleMember } from '@/types';
+import type { 
+  PlanListItem, 
+  PlanDetail, 
+  PlanEditData, 
+  BackendResponse, 
+  ApiResponse, 
+  CircleSettings, 
+  CircleTask, 
+  CreateTaskData, 
+  CircleMember,
+  TaskDefinition,
+  UserTask,
+  UserTasksResponse,
+  CircleTask as GamificationCircleTask,
+  BadgeDefinition,
+  UserBadge,
+  UserBadgesResponse
+} from '@/types';
 
 // Import helper functions
 import { calculateReadingTime, translateDifficulty } from './helpers';
@@ -1348,6 +1365,194 @@ export async function getAllBadges() {
 
 /**
  * KULLANICI GEÇMİŞİ
+ */
+export async function getUserHistory() {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/gamification/history`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+// ==========================================
+// TASK API FUNCTIONS
+// ==========================================
+
+/**
+ * Get task definitions
+ */
+export async function getTaskDefinitions(type?: string): Promise<TaskDefinition[]> {
+  try {
+    const params = type ? `?type=${type}` : '';
+    const res = await fetch(`${API_URL}/rejimde/v1/tasks${params}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getTaskDefinitions error:', error);
+    return [];
+  }
+}
+
+/**
+ * Get user tasks
+ */
+export async function getUserTasks(): Promise<UserTasksResponse> {
+  const defaultResponse: UserTasksResponse = {
+    daily: [],
+    weekly: [],
+    monthly: [],
+    circle: [],
+    summary: { completed_today: 0, completed_this_week: 0, completed_this_month: 0 }
+  };
+  
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/tasks/me`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return defaultResponse;
+    const json = await res.json();
+    if (json.status === 'success') {
+      return json.data || defaultResponse;
+    }
+    return defaultResponse;
+  } catch (error) {
+    console.error('getUserTasks error:', error);
+    return defaultResponse;
+  }
+}
+
+/**
+ * Get tasks by type
+ */
+export async function getTasksByType(type: string): Promise<UserTask[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/tasks/${type}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+    return [];
+  } catch (error) {
+    console.error(`getTasks${type} error:`, error);
+    return [];
+  }
+}
+
+/**
+ * Get circle-specific tasks
+ */
+export async function getCircleTasks(circleId: number): Promise<GamificationCircleTask[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/tasks`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getCircleTasks error:', error);
+    return [];
+  }
+}
+
+// ==========================================
+// BADGE API FUNCTIONS (Enhanced)
+// ==========================================
+
+/**
+ * Get badge definitions
+ */
+export async function getBadgeDefinitions(): Promise<BadgeDefinition[]> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/badges`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (json.status === 'success') {
+      return json.data || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('getBadgeDefinitions error:', error);
+    return [];
+  }
+}
+
+/**
+ * Get user badges
+ */
+export async function getUserBadges(): Promise<UserBadgesResponse> {
+  const defaultResponse: UserBadgesResponse = {
+    badges: [],
+    by_category: { behavior: [], discipline: [], social: [], milestone: [] },
+    recently_earned: [],
+    stats: { total_earned: 0, total_available: 0, percent_complete: 0 }
+  };
+  
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/badges/me`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return defaultResponse;
+    const json = await res.json();
+    if (json.status === 'success') {
+      return json.data || defaultResponse;
+    }
+    return defaultResponse;
+  } catch (error) {
+    console.error('getUserBadges error:', error);
+    return defaultResponse;
+  }
+}
+
+/**
+ * Get badge progress
+ */
+export async function getBadgeProgress(slug: string): Promise<UserBadge | null> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/badges/${slug}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.status === 'success') {
+      return json.data;
+    }
+    return null;
+  } catch (error) {
+    console.error('getBadgeProgress error:', error);
+    return null;
+  }
+}
+
+/**
+ * KULLANICI GEÇMİŞİ (Original)
  */
 export async function getUserHistory() {
   try {
