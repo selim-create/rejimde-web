@@ -8,7 +8,7 @@ import MascotDisplay from "@/components/MascotDisplay";
 import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard"; 
 import SocialShare from "@/components/SocialShare";
-import { getUserProfileUrl } from "@/lib/helpers";
+import { getUserProfileUrl, getSafeAvatarUrl } from "@/lib/helpers";
 
 interface ReaderInfo {
   id: number;
@@ -133,48 +133,49 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                   // Get initial author slug from authorDetail state
                   const authorSlug = authorDetail.slug;
                   
-                  // Use WordPress Users API which returns role information
-                  const endpoint = `${apiUrl}/wp/v2/users?slug=${authorSlug}`;
+                  // Önce rejimde profile endpoint'ini dene (roles bilgisi var)
+                  const profileRes = await fetch(`${apiUrl}/rejimde/v1/profile/${authorSlug}`, { headers });
                   
-                  const res = await fetch(endpoint, { headers });
-                  
-                  if (res.ok) {
-                      const users = await res.json();
-                      if (users && users.length > 0) {
-                          const user = users[0];
-                          
-                          // Detect if user is expert based on roles from WordPress API
-                          const isPro = user.roles && user.roles.includes('rejimde_pro');
-                          const userAvatar = user.avatar_urls?.['96'] || user.avatar_url || `https://api.dicebear.com/9.x/personas/svg?seed=${user.slug}`;
-                          
-                          setAuthorDetail({
-                              id: user.id,
-                              name: user.name || user.display_name,
-                              slug: user.slug || authorSlug,
-                              avatar: userAvatar,
-                              isExpert: isPro,
-                              isVerified: isPro,
-                              role: isPro ? 'rejimde_pro' : 'rejimde_user',
-                              profession: user.profession || (isPro ? 'Uzman' : ''),
-                              level: user.rejimde_level || user.level || 5, 
-                              score: user.rejimde_score || 0,
-                              articleCount: user.posts_count || user.content_count || 12, 
-                              followers_count: user.followers_count || 0, 
-                              high_fives: user.high_fives || 0, 
-                              is_following: user.is_following || false,
-                              has_high_fived: user.has_high_fived || false,
-                              // Expert-specific fields
-                              reji_score: isPro ? user.reji_score : undefined,
-                              client_count: isPro ? user.client_count : undefined,
-                              // Normal user fields
-                              rejimde_total_score: !isPro ? user.rejimde_total_score || user.total_score : undefined,
-                          });
+                  if (profileRes.ok) {
+                      const profileData = await profileRes.json();
+                      const user = profileData.data || profileData;
+                      
+                      // Role kontrolü: roles array'inde 'rejimde_pro' var mı?
+                      const isPro = (user.roles && Array.isArray(user.roles) && user.roles.includes('rejimde_pro')) 
+                                 || user.role === 'rejimde_pro' 
+                                 || user.is_expert === true;
+                      
+                      // Avatar: Gravatar hariç, önce avatar_url sonra dicebear
+                      const userAvatar = getSafeAvatarUrl(user.avatar_url, user.slug || authorSlug);
+                      
+                      setAuthorDetail({
+                          id: user.id,
+                          name: user.name || user.display_name,
+                          slug: user.slug || authorSlug,
+                          avatar: userAvatar,
+                          isExpert: isPro,
+                          isVerified: isPro,
+                          role: isPro ? 'rejimde_pro' : 'rejimde_user',
+                          profession: user.profession || '',
+                          level: user.rejimde_level || 1,
+                          score: user.rejimde_score || 0,
+                          articleCount: user.posts_count || user.content_count || 1,
+                          followers_count: user.followers_count || 0,
+                          high_fives: user.high_fives || 0,
+                          is_following: user.is_following || false,
+                          has_high_fived: user.has_high_fived || false,
+                          // Expert-specific fields
+                          reji_score: isPro ? user.reji_score : undefined,
+                          client_count: isPro ? user.client_count : undefined,
+                          career_start_date: isPro ? user.career_start_date : undefined,
+                          // Normal user fields
+                          rejimde_total_score: !isPro ? (user.rejimde_total_score || user.total_score) : undefined,
+                      });
 
-                          const currentRole = localStorage.getItem('user_role');
-                          const currentName = localStorage.getItem('user_name');
-                          if (currentRole === 'administrator' || (isPro && currentName === user.name)) {
-                              setCanEdit(true);
-                          }
+                      const currentRole = localStorage.getItem('user_role');
+                      const currentName = localStorage.getItem('user_name');
+                      if (currentRole === 'administrator' || (isPro && currentName === user.name)) {
+                          setCanEdit(true);
                       }
                   }
               } catch (e) {

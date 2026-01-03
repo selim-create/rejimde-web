@@ -74,14 +74,15 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
         try {
             const result = await toggleFollow(author.id);
             
-            // Update with real values from API response
-            if (result.success) {
-                if (result.is_following !== undefined) {
-                    setIsFollowing(result.is_following);
-                }
-                if (result.followers_count !== undefined) {
-                    setFollowerCount(result.followers_count);
-                }
+            // API response yapısı: { success: true, is_following: bool, followers_count: number }
+            // VEYA: { success: true, data: { is_following: bool, followers_count: number } }
+            const data = result.data || result;
+            
+            if (result.success || data.success) {
+                const following = data.is_following ?? data.following ?? newState;
+                const count = data.followers_count ?? data.follower_count ?? (newState ? followerCount + 1 : followerCount - 1);
+                setIsFollowing(following);
+                setFollowerCount(count);
             } else {
                 // Revert on error
                 setIsFollowing(!newState);
@@ -104,14 +105,15 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
         try {
             const result = await sendHighFive(author.id);
             
-            // Update with real values from API response
-            if (result.success) {
-                if (result.count !== undefined) {
-                    setHighFives(result.count);
-                }
-                if (result.has_high_fived !== undefined) {
-                    setHasHighFived(result.has_high_fived);
-                }
+            // API response yapısı: { success: true, count: number, has_high_fived: bool }
+            // VEYA: { success: true, data: { count: number, has_high_fived: bool } }
+            const data = result.data || result;
+            
+            if (result.success || data.success) {
+                const count = data.count ?? data.high_fives ?? (highFives + 1);
+                const hasHiFived = data.has_high_fived ?? data.has_high_five ?? true;
+                setHighFives(count);
+                setHasHighFived(hasHiFived);
             } else {
                 // Revert on error
                 setHighFives(prev => prev - 1);
@@ -221,8 +223,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                     </button>
                     
                     {/* Extra Info */}
-                    <div className="flex justify-between items-center px-2 pt-1 text-[10px] font-bold text-gray-400">
-                        <span>{followerCount} Takipçi</span>
+                    <div className="flex justify-end items-center px-2 pt-1 text-[10px] font-bold text-gray-400">
                         <span>{experienceYears !== null && experienceYears >= 0 ? `${experienceYears}+ Yıl Tecrübe` : ''}</span>
                     </div>
                 </div>
