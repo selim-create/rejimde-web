@@ -237,7 +237,7 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                   ...authorInfo,
                   id: user.id,
                   name: user.name || user.display_name,
-                  avatar: user.avatar_urls?.['96'] || user.avatar_url || authorInfo.avatar,
+                  avatar: getSafeAvatarUrl(user.avatar_url || user.avatar_urls?.['96'], user.slug || authorSlug),
                   isExpert: isPro,
                   isVerified: isPro,
                   role: isPro ? "rejimde_pro" : "rejimde_user",
@@ -252,9 +252,27 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                   // Expert-specific fields
                   reji_score: isPro ? user.reji_score : undefined,
                   client_count: isPro ? user.client_count : undefined,
+                  career_start_date: isPro ? user.career_start_date : undefined,
                   // Normal user fields
                   rejimde_total_score: !isPro ? user.rejimde_total_score || user.total_score : undefined,
                 };
+                
+                // Uzmanlar için ek API çağrısı - professionals endpoint'inden detayları al
+                if (isPro) {
+                  try {
+                    const proRes = await fetch(`${apiUrl}/rejimde/v1/professionals/${authorSlug}`, { headers });
+                    if (proRes.ok) {
+                      const proData = await proRes.json();
+                      const expert = proData.data || proData;
+                      // Override with professional-specific data if available
+                      authorInfo.reji_score = expert.reji_score ?? authorInfo.reji_score;
+                      authorInfo.client_count = expert.client_count ?? authorInfo.client_count;
+                      authorInfo.career_start_date = expert.career_start_date ?? authorInfo.career_start_date;
+                    }
+                  } catch (e) {
+                    console.warn("Expert details fetch failed", e);
+                  }
+                }
               }
             }
           } catch (e) {
