@@ -748,7 +748,7 @@ export default function CircleSettingsPage() {
                       <button
                         onClick={editingTask ? handleUpdateTask : handleCreateTask}
                         disabled={saving}
-                        className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold shadow-btn hover:bg-purple-700 transition disabled:opacity-50"
+                        className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-purple-700 transition disabled:opacity-50"
                       >
                         {saving ? (
                           <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Kaydediliyor...</>
