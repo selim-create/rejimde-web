@@ -49,12 +49,14 @@ export async function fetchWithRetry(
     }
   }
   
-  // Eğer buraya geldiyse, tüm denemeler 429 ile başarısız olmuş demektir
-  // Son 429 response'u döndür
+  // Eğer buraya geldiyse, tüm denemeler 429 döndürmüş demektir
+  // (Network hataları zaten yukarıda throw edilmiştir)
+  // Son 429 response'u döndür ki çağıran taraf status'u kontrol edebilsin
   if (lastResponse) {
     return lastResponse;
   }
   
+  // Bu noktaya teorik olarak ulaşılmamalı, ama tip güvenliği için
   throw new Error('Maximum retry attempts reached');
 }
 
