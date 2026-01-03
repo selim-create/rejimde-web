@@ -2844,6 +2844,10 @@ export interface Notification {
   meta: Record<string, any>;
   is_read: boolean;
   created_at: string;
+  // New fields for enhanced notification handling
+  content_type?: string;
+  content_slug?: string;
+  content_id?: number;
 }
 
 export interface NotificationPreferences {

@@ -23,10 +23,8 @@ export function useNotifications() {
       setNotifications(result.notifications || []);
       setUnreadCount(result.unread_count || 0);
     } catch (error) {
-      // Continue silently if API is unavailable or error occurs
       console.warn('Notifications API not available:', error);
-      setNotifications([]);
-      setUnreadCount(0);
+      // Keep existing state, don't clear
     } finally {
       setIsLoading(false);
     }

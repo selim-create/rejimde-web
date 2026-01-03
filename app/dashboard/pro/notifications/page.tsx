@@ -21,6 +21,19 @@ export default function ProNotificationsPage() {
     markAsRead([id]);
   };
 
+  const getEmptyMessage = (category: string) => {
+    const messages: Record<string, string> = {
+      all: 'Henüz hiç bildiriminiz yok.',
+      social: 'Sosyal bildiriminiz yok.',
+      system: 'Sistem bildirimi yok.',
+      level: 'Seviye bildirimi yok.',
+      circle: 'Circle bildirimi yok.',
+      points: 'Puan bildirimi yok.',
+      expert: 'Uzman bildirimi yok.',
+    };
+    return messages[category] || messages.all;
+  };
+
   const filteredNotifications = notifications.filter((notification) => {
     if (selectedCategory !== 'all' && notification.category !== selectedCategory) {
       return false;
@@ -107,7 +120,7 @@ export default function ProNotificationsPage() {
               <p className="text-slate-400">
                 {showUnreadOnly
                   ? 'Tüm bildirimlerinizi okudunuz!'
-                  : 'Henüz hiç bildiriminiz yok.'}
+                  : getEmptyMessage(selectedCategory)}
               </p>
             </div>
           ) : (

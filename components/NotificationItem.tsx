@@ -28,7 +28,11 @@ export default function NotificationItem({ notification, onRead, compact = false
       onRead(notification.id);
     }
     if (notification.action_url) {
-      router.push(notification.action_url);
+      // Ensure URL has leading slash
+      const url = notification.action_url.startsWith('/') 
+        ? notification.action_url 
+        : `/${notification.action_url}`;
+      router.push(url);
     }
   };
 
@@ -36,6 +40,7 @@ export default function NotificationItem({ notification, onRead, compact = false
   const relativeTime = formatDistanceToNow(new Date(notification.created_at), {
     addSuffix: true,
     locale: tr,
+    includeSeconds: true, // Include seconds for "just now" type messages
   });
 
   if (compact) {
