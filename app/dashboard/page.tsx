@@ -6,6 +6,8 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import MascotDisplay from "@/components/MascotDisplay";
 import StreakDisplay from "@/components/StreakDisplay";
 import PointsToast from "@/components/PointsToast";
+import TasksWidget from "@/components/dashboard/TasksWidget";
+import BadgesWidget from "@/components/dashboard/BadgesWidget";
 import { earnPoints, getMe, getGamificationStats, getPlans, getExercisePlans, getMyExperts, getMyAppointments, getMyInboxThreads, getMyPrivatePlans, getFollowingActivity } from "@/lib/api"; 
 import { MascotState } from "@/lib/mascot-config";
 import { useGamification } from "@/hooks/useGamification";
@@ -189,6 +191,14 @@ export default function DashboardPage() {
                       <Link href="/dashboard/score" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
                           <i className="fa-solid fa-chart-pie text-xl w-8 text-center group-hover:text-orange-500"></i>
                           <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Skor & Analiz</span>
+                      </Link>
+                      <Link href="/dashboard/tasks" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-list-check text-xl w-8 text-center group-hover:text-blue-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Görevlerim</span>
+                      </Link>
+                      <Link href="/dashboard/badges" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
+                          <i className="fa-solid fa-medal text-xl w-8 text-center group-hover:text-purple-500"></i>
+                          <span className="font-extrabold uppercase text-sm group-hover:text-gray-700">Rozetlerim</span>
                       </Link>
                       <Link href="/dashboard/notifications" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 text-gray-500 transition group">
                           <i className="fa-solid fa-bell text-xl w-8 text-center group-hover:text-blue-500"></i>
@@ -561,6 +571,12 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )}
+
+              {/* TASKS WIDGET */}
+              <TasksWidget />
+
+              {/* BADGES WIDGET */}
+              <BadgesWidget />
 
               {/* FRIEND ACTIVITY (Dynamic) */}
               <div className="bg-white border-2 border-gray-200 rounded-[2rem] p-5 shadow-sm">
