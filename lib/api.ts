@@ -14,11 +14,12 @@ import type {
   TaskDefinition,
   UserTask,
   UserTasksResponse,
-  CircleTask as GamificationCircleTask,
   BadgeDefinition,
   UserBadge,
   UserBadgesResponse
 } from '@/types';
+
+import type { CircleTask as GamificationCircleTask } from '@/types/gamification';
 
 // Import helper functions
 import { calculateReadingTime, translateDifficulty } from './helpers';
@@ -1552,23 +1553,6 @@ export async function getBadgeProgress(slug: string): Promise<UserBadge | null> 
 }
 
 /**
- * KULLANICI GEÇMİŞİ (Original)
- */
-export async function getUserHistory() {
-  try {
-    const res = await fetch(`${API_URL}/rejimde/v1/gamification/history`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return json.data || [];
-  } catch (error) {
-    return [];
-  }
-}
-
-/**
  * YORUMLARI GETİR (Backend'den Yeni Format)
  * @param postId - İçeriğin ID'si
  * @param context - 'blog', 'diet', 'expert' vb.
@@ -2203,10 +2187,10 @@ export async function updateCircleSettings(circleId: number, settings: Partial<C
     }
 }
 
-// Circle Tasks
-export async function getCircleTasks(circleId: number): Promise<CircleTask[]> {
+// Circle Task Management (for mentors to manage tasks within circles)
+export async function getCircleManagedTasks(circleId: number): Promise<CircleTask[]> {
     try {
-        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/tasks`, {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/tasks/manage`, {
             method: 'GET',
             headers: getAuthHeaders()
         });
@@ -2767,7 +2751,7 @@ export const auth = {
     // Circle Settings, Tasks, and Members
     getCircleSettings,
     updateCircleSettings,
-    getCircleTasks,
+    getCircleTasks: getCircleManagedTasks, // For task management (mentor use)
     createCircleTask,
     updateCircleTask,
     deleteCircleTask,

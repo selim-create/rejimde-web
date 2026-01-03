@@ -212,5 +212,20 @@ export interface CircleMember {
     joined_at: string;
 }
 
-// Export gamification types
-export * from './gamification';
+// Export gamification types (selective to avoid naming conflicts)
+export type {
+  TaskType,
+  TaskStatus,
+  TaskDefinition,
+  UserTask,
+  UserTasksResponse,
+  BadgeCategory,
+  BadgeTier,
+  BadgeDefinition,
+  UserBadge,
+  UserBadgesResponse
+} from './gamification';
+
+// Note: CircleTask from gamification is NOT exported here to avoid conflict
+// Import it directly from './gamification' when needed:
+// import type { CircleTask as GamificationCircleTask } from '@/types/gamification';
