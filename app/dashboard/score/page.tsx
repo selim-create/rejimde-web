@@ -42,11 +42,19 @@ export default function ScoreAnalysisPage() {
             // İstatistikleri İşle
             if (stats) {
                 setCurrentScore(stats.total_score || 0);
-                setLevel(stats.level || 1);
                 
-                // Level bilgisi
-                if (stats.league && stats.league.name) {
+                // Level bilgisi - level number ve name'i ayır
+                if (stats.level && typeof stats.level === 'object') {
+                    // Eğer level bir obje ise
+                    setLevel(stats.level.level || 1);
+                    setLevelName(stats.level.name || 'Begin (Level 1)');
+                } else if (stats.league && stats.league.name) {
+                    // Backward compatibility için league kontrolü
+                    setLevel(stats.league.level || 1);
                     setLevelName(stats.league.name);
+                } else {
+                    // Basit level number
+                    setLevel(stats.level || 1);
                 }
 
                 // Kazanılan rozet ID'leri (Array değilse boş array yap)

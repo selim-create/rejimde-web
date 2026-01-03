@@ -6,7 +6,7 @@ import LayoutWrapper from '@/components/LayoutWrapper';
 import MascotDisplay from "@/components/MascotDisplay";
 import StreakDisplay from "@/components/StreakDisplay";
 import PointsToast from "@/components/PointsToast";
-import { earnPoints, getMe, getGamificationStats, getPlans, getExercisePlans, getMyExperts, getMyAppointments, getMyInboxThreads, getMyPrivatePlans } from "@/lib/api"; 
+import { earnPoints, getMe, getGamificationStats, getPlans, getExercisePlans, getMyExperts, getMyAppointments, getMyInboxThreads, getMyPrivatePlans, getFollowingActivity } from "@/lib/api"; 
 import { MascotState } from "@/lib/mascot-config";
 import { useGamification } from "@/hooks/useGamification";
 
@@ -26,6 +26,13 @@ export default function DashboardPage() {
   const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [assignedPlans, setAssignedPlans] = useState<any[]>([]);
+  
+  // Following Activity States
+  const [followingActivity, setFollowingActivity] = useState<any[]>([]);
+  const [followingLoading, setFollowingLoading] = useState(true);
+  
+  // User Rank State
+  const [userRank, setUserRank] = useState<number | null>(null);
   
   // UI States
   const [mascotState, setMascotState] = useState<MascotState>("idle_dashboard");
@@ -53,6 +60,8 @@ export default function DashboardPage() {
                 setScore(stats.daily_score);
                 setTotalScore(stats.total_score);
                 if (stats.level) setLevelInfo(stats.level);
+                // Sıralamayı al
+                if (stats.rank) setUserRank(stats.rank);
             }
 
             // 3. Aktif Diyet Planı
@@ -76,6 +85,11 @@ export default function DashboardPage() {
 
             const plans = await getMyPrivatePlans();
             setAssignedPlans(plans.filter(p => p.status === 'active'));
+
+            // 6. Takip edilen kullanıcıların aktivitelerini çek
+            const followingData = await getFollowingActivity();
+            setFollowingActivity(followingData.data || []);
+            setFollowingLoading(false);
 
         } catch (error) {
             console.error("Dashboard veri hatası:", error);
@@ -189,17 +203,6 @@ export default function DashboardPage() {
                       </Link>
                   </nav>
               </div>
-
-              {/* Premium Promo */}
-              <div className="bg-gray-900 rounded-[2rem] p-6 text-center shadow-lg sticky top-[550px] border-4 border-gray-800 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-150"></div>
-                  <i className="fa-solid fa-crown text-yellow-400 text-4xl mb-3 animate-bounce-slow"></i>
-                  <h3 className="text-white font-extrabold text-lg mb-1">Rejimde Premium</h3>
-                  <p className="text-gray-400 text-xs font-bold mb-4">Sınırsız AI analizi ve reklamsız deneyim.</p>
-                  <button className="w-full bg-green-500 text-white py-3 rounded-xl font-extrabold text-xs uppercase shadow-[0_4px_0_rgb(21,128,61)] hover:bg-green-600 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(21,128,61)] active:translate-y-[4px] active:shadow-none transition-all">
-                      Yükselt
-                  </button>
-              </div>
           </div>
 
           {/* CENTER: Feed & Actions */}
@@ -267,11 +270,11 @@ export default function DashboardPage() {
                           </div>
                       </div>
                       <button 
-                        onClick={() => handleAction('log_water', 'water_reminder')}
-                        disabled={loadingAction === 'log_water'}
+                        onClick={() => handleAction('water_added', 'water_reminder')}
+                        disabled={loadingAction === 'water_added'}
                         className="bg-blue-500 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-[0_4px_0_rgb(37,99,235)] hover:bg-blue-600 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(37,99,235)] active:translate-y-[4px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                         {loadingAction === 'log_water' ? <i className="fa-solid fa-spinner animate-spin text-xl"></i> : <i className="fa-solid fa-plus font-black text-xl"></i>}
+                         {loadingAction === 'water_added' ? <i className="fa-solid fa-spinner animate-spin text-xl"></i> : <i className="fa-solid fa-plus font-black text-xl"></i>}
                       </button>
                   </div>
 
@@ -295,23 +298,23 @@ export default function DashboardPage() {
                       </button>
                   </div>
 
-                  {/* Workout */}
-                  <div className="bg-white border-2 border-b-4 border-gray-200 rounded-3xl p-4 flex items-center justify-between group hover:border-red-400 transition cursor-pointer">
+                  {/* Steps - Adım Ekle */}
+                  <div className="bg-white border-2 border-b-4 border-gray-200 rounded-3xl p-4 flex items-center justify-between group hover:border-orange-400 transition cursor-pointer">
                       <div className="flex items-center gap-5">
-                          <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 text-3xl group-hover:scale-110 transition border-2 border-red-100">
-                              <i className="fa-solid fa-person-running"></i>
+                          <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 text-3xl group-hover:scale-110 transition border-2 border-orange-100">
+                              <i className="fa-solid fa-shoe-prints"></i>
                           </div>
                           <div>
-                              <h4 className="font-black text-gray-700 text-lg">Antrenman</h4>
-                              <p className="text-xs font-bold text-gray-400">+50 Puan</p>
+                              <h4 className="font-black text-gray-700 text-lg">Adım Ekle</h4>
+                              <p className="text-xs font-bold text-gray-400">+5 Puan</p>
                           </div>
                       </div>
                       <button 
-                        onClick={() => handleAction('complete_workout', 'success_milestone')}
-                        disabled={loadingAction === 'complete_workout'}
-                        className="text-right bg-red-500 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-[0_4px_0_rgb(220,38,38)] hover:bg-red-600 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(220,38,38)] active:translate-y-[4px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleAction('steps_logged', 'success_milestone')}
+                        disabled={loadingAction === 'steps_logged'}
+                        className="bg-orange-500 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-[0_4px_0_rgb(234,88,12)] hover:bg-orange-600 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(234,88,12)] active:translate-y-[4px] active:shadow-none transition-all"
                       >
-                         {loadingAction === 'complete_workout' ? <i className="fa-solid fa-spinner animate-spin text-xl"></i> : <i className="fa-solid fa-check font-black text-xl"></i>}
+                         {loadingAction === 'steps_logged' ? <i className="fa-solid fa-spinner animate-spin text-xl"></i> : <i className="fa-solid fa-plus font-black text-xl"></i>}
                       </button>
                   </div>
               </div>
@@ -370,7 +373,7 @@ export default function DashboardPage() {
                           <i className={`fa-solid ${levelInfo?.icon || 'fa-trophy'} text-3xl ${levelInfo?.color || 'text-gray-400'}`}></i>
                       </div>
                       <p className="text-xs font-bold text-gray-400 uppercase">Sıralaman</p>
-                      <div className="text-3xl font-black text-gray-800 leading-none">#7</div>
+                      <div className="text-3xl font-black text-gray-800 leading-none">#{userRank || '-'}</div>
                       <div className="mt-3 bg-green-50 text-green-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase inline-block">
                           Yükselme Hattı
                       </div>
@@ -549,28 +552,39 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* FRIEND ACTIVITY (Mock) */}
+              {/* FRIEND ACTIVITY (Dynamic) */}
               <div className="bg-white border-2 border-gray-200 rounded-[2rem] p-5 shadow-sm">
                   <h3 className="font-extrabold text-gray-400 text-xs uppercase mb-3 px-1">Arkadaşların</h3>
-                  <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                          <img src="https://api.dicebear.com/9.x/personas/svg?seed=Felix" className="w-10 h-10 rounded-xl bg-gray-100" alt="Friend" />
-                          <div>
-                              <p className="text-xs font-bold text-gray-700">Ahmet Y.</p>
-                              <p className="text-[10px] text-green-500 font-bold">5000 adım attı ⚡</p>
-                          </div>
+                  {followingLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
                       </div>
-                      <div className="flex items-center gap-3">
-                          <img src="https://api.dicebear.com/9.x/personas/svg?seed=Aneka" className="w-10 h-10 rounded-xl bg-gray-100" alt="Friend" />
-                          <div>
-                              <p className="text-xs font-bold text-gray-700">Zeynep K.</p>
-                              <p className="text-[10px] text-blue-500 font-bold">Su hedefini tamamladı 💧</p>
-                          </div>
+                  ) : followingActivity.length === 0 ? (
+                      <div className="text-center py-6">
+                          <i className="fa-solid fa-user-plus text-4xl text-gray-300 mb-3"></i>
+                          <p className="text-sm font-bold text-gray-500 mb-4">Henüz takip ettiğin kimse yok. Hemen takip et!</p>
+                          <Link href="/explore" className="inline-block bg-blue-500 text-white px-6 py-2 rounded-xl font-extrabold text-xs uppercase hover:bg-blue-600 transition">
+                              Keşfet
+                          </Link>
                       </div>
-                  </div>
-                  <button className="w-full mt-4 text-xs font-bold text-gray-400 hover:text-gray-600 uppercase border-t-2 border-gray-50 pt-2">
-                      Tümünü Gör
-                  </button>
+                  ) : (
+                      <>
+                          <div className="space-y-4">
+                              {followingActivity.slice(0, 2).map((friend: any, idx: number) => (
+                                  <div key={idx} className="flex items-center gap-3">
+                                      <img src={friend.avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${friend.name}`} className="w-10 h-10 rounded-xl bg-gray-100" alt={friend.name} />
+                                      <div>
+                                          <p className="text-xs font-bold text-gray-700">{friend.name}</p>
+                                          <p className="text-[10px] text-green-500 font-bold">{friend.last_activity || 'Aktif'}</p>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                          <Link href="/explore" className="block w-full mt-4 text-xs font-bold text-gray-400 hover:text-gray-600 uppercase border-t-2 border-gray-50 pt-2 text-center">
+                              Tümünü Gör
+                          </Link>
+                      </>
+                  )}
               </div>
 
           </div>
