@@ -18,6 +18,28 @@ interface ReaderInfo {
   is_expert?:  boolean;  // Backend'den gelirse kullanılır
 }
 
+interface AuthorDetail {
+  id: number;
+  name: string;
+  slug: string;
+  avatar: string;
+  isExpert: boolean;
+  isVerified: boolean;
+  role: string;
+  profession: string;
+  level: number;
+  score: number;
+  articleCount: number;
+  followers_count: number;
+  high_fives: number;
+  is_following: boolean;
+  has_high_fived?: boolean;
+  reji_score?: number;
+  client_count?: number;
+  career_start_date?: string;
+  rejimde_total_score?: number;
+}
+
 interface ClientBlogPostProps {
   post: any;
   relatedPosts:  any[];
@@ -78,7 +100,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
   const scoreReward = post.is_sticky ? 50 :  10;
 
   // Yazar Detayları
-  const [authorDetail, setAuthorDetail] = useState<any>({
+  const [authorDetail, setAuthorDetail] = useState<AuthorDetail>({
       id: post.author_id || 0,
       name: post.author_name || "Yazar",
       slug: post.author_slug || slugify(post.author_name || ""),
