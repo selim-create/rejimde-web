@@ -70,9 +70,11 @@ export default function RejiScore({
         </div>
 
         {/* Büyük Skor */}
-        <div className="flex items-end gap-2 mb-3">
-          <span className="text-4xl font-black text-gray-800 leading-none">{score}</span>
-          <span className="text-lg font-bold text-gray-400 mb-1">/ 100</span>
+        <div className="flex items-end justify-between mb-3">
+          <div className="flex items-end gap-2">
+            <span className="text-4xl font-black text-gray-800 leading-none">{score}</span>
+            <span className="text-lg font-bold text-gray-400 mb-1">/ 100</span>
+          </div>
           {trendPercentage !== 0 && (
             <div className={`flex items-center gap-1 text-xs font-bold ${trend.color} mb-1`}>
               <i className={`fa-solid ${trend.icon}`}></i>
