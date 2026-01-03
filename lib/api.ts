@@ -2101,6 +2101,39 @@ export async function sendHighFive(userId: number) {
     }
 }
 
+/**
+ * Service Request (Paket Talebi)
+ */
+export async function requestService(data: {
+    expert_id: number;
+    service_id: number;
+    message?: string;
+    contact_preference?: 'message' | 'video' | 'phone';
+}) {
+    try {
+        const res = await fetch(`${API_URL}/rejimde/v1/service-requests`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data),
+        });
+        
+        const json = await res.json();
+        
+        if (json.status === 'success') {
+            return {
+                success: true,
+                request_id: json.data?.request_id,
+                message: json.message
+            };
+        }
+        
+        return { success: false, message: json.message || 'Talep gönderilemedi.' };
+    } catch (error) {
+        console.error('requestService error:', error);
+        return { success: false, message: 'Talep gönderilemedi.' };
+    }
+}
+
 
 /**
  * ==========================================
@@ -2323,6 +2356,7 @@ export const auth = {
     getLeaderboard,       // Leagues
     toggleFollow,         // Social
     sendHighFive,         // Social
+    requestService,       // Service Requests
     getDictionaryItems,   // Dictionary
     getDictionaryItem,
     createDictionaryItem,
