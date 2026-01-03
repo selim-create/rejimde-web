@@ -42,7 +42,6 @@ export default function CircleSettingsPage() {
   
   // Circle & User State
   const [circle, setCircle] = useState<any>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [isMentor, setIsMentor] = useState(false);
 
   // General Settings State
@@ -102,7 +101,6 @@ export default function CircleSettingsPage() {
     const fetchData = async () => {
       try {
         const user = await auth.me();
-        setCurrentUser(user);
 
         const circleData = await auth.getCircle(slug);
         if (circleData) {
