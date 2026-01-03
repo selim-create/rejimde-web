@@ -212,6 +212,20 @@ export interface CircleMember {
     joined_at: string;
 }
 
+// Following User
+export interface FollowingUser {
+    id: number;
+    name: string;
+    slug: string;
+    avatar_url: string;
+    last_activity: {
+        type: string;
+        label: string;
+        icon: string;
+        time_ago: string;
+    } | null;
+}
+
 // Export gamification types (selective to avoid naming conflicts)
 export type {
   TaskType,

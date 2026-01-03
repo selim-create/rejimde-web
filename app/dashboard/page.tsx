@@ -11,6 +11,7 @@ import BadgesWidget from "@/components/dashboard/BadgesWidget";
 import { earnPoints, getMe, getGamificationStats, getPlans, getExercisePlans, getMyExperts, getMyAppointments, getMyInboxThreads, getMyPrivatePlans, getFollowingActivity } from "@/lib/api"; 
 import { MascotState } from "@/lib/mascot-config";
 import { useGamification } from "@/hooks/useGamification";
+import { FollowingUser } from "@/types";
 
 export default function DashboardPage() {
   // User & Gamification States
@@ -30,7 +31,7 @@ export default function DashboardPage() {
   const [assignedPlans, setAssignedPlans] = useState<any[]>([]);
   
   // Following Activity States
-  const [followingActivity, setFollowingActivity] = useState<any[]>([]);
+  const [followingActivity, setFollowingActivity] = useState<FollowingUser[]>([]);
   const [followingLoading, setFollowingLoading] = useState(true);
   
   // User Rank State
@@ -588,12 +589,17 @@ export default function DashboardPage() {
                   ) : Array.isArray(followingActivity) && followingActivity.length > 0 ? (
                       <>
                           <div className="space-y-4">
-                              {followingActivity.slice(0, 2).map((friend: any, idx: number) => (
+                              {followingActivity.slice(0, 2).map((friend: FollowingUser, idx: number) => (
                                   <div key={idx} className="flex items-center gap-3">
-                                      <img src={friend.avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${friend.name}`} className="w-10 h-10 rounded-xl bg-gray-100" alt={friend.name} />
+                                      <img src={friend.avatar_url || `https://api.dicebear.com/9.x/personas/svg?seed=${friend.name}`} className="w-10 h-10 rounded-xl bg-gray-100" alt={friend.name} />
                                       <div>
                                           <p className="text-xs font-bold text-gray-700">{friend.name}</p>
-                                          <p className="text-[10px] text-green-500 font-bold">{friend.last_activity || 'Aktif'}</p>
+                                          <p className="text-[10px] text-green-500 font-bold">
+                                              {friend.last_activity 
+                                                  ? `${friend.last_activity.icon || ''} ${friend.last_activity.label || friend.last_activity.time_ago || 'Aktif'}`
+                                                  : 'Aktif'
+                                              }
+                                          </p>
                                       </div>
                                   </div>
                               ))}
