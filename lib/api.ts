@@ -57,7 +57,7 @@ export async function fetchWithRetry(
   }
   
   // Bu noktaya teorik olarak ulaşılmamalı, ama tip güvenliği için
-  throw new Error('Maximum retry attempts reached');
+  throw new Error(`Maximum retry attempts (${retries}) reached for ${url}`);
 }
 
 // --- TYPE GUARDS ---
