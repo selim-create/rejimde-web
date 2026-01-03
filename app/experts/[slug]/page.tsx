@@ -20,6 +20,7 @@ import {
   COUNTRY_OPTIONS,
   EXCLUDED_CASES_OPTIONS
 } from "@/lib/constants";
+import { renderContent } from "@/lib/markdown-utils";
 
 // Profession ID'den Label'a çevir
 const getProfessionLabel = (professionId: string): string => {
@@ -789,7 +790,7 @@ export default function ExpertProfilePage() {
                                 className="text-gray-500 font-medium leading-relaxed mb-6 prose prose-sm max-w-none
                                            prose-strong:text-gray-700 prose-em:text-gray-600 
                                            prose-ul:list-disc prose-ol:list-decimal prose-li:ml-4"
-                                dangerouslySetInnerHTML={{ __html: expert.bio }}
+                                dangerouslySetInnerHTML={{ __html: renderContent(expert.bio) }}
                             />
                         ) : (
                             <p className="text-gray-400 italic mb-6">Uzman henüz biyografisini eklememiş.</p>

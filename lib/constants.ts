@@ -251,11 +251,16 @@ export const COMMUNICATION_PREFERENCES = [
 // EXCLUDED CASES OPTIONS
 // ============================================
 export const EXCLUDED_CASES_OPTIONS = [
-    { id: "eating_disorder", label: "Yeme bozuklukları (klinik yönlendirme)" },
-    { id: "severe_medical", label: "Ciddi tıbbi durumlar (doktor onayı gerekli)" },
-    { id: "pregnancy_risk", label: "Riskli hamilelik" },
-    { id: "mental_health", label: "Ağır psikolojik durumlar" },
-    { id: "children_under_12", label: "12 yaş altı çocuklar" }
+    { id: "diabetes", label: "Diyabet" },
+    { id: "pregnancy", label: "Gebelik" },
+    { id: "heart_disease", label: "Kalp Hastalıkları" },
+    { id: "kidney_disease", label: "Böbrek Hastalıkları" },
+    { id: "eating_disorder", label: "Yeme Bozuklukları" },
+    { id: "chronic_illness", label: "Kronik Hastalıklar" },
+    { id: "pregnancy_risk", label: "Riskli Hamilelik" },
+    { id: "mental_health", label: "Ağır Psikolojik Durumlar" },
+    { id: "severe_medical", label: "Ciddi Tıbbi Durumlar" },
+    { id: "children_under_12", label: "12 Yaş Altı Çocuklar" }
 ];
 
 // ============================================
