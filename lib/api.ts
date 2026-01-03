@@ -6804,3 +6804,94 @@ export async function deleteExpertAddress(id: number): Promise<{ success: boolea
     return { success: false, message: 'Sunucu hatası.' };
   }
 }
+
+// ==========================================
+// LEVEL LEADERBOARD API FUNCTIONS
+// ==========================================
+
+export interface LeaderboardUser {
+  rank: number;
+  id: number;
+  name: string;
+  slug: string;
+  avatar: string | null;
+  score: number;
+  zone: 'promotion' | 'relegation' | 'safe';
+  is_current_user: boolean;
+}
+
+export interface LeaderboardCircle {
+  rank: number;
+  id: number;
+  name: string;
+  slug: string;
+  logo: string | null;
+  score: number;
+  member_count: number;
+  zone: 'promotion' | 'relegation' | 'safe';
+}
+
+export interface CurrentUserData {
+  id: number;
+  rank?: number;
+  score: number;
+  zone?: string;
+  points_to_promotion?: number;
+  points_to_relegation?: number;
+  in_this_level?: boolean;
+  current_level_slug?: string;
+  message?: string;
+}
+
+export interface LevelLeaderboardData {
+  level: {
+    min: number;
+    max: number;
+    level: number;
+    name: string;
+    next: string | null;
+    prev: string | null;
+  };
+  period_ends_at: string;
+  period_ends_timestamp: number;
+  promotion_count: number;
+  relegation_count: number;
+  users: LeaderboardUser[];
+  circles: LeaderboardCircle[];
+  current_user: CurrentUserData | null;
+}
+
+/**
+ * Get Level Leaderboard
+ * Fetches leaderboard data for a specific level (users or circles)
+ */
+export async function getLevelLeaderboard(levelSlug: string, type: 'users' | 'circles' = 'users'): Promise<LevelLeaderboardData | null> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || API_URL;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    
+    const res = await fetch(`${apiUrl}/rejimde/v1/gamification/level-leaderboard?level_slug=${levelSlug}&type=${type}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      cache: 'no-store'
+    });
+    
+    if (!res.ok) {
+      console.warn('Level leaderboard fetch failed:', res.status);
+      return null;
+    }
+    
+    const json = await res.json();
+    
+    if (json.status === 'success' && json.data) {
+      return json.data;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Level leaderboard hatası:', error);
+    return null;
+  }
+}
