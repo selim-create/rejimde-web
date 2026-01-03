@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { getExpertStyle } from "@/lib/constants";
 
 interface ExpertCardProps {
   name: string;
@@ -13,7 +14,7 @@ interface ExpertCardProps {
   isFeatured?: boolean; // Editörün Seçimi (Sarı Yıldız)
   isVerified?: boolean; // Onaylı Uzman (Mavi Tik)
   isNew?: boolean;
-  type: 'dietitian' | 'pt' | 'psychologist' | 'unclaimed';
+  type: 'dietitian' | 'nutritionist' | 'pt' | 'fitness_coach' | 'yoga' | 'pilates' | 'reformer' | 'psychologist' | 'life_coach' | 'physiotherapist' | 'doctor' | 'box' | 'kickbox' | 'mma' | 'functional' | 'crossfit' | 'swim' | 'run' | 'breath' | 'defense' | 'unclaimed';
   rejiScore?: number;
   clientCount?: number;
   followersCount?: number;
@@ -59,8 +60,10 @@ export default function ExpertCard({ name, title, image, rating, scoreImpact, tr
   }
 
   // Normal Uzman Kartı
+  const style = getExpertStyle(type);
+  
   return (
-    <Link href={`/experts/${slug}`} className={`bg-white border-2 border-gray-200 rounded-3xl p-0 transition group relative shadow-card flex flex-col h-full hover:border-rejimde-blue hover:-translate-y-1 duration-200`}>
+    <Link href={`/experts/${slug}`} className={`bg-white border-2 ${style?.border || 'border-gray-200'} rounded-3xl p-0 transition group relative shadow-card flex flex-col h-full hover:border-rejimde-blue hover:-translate-y-1 duration-200`}>
         
         {/* EDITÖRÜN SEÇİMİ (Featured) */}
         {isFeatured && (
@@ -75,9 +78,16 @@ export default function ExpertCard({ name, title, image, rating, scoreImpact, tr
             </div>
         )}
 
-        <div className={`h-28 rounded-t-3xl relative ${type === 'pt' ? 'bg-gradient-to-r from-blue-50 to-purple-50' : 'bg-gradient-to-r from-green-50 to-blue-50'}`}>
+        <div className={`h-28 ${style?.bg || 'bg-gradient-to-r from-green-50 to-blue-50'} rounded-t-3xl relative overflow-hidden`}>
+            {/* Shine animation */}
+            <div className="absolute inset-0 opacity-20 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.5)_50%,transparent_75%)] bg-[length:250%_250%] animate-[shine_3s_infinite]"></div>
+            
+            {/* Decorative Icons */}
+            <i className={`fa-solid ${style?.decorationIcon || 'fa-utensils'} ${style?.iconColor || 'text-green-300'} text-5xl absolute -bottom-2 -right-1 rotate-12 opacity-30`}></i>
+            <i className={`fa-solid ${style?.decorationIcon || 'fa-utensils'} ${style?.iconColor || 'text-green-300'} text-3xl absolute top-1 left-2 -rotate-12 opacity-30`}></i>
+            
             <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2">
-                <img src={image} className="w-20 h-20 rounded-2xl border-4 border-white shadow-sm bg-white object-cover" alt={name} />
+                <img src={image} className="w-20 h-20 rounded-2xl border-4 border-white shadow-sm bg-white object-cover group-hover:scale-105 transition-transform duration-300" alt={name} />
                 
                 {/* ONLINE DURUMU */}
                 {isOnline && <div className="absolute bottom-0 right-0 w-5 h-5 bg-rejimde-green border-2 border-white rounded-full" title="Online"></div>}
@@ -101,7 +111,7 @@ export default function ExpertCard({ name, title, image, rating, scoreImpact, tr
             
             <div className="flex justify-center gap-4 mb-4 border-y-2 border-gray-50 py-3">
                 <div>
-                    <div className="flex items-center justify-center gap-1 text-indigo-500 text-sm font-black">
+                    <div className={`flex items-center justify-center gap-1 ${style?.text || 'text-indigo-500'} text-sm font-black`}>
                         <i className="fa-solid fa-chart-simple"></i> {rejiScore ?? '--'}
                     </div>
                     <div className="text-[9px] font-bold text-gray-400 uppercase">RejiScore</div>
@@ -119,7 +129,7 @@ export default function ExpertCard({ name, title, image, rating, scoreImpact, tr
                 <span className="bg-white border-2 border-gray-200 text-gray-500 py-2 rounded-xl font-bold text-xs uppercase hover:bg-gray-50 flex items-center justify-center">
                     Profili
                 </span>
-                <span className={`text-white py-2 rounded-xl font-bold text-xs shadow-btn btn-game uppercase flex items-center justify-center ${type === 'pt' ? 'bg-rejimde-blue shadow-rejimde-blueDark' : 'bg-rejimde-green shadow-rejimde-greenDark'}`}>
+                <span className={`text-white py-2 rounded-xl font-bold text-xs shadow-btn btn-game uppercase flex items-center justify-center ${style?.btnMain || 'bg-rejimde-green shadow-rejimde-greenDark'}`}>
                     Randevu
                 </span>
             </div>
