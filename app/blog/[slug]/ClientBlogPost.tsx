@@ -146,8 +146,8 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                       // Role kontrolü - birden fazla yöntem dene
                       isPro = (user.roles && Array.isArray(user.roles) && user.roles.includes('rejimde_pro')) 
                            || user.role === 'rejimde_pro' 
-                           || user.is_expert === true
-                           || post.author_is_expert === true;  // Post'tan gelen değer de kontrol edilsin
+                           || user.is_expert
+                           || post.author_is_expert;  // Post'tan gelen değer de kontrol edilsin
                       
                       // Avatar: Gravatar hariç, önce avatar_url sonra dicebear
                       const userAvatar = getSafeAvatarUrl(user.avatar_url, user.slug || authorSlug);
