@@ -616,37 +616,37 @@ export default function ExpertProfilePage() {
                                     ? 'bg-gradient-to-br from-green-50 to-emerald-50 hover:border-green-300' 
                                     : (expert.trend_percentage || 0) < 0 
                                         ? 'bg-gradient-to-br from-red-50 to-orange-50 hover:border-red-300'
-                                        : 'bg-gradient-to-br from-gray-50 to-slate-50 hover:border-gray-300'
+                                        : 'bg-gradient-to-br from-orange-50 to-red-50 hover:border-orange-300'
                             }`}>
                                 <div className={`w-10 h-10 mx-auto bg-white rounded-xl flex items-center justify-center text-xl shadow-sm mb-2 ${
-                                    (expert.trend_percentage || 0) > 0 ? 'text-green-500' : (expert.trend_percentage || 0) < 0 ? 'text-red-500' : 'text-gray-400'
+                                    (expert.trend_percentage || 0) > 0 ? 'text-green-500' : (expert.trend_percentage || 0) < 0 ? 'text-red-500' : 'text-orange-500'
                                 }`}>
-                                    <i className={`fa-solid ${(expert.trend_percentage || 0) > 0 ? 'fa-arrow-trend-up' : (expert.trend_percentage || 0) < 0 ? 'fa-arrow-trend-down' : 'fa-minus'}`}></i>
+                                    <i className={`fa-solid ${(expert.trend_percentage || 0) > 0 ? 'fa-arrow-trend-up' : (expert.trend_percentage || 0) < 0 ? 'fa-arrow-trend-down' : 'fa-fire'}`}></i>
                                 </div>
                                 <div className={`text-2xl font-black ${
-                                    (expert.trend_percentage || 0) > 0 ? 'text-green-600' : (expert.trend_percentage || 0) < 0 ? 'text-red-600' : 'text-gray-600'
+                                    (expert.trend_percentage || 0) > 0 ? 'text-green-600' : (expert.trend_percentage || 0) < 0 ? 'text-red-600' : 'text-orange-500'
                                 }`}>
                                     {(expert.trend_percentage || 0) > 0 ? '+' : ''}{expert.trend_percentage || 0}%
                                 </div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase">Son 7 Gün Trend</div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase">Son 7 Gün</div>
                             </div>
                             
-                            {/* 3. Yorum Sayısı */}
+                            {/* 3. Değerlendirme (Yorum yerine) */}
                             <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-2xl p-4 text-center border-2 border-transparent hover:border-yellow-300 transition">
                                 <div className="w-10 h-10 mx-auto bg-white rounded-xl flex items-center justify-center text-yellow-500 text-xl shadow-sm mb-2">
-                                    <i className="fa-solid fa-comments"></i>
+                                    <i className="fa-solid fa-star"></i>
                                 </div>
                                 <div className="text-2xl font-black text-gray-800">{expert.review_count || 0}</div>
                                 <div className="text-[10px] font-bold text-gray-400 uppercase">Değerlendirme</div>
                             </div>
                             
-                            {/* 4. İçerik Sayısı */}
-                            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4 text-center border-2 border-transparent hover:border-blue-300 transition">
-                                <div className="w-10 h-10 mx-auto bg-white rounded-xl flex items-center justify-center text-blue-500 text-xl shadow-sm mb-2">
-                                    <i className="fa-solid fa-file-lines"></i>
+                            {/* 4. Katkı (İçerik yerine) */}
+                            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-4 text-center border-2 border-transparent hover:border-purple-300 transition">
+                                <div className="w-10 h-10 mx-auto bg-white rounded-xl flex items-center justify-center text-purple-500 text-xl shadow-sm mb-2">
+                                    <i className="fa-solid fa-brain"></i>
                                 </div>
                                 <div className="text-2xl font-black text-gray-800">{expert.content_count || 0}</div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase">İçerik</div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase">Katkı</div>
                             </div>
                         </div>
 
@@ -672,7 +672,7 @@ export default function ExpertProfilePage() {
                             <div>
                                 <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs font-bold text-gray-500 flex items-center gap-1">
-                                        <i className="fa-solid fa-brain text-purple-400"></i> Uzman Katkısı
+                                        <i className="fa-solid fa-brain text-purple-500"></i> Uzman Katkısı
                                     </span>
                                     <span className="text-xs font-black text-gray-700">{expert.contribution_score || 50}/100</span>
                                 </div>
@@ -688,13 +688,13 @@ export default function ExpertProfilePage() {
                             <div>
                                 <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs font-bold text-gray-500 flex items-center gap-1">
-                                        <i className="fa-solid fa-fire text-orange-400"></i> Son Dönem Aktivite
+                                        <i className="fa-solid fa-fire text-orange-500"></i> Son Dönem Aktivite
                                     </span>
                                     <span className="text-xs font-black text-gray-700">{expert.freshness_score || 50}/100</span>
                                 </div>
                                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                                     <div 
-                                        className="h-full bg-gradient-to-r from-orange-400 to-yellow-500 rounded-full transition-all duration-500" 
+                                        className="h-full bg-gradient-to-r from-orange-400 to-red-400 rounded-full transition-all duration-500" 
                                         style={{ width: `${expert.freshness_score || 50}%` }}
                                     ></div>
                                 </div>
