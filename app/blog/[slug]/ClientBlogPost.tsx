@@ -79,14 +79,14 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
 
   // Yazar Detayları
   const [authorDetail, setAuthorDetail] = useState<any>({
-      id: 0,
+      id: post.author_id || 0,
       name: post.author_name || "Yazar",
-      slug: slugify(post.author_name || ""),
-      avatar: post.author_avatar || `https://api.dicebear.com/9.x/personas/svg? seed=${post.author_name}`,
-      isExpert: false,
-      isVerified: false,
-      role: 'rejimde_user',
-      profession: '', 
+      slug: post.author_slug || slugify(post.author_name || ""),
+      avatar: getSafeAvatarUrl(post.author_avatar, post.author_slug || slugify(post.author_name || "")),
+      isExpert: post.author_is_expert || false,
+      isVerified: post.author_is_expert || false,
+      role: post.author_is_expert ? 'rejimde_pro' : 'rejimde_user',
+      profession: post.author_profession || '', 
       level: 1, 
       score: 0,
       articleCount: 1,
@@ -130,8 +130,11 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                   };
                   
-                  // Get initial author slug from authorDetail state
-                  const authorSlug = authorDetail.slug;
+                  // Önce post'tan gelen slug'ı kullan, yoksa slugify
+                  const authorSlug = post.author_slug || slugify(post.author_name || '');
+                  
+                  // Post'tan is_expert bilgisi varsa onu kullan
+                  let isPro = post.author_is_expert || false;
                   
                   // Önce rejimde profile endpoint'ini dene (roles bilgisi var)
                   const profileRes = await fetch(`${apiUrl}/rejimde/v1/profile/${authorSlug}`, { headers });
@@ -140,13 +143,28 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                       const profileData = await profileRes.json();
                       const user = profileData.data || profileData;
                       
-                      // Role kontrolü: roles array'inde 'rejimde_pro' var mı?
-                      const isPro = (user.roles && Array.isArray(user.roles) && user.roles.includes('rejimde_pro')) 
-                                 || user.role === 'rejimde_pro' 
-                                 || user.is_expert === true;
+                      // Role kontrolü - birden fazla yöntem dene
+                      isPro = (user.roles && Array.isArray(user.roles) && user.roles.includes('rejimde_pro')) 
+                           || user.role === 'rejimde_pro' 
+                           || user.is_expert === true
+                           || post.author_is_expert === true;  // Post'tan gelen değer de kontrol edilsin
                       
                       // Avatar: Gravatar hariç, önce avatar_url sonra dicebear
                       const userAvatar = getSafeAvatarUrl(user.avatar_url, user.slug || authorSlug);
+                      
+                      // Eğer uzman ise, professionals endpoint'inden ek bilgileri al
+                      let expertData: any = {};
+                      if (isPro) {
+                          try {
+                              const proRes = await fetch(`${apiUrl}/rejimde/v1/professionals/${user.slug || authorSlug}`, { headers });
+                              if (proRes.ok) {
+                                  const proData = await proRes.json();
+                                  expertData = proData.data || proData;
+                              }
+                          } catch (e) {
+                              console.warn("Expert details fetch failed", e);
+                          }
+                      }
                       
                       setAuthorDetail({
                           id: user.id,
@@ -156,7 +174,7 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                           isExpert: isPro,
                           isVerified: isPro,
                           role: isPro ? 'rejimde_pro' : 'rejimde_user',
-                          profession: user.profession || '',
+                          profession: user.profession || expertData.profession || '',
                           level: user.rejimde_level || 1,
                           score: user.rejimde_score || 0,
                           articleCount: user.posts_count || user.content_count || 1,
@@ -164,10 +182,10 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                           high_fives: user.high_fives || 0,
                           is_following: user.is_following || false,
                           has_high_fived: user.has_high_fived || false,
-                          // Expert-specific fields
-                          reji_score: isPro ? user.reji_score : undefined,
-                          client_count: isPro ? user.client_count : undefined,
-                          career_start_date: isPro ? user.career_start_date : undefined,
+                          // Expert-specific fields - hem profile hem professionals'dan al
+                          reji_score: isPro ? (expertData.reji_score ?? user.reji_score) : undefined,
+                          client_count: isPro ? (expertData.client_count ?? user.client_count) : undefined,
+                          career_start_date: isPro ? (expertData.career_start_date ?? user.career_start_date) : undefined,
                           // Normal user fields
                           rejimde_total_score: !isPro ? (user.rejimde_total_score || user.total_score) : undefined,
                       });
@@ -176,6 +194,19 @@ export default function ClientBlogPost({ post, relatedPosts, formattedTitle }: C
                       const currentName = localStorage.getItem('user_name');
                       if (currentRole === 'administrator' || (isPro && currentName === user.name)) {
                           setCanEdit(true);
+                      }
+                  } else {
+                      // Profile endpoint başarısız olursa, post'tan gelen değerleri kullan
+                      console.warn(`Profile fetch failed for ${authorSlug}, using post data`);
+                      
+                      // Post'tan gelen is_expert değerini kullanarak card tipini belirle
+                      if (post.author_is_expert) {
+                          setAuthorDetail(prev => ({
+                              ...prev,
+                              isExpert: true,
+                              isVerified: true,
+                              role: 'rejimde_pro'
+                          }));
                       }
                   }
               } catch (e) {
