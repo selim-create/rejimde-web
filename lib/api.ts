@@ -6945,3 +6945,18 @@ export async function getLevelLeaderboard(levelSlug: string, type: 'users' | 'ci
     return null;
   }
 }
+
+/**
+ * Get Following Activity
+ * Fetches activity from users that the current user is following
+ */
+export async function getFollowingActivity() {
+  try {
+    const res = await fetchAPI('/rejimde/v1/profile/following', {
+      headers: getAuthHeaders()
+    });
+    return res;
+  } catch (error) {
+    return { data: [], total_following: 0 };
+  }
+}
