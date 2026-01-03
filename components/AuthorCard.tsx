@@ -45,14 +45,14 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
     const profileUrl = getUserProfileUrl(author.slug, isExpert);
 
     // Etkileşim State'leri
-    const [isFollowing, setIsFollowing] = useState(author.is_following || false);
+    const [isFollowing, setIsFollowing] = useState(Boolean(author.is_following));
     const [followerCount, setFollowerCount] = useState(author.followers_count || 0);
     const [highFives, setHighFives] = useState(author.high_fives || 0);
-    const [hasHighFived, setHasHighFived] = useState(author.has_high_fived || false);
+    const [hasHighFived, setHasHighFived] = useState(Boolean(author.has_high_fived));
     
     // Deneyim yılı hesaplama
     const experienceYears = author.career_start_date 
-        ? new Date().getFullYear() - new Date(author.career_start_date).getFullYear()
+        ? Math.max(0, new Date().getFullYear() - new Date(author.career_start_date).getFullYear())
         : null;
 
     // Helper fonksiyon: Meslek prefix'ini al
@@ -98,7 +98,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
             <div className={`bg-white rounded-[2rem] border-2 ${style.border} shadow-[0_6px_0_rgba(0,0,0,0.08)] relative group overflow-hidden transition-transform hover:-translate-y-1`}>
                 
                 {/* Uzman Ribbon */}
-                <div className={`absolute top-0 right-0 ${style.btnMain} text-[10px] font-black px-4 py-1.5 rounded-bl-2xl z-20 border-b-2 border-l-2 border-black/10 shadow-sm uppercase tracking-wider`}>
+                <div className={`absolute top-0 right-0 ${style?.btnMain || 'bg-indigo-500 text-white'} text-[10px] font-black px-4 py-1.5 rounded-bl-2xl z-20 border-b-2 border-l-2 border-black/10 shadow-sm uppercase tracking-wider`}>
                     UZMAN
                 </div>
                 
@@ -133,7 +133,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                             {displayName}
                         </Link>
                         {/* Dinamik Meslek */}
-                        <span className={`inline-flex items-center gap-1.5 ${style.badgeBg} ${style.text} text-[10px] font-black px-3 py-1 rounded-full border-b-2 border-black/5 mt-2 uppercase tracking-wide`}>
+                        <span className={`inline-flex items-center gap-1.5 ${style?.badgeBg || 'bg-gray-100'} ${style?.text || 'text-gray-700'} text-[10px] font-black px-3 py-1 rounded-full border-b-2 border-black/5 mt-2 uppercase tracking-wider`}>
                             <i className={`fa-solid ${style.decorationIcon}`}></i>
                             {getProfessionLabel(author.profession || '') || 'Rejimde Uzmanı'}
                         </span>
@@ -147,7 +147,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                         <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center mb-1 text-sm shadow-sm">
                             <i className="fa-solid fa-chart-simple"></i>
                         </div>
-                        <span className="font-black text-gray-700 text-sm">{author.reji_score || 50}</span>
+                        <span className="font-black text-gray-700 text-sm">{author.reji_score ?? '--'}</span>
                         <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">RejiScore</span>
                     </div>
                     
@@ -156,7 +156,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                         <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center mb-1 text-sm shadow-sm">
                             <i className="fa-solid fa-users"></i>
                         </div>
-                        <span className="font-black text-gray-700 text-sm">{author.client_count || 0}</span>
+                        <span className="font-black text-gray-700 text-sm">{author.client_count ?? 0}</span>
                         <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Danışan</span>
                     </div>
                     
@@ -172,7 +172,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
 
                 {/* Actions */}
                 <div className="px-6 pb-6 space-y-3 mt-4">
-                    <Link href={profileUrl} className={`w-full ${style.btnMain} font-bold py-3 rounded-2xl border-b-4 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-xs shadow-lg`}>
+                    <Link href={profileUrl} className={`w-full font-bold py-3 rounded-2xl border-b-[4px] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 uppercase text-sm shadow-md ${style?.btnMain || 'bg-indigo-500 hover:bg-indigo-600 border-indigo-700 text-white'}`}>
                         <i className="fa-solid fa-calendar-check text-base"></i>
                         Randevu Al
                     </Link>
@@ -188,7 +188,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                     {/* Extra Info */}
                     <div className="flex justify-between items-center px-2 pt-1 text-[10px] font-bold text-gray-400">
                         <span>{followerCount} Takipçi</span>
-                        <span>{experienceYears ? `${experienceYears}+ Yıl Tecrübe` : ''}</span>
+                        <span>{experienceYears !== null && experienceYears >= 0 ? `${experienceYears}+ Yıl Tecrübe` : ''}</span>
                     </div>
                 </div>
             </div>
