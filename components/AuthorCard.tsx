@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { getUserProfileUrl } from "@/lib/helpers";
 import { toggleFollow, sendHighFive } from "@/lib/api";
-import { getExpertStyle, getProfessionLabel } from "@/lib/constants";
+import { getExpertStyle, getProfessionLabel, PROFESSION_CATEGORIES } from "@/lib/constants";
 
 interface AuthorCardProps {
     author: {
@@ -26,6 +26,12 @@ interface AuthorCardProps {
         is_following?: boolean;
         has_high_fived?: boolean;
         career_start_date?: string;
+        
+        // YENİ EKLENENLER
+        rating?: string | number;
+        reji_score?: number;
+        client_count?: number;
+        title?: string; // Ünvan prefix için
     };
     context?: string;
 }
@@ -48,6 +54,16 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
     const experienceYears = author.career_start_date 
         ? new Date().getFullYear() - new Date(author.career_start_date).getFullYear()
         : null;
+
+    // Helper fonksiyon: Meslek prefix'ini al
+    const getProfessionPrefix = (profession: string | undefined): string => {
+        if (!profession) return '';
+        for (const cat of PROFESSION_CATEGORIES) {
+            const item = cat.items.find(i => i.id === profession || profession.includes(i.id));
+            if (item && item.prefix) return item.prefix;
+        }
+        return '';
+    };
 
     const handleFollow = async () => {
         const newState = !isFollowing;
@@ -75,6 +91,9 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
 
     // --- UZMAN KARTI TASARIMI ---
     if (isExpert && style) {
+        const prefix = getProfessionPrefix(author.profession);
+        const displayName = prefix ? `${prefix} ${author.name}` : author.name;
+        
         return (
             <div className={`bg-white rounded-[2rem] border-2 ${style.border} shadow-[0_6px_0_rgba(0,0,0,0.08)] relative group overflow-hidden transition-transform hover:-translate-y-1`}>
                 
@@ -111,38 +130,43 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                     
                     <div className="mt-2">
                         <Link href={profileUrl} className="text-xl font-extrabold text-gray-800 hover:text-blue-600 transition block leading-tight">
-                            {author.name}
+                            {displayName}
                         </Link>
                         {/* Dinamik Meslek */}
                         <span className={`inline-flex items-center gap-1.5 ${style.badgeBg} ${style.text} text-[10px] font-black px-3 py-1 rounded-full border-b-2 border-black/5 mt-2 uppercase tracking-wide`}>
                             <i className={`fa-solid ${style.decorationIcon}`}></i>
-                            {author.profession || 'Rejimde Uzmanı'}
+                            {getProfessionLabel(author.profession || '') || 'Rejimde Uzmanı'}
                         </span>
                     </div>
                 </div>
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-3 gap-2 px-4 py-5 text-center mt-2">
+                    {/* RejiScore */}
                     <div className="flex flex-col items-center">
-                        <div className="w-8 h-8 rounded-lg bg-yellow-50 text-yellow-500 flex items-center justify-center mb-1 text-sm shadow-sm">
-                            <i className="fa-solid fa-star"></i>
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center mb-1 text-sm shadow-sm">
+                            <i className="fa-solid fa-chart-simple"></i>
                         </div>
-                        <span className="font-black text-gray-700 text-sm">4.9</span>
-                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Puan</span>
+                        <span className="font-black text-gray-700 text-sm">{author.reji_score || 50}</span>
+                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">RejiScore</span>
                     </div>
+                    
+                    {/* Danışan Sayısı */}
                     <div className="flex flex-col items-center border-l border-r border-gray-100">
                         <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center mb-1 text-sm shadow-sm">
                             <i className="fa-solid fa-users"></i>
                         </div>
-                        <span className="font-black text-gray-700 text-sm">1.2k</span>
+                        <span className="font-black text-gray-700 text-sm">{author.client_count || 0}</span>
                         <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Danışan</span>
                     </div>
+                    
+                    {/* Takipçi Sayısı */}
                     <div className="flex flex-col items-center">
                         <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-500 flex items-center justify-center mb-1 text-sm shadow-sm">
-                            <i className="fa-solid fa-newspaper"></i>
+                            <i className="fa-solid fa-heart"></i>
                         </div>
-                        <span className="font-black text-gray-700 text-sm">{author.content_count || author.articleCount || 0}</span>
-                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">İçerik</span>
+                        <span className="font-black text-gray-700 text-sm">{followerCount}</span>
+                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Takipçi</span>
                     </div>
                 </div>
 
@@ -164,7 +188,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
                     {/* Extra Info */}
                     <div className="flex justify-between items-center px-2 pt-1 text-[10px] font-bold text-gray-400">
                         <span>{followerCount} Takipçi</span>
-                        <span>{experienceYears ? `${experienceYears}+ Yıl Tecrübe` : '5+ Yıl Tecrübe'}</span>
+                        <span>{experienceYears ? `${experienceYears}+ Yıl Tecrübe` : ''}</span>
                     </div>
                 </div>
             </div>

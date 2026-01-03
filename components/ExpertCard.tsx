@@ -13,9 +13,13 @@ interface ExpertCardProps {
   isVerified?: boolean; // Onaylı Uzman (Mavi Tik)
   isNew?: boolean;
   type: 'dietitian' | 'pt' | 'psychologist' | 'unclaimed';
+  rejiScore?: number;
+  clientCount?: number;
+  followersCount?: number;
+  contentCount?: number;
 }
 
-export default function ExpertCard({ name, title, image, rating, scoreImpact, slug, isOnline, isFeatured, isVerified, isNew, type }: ExpertCardProps) {
+export default function ExpertCard({ name, title, image, rating, scoreImpact, slug, isOnline, isFeatured, isVerified, isNew, type, rejiScore, clientCount, followersCount, contentCount }: ExpertCardProps) {
   
   // Onaysız hesap (Gri Kart)
   if (type === 'unclaimed') {
@@ -88,10 +92,10 @@ export default function ExpertCard({ name, title, image, rating, scoreImpact, sl
             
             <div className="flex justify-center gap-4 mb-4 border-y-2 border-gray-50 py-3">
                 <div>
-                    <div className="flex items-center justify-center gap-1 text-rejimde-yellow text-sm">
-                        <i className="fa-solid fa-star"></i> {rating}
+                    <div className="flex items-center justify-center gap-1 text-indigo-500 text-sm font-black">
+                        <i className="fa-solid fa-chart-simple"></i> {rejiScore || 50}
                     </div>
-                    <div className="text-[9px] font-bold text-gray-400 uppercase">Puan</div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase">RejiScore</div>
                 </div>
                 <div className="w-px bg-gray-100"></div>
                 <div>

@@ -7,6 +7,7 @@ import { getExperts } from "@/lib/api";
 import { Expert } from "@/types"; 
 import MascotDisplay from "@/components/MascotDisplay";
 import { CITIES } from "@/lib/locations";
+import { PROFESSION_CATEGORIES, getProfessionLabel } from "@/lib/constants";
 
 export default function ExpertsPage() {
   const [experts, setExperts] = useState<Expert[]>([]);
@@ -45,18 +46,13 @@ export default function ExpertsPage() {
     fetchData();
   }, []);
 
-  // Yardımcı Fonksiyon: Meslek Kodunu Etikete Çevir
-  const getProfessionLabel = (type: string) => {
-    const map: Record<string, string> = {
-      'dietitian': 'Diyetisyen',
-      'pt': 'PT / Fitness Koçu',
-      'yoga': 'Yoga / Pilates',
-      'psychologist': 'Psikolog',
-      'dietitian_spec': 'Diyetisyen',
-      'life_coach': 'Yaşam Koçu',
-      'physio': 'Fizyoterapist'
-    };
-    return map[type] || 'Sağlık Uzmanı';
+  // Helper fonksiyon: Meslek prefix'ini al
+  const getProfessionPrefix = (profession: string): string => {
+    for (const cat of PROFESSION_CATEGORIES) {
+      const item = cat.items.find(i => i.id === profession || profession?.includes(i.id));
+      if (item && item.prefix) return item.prefix;
+    }
+    return '';
   };
 
   // FİLTRELEME MANTIĞI
@@ -102,6 +98,20 @@ export default function ExpertsPage() {
       return true;
     });
   }, [experts, searchTerm, selectedProfession, selectedCity, selectedDistrict, consultationType]);
+
+  // SIRALAMA: is_featured ve RejiScore'a göre sırala
+  const sortedExperts = useMemo(() => {
+    return [...filteredExperts].sort((a, b) => {
+      // 1. Önce Editörün Seçimi (is_featured) en üste
+      if (a.is_featured && !b.is_featured) return -1;
+      if (!a.is_featured && b.is_featured) return 1;
+      
+      // 2. Sonra RejiScore'a göre sırala (yüksekten düşüğe)
+      const scoreA = a.reji_score || 0;
+      const scoreB = b.reji_score || 0;
+      return scoreB - scoreA;
+    });
+  }, [filteredExperts]);
 
   // Seçilen şehre göre ilçeleri bul
   const activeCityData = CITIES.find(c => c.id === selectedCity);
@@ -273,7 +283,7 @@ export default function ExpertsPage() {
             
             {loading && <div className="text-center py-20 text-gray-400 font-bold animate-pulse">Uzmanlar sahaya çıkıyor...</div>}
 
-            {!loading && filteredExperts.length === 0 && (
+            {!loading && sortedExperts.length === 0 && (
                 <div className="bg-gray-50 border-2 border-gray-100 rounded-3xl p-12 text-center col-span-3">
                     <MascotDisplay state="idle_dashboard" size={150} showBubble={false} />
                     <h3 className="font-extrabold text-gray-700 text-xl mt-4">Henüz Uzman Yok</h3>
@@ -288,26 +298,36 @@ export default function ExpertsPage() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredExperts.map((expert) => (
-                    <ExpertCard 
-                        key={expert.id}
-                        type={expert.type as any || 'dietitian'}
-                        name={expert.name}
-                        slug={expert.slug}
-                        title={expert.title && expert.title !== 'Uzman' ? expert.title : getProfessionLabel(expert.type)}
-                        image={expert.image && expert.image !== 'https://placehold.co/150' 
-                                ? expert.image 
-                                : `https://api.dicebear.com/9.x/personas/svg?seed=${expert.slug}`}
-                        rating={expert.rating || '5.0'}
-                        scoreImpact={expert.score_impact || '+10 P'}
-                        
-                        // YENİ: İki farklı prop gönderiyoruz
-                        isVerified={expert.is_verified} // Onay durumu
-                        isFeatured={expert.is_featured} // Editör seçimi
-                        
-                        isOnline={expert.is_online}
-                    />
-                ))}
+                {sortedExperts.map((expert) => {
+                    const prefix = getProfessionPrefix(expert.type || expert.profession || '');
+                    const displayName = prefix ? `${prefix} ${expert.name}` : expert.name;
+                    
+                    return (
+                        <ExpertCard 
+                            key={expert.id}
+                            type={expert.type as any || 'dietitian'}
+                            name={displayName}
+                            slug={expert.slug}
+                            title={getProfessionLabel(expert.type || expert.profession || '') || 'Sağlık Uzmanı'}
+                            image={expert.image && expert.image !== 'https://placehold.co/150' 
+                                    ? expert.image 
+                                    : `https://api.dicebear.com/9.x/personas/svg?seed=${expert.slug}`}
+                            rating={expert.rating || '5.0'}
+                            scoreImpact={expert.score_impact || '+10 P'}
+                            
+                            // Onay ve Editör Seçimi
+                            isVerified={expert.is_verified}
+                            isFeatured={expert.is_featured === true || (expert as any).is_featured === '1' || (expert as any).is_featured === 1}
+                            
+                            isOnline={expert.is_online}
+                            
+                            // YENİ PROPS - RejiScore ve metrikler
+                            rejiScore={expert.reji_score}
+                            clientCount={expert.client_count}
+                            followersCount={expert.followers_count}
+                        />
+                    );
+                })}
 
                 {/* Promo Card - Sadece Pro olmayanlara göster */}
                 {userRole !== 'rejimde_pro' && (

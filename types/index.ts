@@ -34,6 +34,17 @@ export interface Expert {
     
     location?: string;
     brand?: string;
+    
+    // YENİ FIELD'LAR - RejiScore ve diğer metrikler
+    reji_score?: number;
+    trust_score?: number;
+    contribution_score?: number;
+    freshness_score?: number;
+    followers_count?: number;
+    client_count?: number;
+    content_count?: number;
+    career_start_date?: string;
+    profession?: string; // type'ın alternatifi
 }
 
 // Blog Yazısı Tipi
