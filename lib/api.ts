@@ -28,6 +28,13 @@ function isPlanObject(response: any): boolean {
   return response && typeof response === 'object' && 'id' in response && typeof response.id === 'number';
 }
 
+/**
+ * Helper to convert API value to boolean
+ */
+function toBooleanFromApi(value: any): boolean {
+  return value === true || value === '1' || value === 1;
+}
+
 // --- AVATAR PAKETİ ---
 export const AVATAR_PACK = [
   { id: '1', url: 'https://api.dicebear.com/9.x/personas/svg?seed=Felix', gender: 'male' },
@@ -649,8 +656,8 @@ export async function getExperts(filterType?: string) {
         image: item.image,
         rating: item.rating || '5.0',
         score_impact: item.score_impact || '+10 P',
-        is_verified: item.is_verified === true || item.is_verified === '1',
-        is_featured: item.is_featured === true || item.is_featured === '1',
+        is_verified: toBooleanFromApi(item.is_verified),
+        is_featured: toBooleanFromApi(item.is_featured),
         is_online: item.is_online,
         location: item.location,
         
