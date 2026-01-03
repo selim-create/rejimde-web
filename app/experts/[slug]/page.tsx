@@ -18,36 +18,12 @@ import {
   AGE_GROUP_OPTIONS, 
   LANGUAGE_OPTIONS,
   COUNTRY_OPTIONS,
-  EXCLUDED_CASES_OPTIONS
+  EXCLUDED_CASES_OPTIONS,
+  getExpertStyle,
+  getProfessionLabel,
+  PROFESSION_CATEGORIES
 } from "@/lib/constants";
 import { renderContent } from "@/lib/markdown-utils";
-
-// Profession ID'den Label'a çevir
-const getProfessionLabel = (professionId: string): string => {
-    const map:  Record<string, string> = {
-        'dietitian': 'Diyetisyen',
-        'nutritionist': 'Beslenme Uzmanı',
-        'pt': 'Personal Trainer',
-        'fitness_coach': 'Fitness Koçu',
-        'yoga': 'Yoga Eğitmeni',
-        'pilates': 'Pilates Eğitmeni',
-        'reformer': 'Reformer Pilates',
-        'psychologist': 'Psikolog',
-        'life_coach': 'Yaşam Koçu',
-        'physiotherapist': 'Fizyoterapist',
-        'doctor': 'Doktor',
-        'box':  'Boks Eğitmeni',
-        'kickbox': 'Kickboks Eğitmeni',
-        'mma': 'MMA Eğitmeni',
-        'functional':  'Fonksiyonel Antrenman',
-        'crossfit': 'CrossFit Eğitmeni',
-        'swim':  'Yüzme Eğitmeni',
-        'run': 'Koşu Eğitmeni',
-        'breath': 'Nefes & Meditasyon',
-        'defense': 'Savunma Eğitmeni',
-    };
-    return map[professionId] || professionId;
-};
 
 // API'den gelecek detaylı uzman tipi - Güncellenmiş
 interface ExpertDetail {
@@ -177,6 +153,16 @@ const getCommunicationIcon = (pref: string): string => {
         'both': 'fa-comments'
     };
     return map[pref] || 'fa-comments';
+};
+
+// Helper: Meslek prefix'ini al
+const getProfessionPrefix = (profession: string | undefined): string => {
+    if (!profession) return '';
+    for (const cat of PROFESSION_CATEGORIES) {
+        const item = cat.items.find(i => i.id === profession || profession.includes(i.id));
+        if (item && item.prefix) return item.prefix;
+    }
+    return '';
 };
 
 // Helper: Danışan metodu label
@@ -542,6 +528,11 @@ export default function ExpertProfilePage() {
   }
 
   // --- SENARYO 2: ONAYLI / AKTİF PROFİL ---
+  // Compute style and prefix once for the profile card
+  const expertStyle = getExpertStyle(expert.profession || expert.type);
+  const expertPrefix = getProfessionPrefix(expert.profession || expert.type);
+  const displayName = expertPrefix ? `${expertPrefix} ${expert.name}` : expert.name;
+  
   return (
     <div className="min-h-screen pb-20 font-sans text-rejimde-text">
         
@@ -559,44 +550,60 @@ export default function ExpertProfilePage() {
                 
                 {/* LEFT COLUMN:  Profile Card (Sticky) */}
                 <div className="lg:col-span-4">
-                    <div className="bg-white border-2 border-gray-200 rounded-3xl p-0 sticky top-24 overflow-hidden shadow-card">
-                        {/* Cover & Photo */}
-                        <div className="h-32 bg-rejimde-blue relative">
-                            <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
-                                <div className="relative">
-                                    <img src={expert.image} alt={expert.name} className="w-32 h-32 rounded-3xl border-4 border-white shadow-md bg-white object-cover" />
-                                    <div className={`absolute bottom-0 right-0 w-8 h-8 ${expert.is_online ? 'bg-rejimde-green' : 'bg-gray-400'} border-4 border-white rounded-full flex items-center justify-center`} title={expert.is_online ? 'Online' : 'Offline'}>
-                                        <i className={`fa-solid ${expert.is_online ? 'fa-check' : 'fa-minus'} text-white text-xs`}></i>
-                                    </div>
-                                </div>
-                            </div>
+                    <div className={`bg-white rounded-[2rem] border-2 ${expertStyle.border} shadow-[0_6px_0_rgba(0,0,0,0.08)] relative group overflow-hidden transition-transform hover:-translate-y-1 sticky top-24`}>
+                        
+                        {/* Uzman Ribbon */}
+                        <div className={`absolute top-0 right-0 ${expertStyle?.btnMain || 'bg-indigo-500 text-white'} text-[10px] font-black px-4 py-1.5 rounded-bl-2xl z-20 border-b-2 border-l-2 border-black/10 shadow-sm uppercase tracking-wider`}>
+                            UZMAN
+                        </div>
+                        
+                        {/* Header Pattern */}
+                        <div className={`h-24 ${expertStyle.bg} w-full relative overflow-hidden`}>
+                            <div className="absolute inset-0 opacity-20 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.5)_50%,transparent_75%)] bg-[length:250%_250%] animate-shine"></div>
+                            <i className={`fa-solid ${expertStyle.decorationIcon} ${expertStyle.iconColor} text-7xl absolute -bottom-4 -right-2 rotate-12 opacity-30`}></i>
+                            <i className={`fa-solid ${expertStyle.decorationIcon} ${expertStyle.iconColor} text-5xl absolute top-2 left-4 -rotate-12 opacity-30`}></i>
                         </div>
 
-                        <div className="pt-20 pb-6 px-6 text-center">
-                            {expert.is_verified && (
-                                <div className="inline-flex items-center gap-1 bg-blue-50 text-rejimde-blue border border-blue-100 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2">
-                                    <i className="fa-solid fa-certificate"></i> Onaylı Uzman
+                        {/* Avatar & Info */}
+                        <div className="px-6 relative -mt-12 text-center z-10">
+                            <div className="relative inline-block group-hover:scale-105 transition-transform duration-300">
+                                <img src={expert.image} alt={expert.name} className="w-24 h-24 rounded-full border-[4px] border-white shadow-md object-cover bg-white" />
+                                {/* Online/Offline Status */}
+                                <div className={`absolute bottom-0 right-0 w-7 h-7 ${expert.is_online ? 'bg-rejimde-green' : 'bg-gray-400'} border-2 border-white rounded-full flex items-center justify-center shadow-sm`} title={expert.is_online ? 'Online' : 'Offline'}>
+                                    <i className={`fa-solid ${expert.is_online ? 'fa-check' : 'fa-minus'} text-white text-xs`}></i>
                                 </div>
-                            )}
-
-                            <h1 className="text-2xl font-extrabold text-gray-800 mb-1">{expert.name}</h1>
-                            <p className="text-gray-400 font-bold text-sm mb-2">
-                                {expert. title} 
-                                {expert.brand ?  ` • ${expert.brand}` : ''}
-                            </p>
+                            </div>
+                            
+                            <div className="mt-2">
+                                <h1 className="text-xl font-extrabold text-gray-800 leading-tight">
+                                    {displayName}
+                                </h1>
+                                {/* Dinamik Meslek Badge */}
+                                <span className={`inline-flex items-center gap-1.5 ${expertStyle?.badgeBg || 'bg-gray-100'} ${expertStyle?.text || 'text-gray-700'} text-[10px] font-black px-3 py-1 rounded-full border-b-2 border-black/5 mt-2 uppercase tracking-wider`}>
+                                    <i className={`fa-solid ${expertStyle.decorationIcon}`}></i>
+                                    {getProfessionLabel(expert.profession || expert.type) || expert.title || 'Rejimde Uzmanı'}
+                                </span>
+                                
+                                {/* Onaylı Badge */}
+                                {expert.is_verified && (
+                                    <div className="inline-flex items-center gap-1 bg-blue-50 text-rejimde-blue border border-blue-100 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mt-2">
+                                        <i className="fa-solid fa-certificate"></i> Onaylı
+                                    </div>
+                                )}
+                            </div>
                             
                             {/* Motto */}
                             {expert.motto && (
-                                <p className="text-gray-500 text-sm italic mb-3 px-4">&quot;{expert. motto}&quot;</p>
+                                <p className="text-gray-500 text-sm italic mt-3 px-2">&quot;{expert.motto}&quot;</p>
                             )}
 
                             {/* Lokasyon */}
-                            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mb-4">
+                            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mt-3">
                                 <i className="fa-solid fa-location-dot text-rejimde-green"></i>
                                 <span className="font-bold">
                                     {expert.country && expert.country !== 'TR' 
-                                        ?  `${expert.city || ''}, ${COUNTRY_OPTIONS. find(c => c.id === expert.country)?.label || expert.country}`
-                                        : expert. location || `${expert.city || ''}, ${expert.district || ''}`
+                                        ?  `${expert.city || ''}, ${COUNTRY_OPTIONS.find(c => c.id === expert.country)?.label || expert.country}`
+                                        : expert.location || `${expert.city || ''}, ${expert.district || ''}`
                                     }
                                 </span>
                             </div>
@@ -612,12 +619,12 @@ export default function ExpertProfilePage() {
                                 reviewCount={expert.review_count || 0}
                                 contentCount={expert.content_count || 0}
                                 trendPercentage={expert.trend_percentage || 0}
-                                className="mb-4"
+                                className="mt-4"
                             />
                             
                             {/* Hizmet Dilleri */}
                             {expert.service_languages && expert.service_languages.length > 0 && (
-                                <div className="flex justify-center gap-2 mb-4">
+                                <div className="flex justify-center gap-2 mt-3">
                                     {expert.service_languages.map(langId => {
                                         const lang = LANGUAGE_OPTIONS.find(l => l.id === langId);
                                         return lang ? (
@@ -626,51 +633,69 @@ export default function ExpertProfilePage() {
                                     })}
                                 </div>
                             )}
+                        </div>
 
-                            {/* CTA Buttons */}
-                            <div className="grid grid-cols-1 gap-3">
-                                <button 
-                                    onClick={() => setShowRequestModal(true)}
-                                    className="bg-rejimde-green text-white w-full py-3 rounded-xl font-extrabold text-lg shadow-btn shadow-rejimde-greenDark btn-game uppercase tracking-wide flex items-center justify-center gap-2"
-                                >
-                                    <i className="fa-solid fa-calendar-plus"></i> Randevu Al
-                                </button>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button 
-                                    onClick={() => setShowAskQuestionModal(true)}
-                                    className="bg-white border-2 border-gray-200 text-gray-500 w-full py-3 rounded-xl font-extrabold text-sm shadow-btn shadow-gray-200 btn-game hover:text-rejimde-blue hover:border-rejimde-blue transition"
-                                    >
-                                    <i className="fa-regular fa-message text-lg block mb-1"></i> Soru Sor
-                                    </button>
-                                    <button 
-                                        onClick={handleFollow}
-                                        disabled={actionLoading}
-                                        className={`bg-white border-2 ${isFollowing ? 'border-purple-500 text-purple-500' : 'border-gray-200 text-gray-500'} w-full py-3 rounded-xl font-extrabold text-sm shadow-btn ${isFollowing ? 'shadow-purple-200' : 'shadow-gray-200'} btn-game hover:text-rejimde-purple hover:border-rejimde-purple transition flex flex-col items-center justify-center ${actionLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    >
-                                        <i className={`fa-solid ${isFollowing ? 'fa-user-check' : 'fa-user-plus'} text-lg block mb-1`}></i> 
-                                        {isFollowing ? 'Takip Ediliyor' : 'Takip Et'}
-                                    </button>
+                        {/* Stats Grid with Icon Boxes */}
+                        <div className="grid grid-cols-3 gap-2 px-4 py-5 text-center mt-2">
+                            {/* RejiScore */}
+                            <div className="flex flex-col items-center">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center mb-1 text-sm shadow-sm">
+                                    <i className="fa-solid fa-chart-simple"></i>
                                 </div>
+                                <span className="font-black text-gray-700 text-sm">{expert.reji_score || '--'}</span>
+                                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">RejiScore</span>
+                            </div>
+                            
+                            {/* Danışan Sayısı */}
+                            <div className="flex flex-col items-center border-l border-r border-gray-100">
+                                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center mb-1 text-sm shadow-sm">
+                                    <i className="fa-solid fa-users"></i>
+                                </div>
+                                <span className="font-black text-gray-700 text-sm">{expert.client_count || 0}</span>
+                                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Danışan</span>
+                            </div>
+                            
+                            {/* Takipçi Sayısı */}
+                            <div className="flex flex-col items-center">
+                                <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-500 flex items-center justify-center mb-1 text-sm shadow-sm">
+                                    <i className="fa-solid fa-heart"></i>
+                                </div>
+                                <span className="font-black text-gray-700 text-sm">{followersCount}</span>
+                                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Takipçi</span>
                             </div>
                         </div>
 
-                        {/* Quick Stats Footer */}
-                        <div className="bg-gray-50 border-t-2 border-gray-100 p-4 grid grid-cols-4 divide-x divide-gray-200 text-center">
-                            <div>
-                                <div className="text-xl font-black text-rejimde-text">{followersCount}</div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase">Takipçi</div>
-                            </div>
-                            <div>
-                                <div className="text-xl font-black text-rejimde-text">{expert.client_count}</div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase">Danışan</div>
-                            </div>
-                            <div>
-                                <div className="text-xl font-black text-rejimde-text">{expert.experience}</div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase">Tecrübe</div>
-                            </div>
-                            <div>
-                                <div className="text-xl font-black text-rejimde-text">{formatResponseTime(expert.response_time)}</div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase">Yanıt</div>
+                        {/* Actions with 3D Button Effects */}
+                        <div className="px-6 pb-6 space-y-3 mt-4">
+                            <button 
+                                onClick={() => setShowRequestModal(true)}
+                                className={`w-full font-bold py-3 rounded-2xl border-b-[4px] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 uppercase text-sm shadow-md ${expertStyle?.btnMain || 'bg-indigo-500 hover:bg-indigo-600 border-indigo-700 text-white'}`}
+                            >
+                                <i className="fa-solid fa-calendar-check text-base"></i>
+                                Randevu Al
+                            </button>
+                            
+                            <button 
+                                onClick={() => setShowAskQuestionModal(true)}
+                                className="w-full font-bold py-3 rounded-2xl border-2 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-xs bg-white text-gray-500 border-gray-200 hover:text-gray-700"
+                            >
+                                <i className="fa-regular fa-message"></i>
+                                Soru Sor
+                            </button>
+                            
+                            <button 
+                                onClick={handleFollow}
+                                disabled={actionLoading}
+                                className={`w-full font-bold py-3 rounded-2xl border-2 border-b-4 active:border-b-2 active:translate-y-[2px] transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-xs ${isFollowing ? 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200' : 'bg-white text-gray-500 border-gray-200 hover:text-gray-700'} ${actionLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                <i className={`fa-solid ${isFollowing ? 'fa-user-check' : 'fa-user-plus'}`}></i>
+                                {isFollowing ? 'Takipten Çık' : 'Takip Et'}
+                            </button>
+                            
+                            {/* Extra Info */}
+                            <div className="flex justify-between items-center px-2 pt-1 text-[10px] font-bold text-gray-400">
+                                <span>{expert.experience ? `${expert.experience} Tecrübe` : ''}</span>
+                                <span>{formatResponseTime(expert.response_time)} Yanıt</span>
                             </div>
                         </div>
                     </div>

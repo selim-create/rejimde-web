@@ -75,6 +75,7 @@ const config: Config = {
       animation: {
         'bounce-slow': 'bounce-slow 3s infinite',
         'wiggle': 'wiggle 1s ease-in-out infinite',
+        'shine': 'shine 3s infinite',
       },
       keyframes: {
         'bounce-slow': {
@@ -84,6 +85,10 @@ const config: Config = {
         'wiggle': {
           '0%, 100%': { transform: 'rotate(-3deg)' },
           '50%': { transform: 'rotate(3deg)' },
+        },
+        'shine': {
+          '0%': { backgroundPosition: '200% 0' },
+          '100%': { backgroundPosition: '-200% 0' },
         }
       }
     },

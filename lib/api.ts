@@ -55,7 +55,6 @@ export async function fetchWithRetry(
   // lastResponse kesinlikle set edilmiştir çünkü 429 aldığımızda her zaman set ediyoruz
   return lastResponse!; // Non-null assertion: lastResponse her zaman tanımlıdır bu noktada
 }
-}
 
 // --- TYPE GUARDS ---
 /**
