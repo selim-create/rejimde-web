@@ -528,6 +528,11 @@ export default function ExpertProfilePage() {
   }
 
   // --- SENARYO 2: ONAYLI / AKTİF PROFİL ---
+  // Compute style and prefix once for the profile card
+  const expertStyle = getExpertStyle(expert.profession || expert.type);
+  const expertPrefix = getProfessionPrefix(expert.profession || expert.type);
+  const displayName = expertPrefix ? `${expertPrefix} ${expert.name}` : expert.name;
+  
   return (
     <div className="min-h-screen pb-20 font-sans text-rejimde-text">
         
@@ -545,18 +550,18 @@ export default function ExpertProfilePage() {
                 
                 {/* LEFT COLUMN:  Profile Card (Sticky) */}
                 <div className="lg:col-span-4">
-                    <div className={`bg-white rounded-[2rem] border-2 ${getExpertStyle(expert.profession || expert.type).border} shadow-[0_6px_0_rgba(0,0,0,0.08)] relative group overflow-hidden transition-transform hover:-translate-y-1 sticky top-24`}>
+                    <div className={`bg-white rounded-[2rem] border-2 ${expertStyle.border} shadow-[0_6px_0_rgba(0,0,0,0.08)] relative group overflow-hidden transition-transform hover:-translate-y-1 sticky top-24`}>
                         
                         {/* Uzman Ribbon */}
-                        <div className={`absolute top-0 right-0 ${getExpertStyle(expert.profession || expert.type)?.btnMain || 'bg-indigo-500 text-white'} text-[10px] font-black px-4 py-1.5 rounded-bl-2xl z-20 border-b-2 border-l-2 border-black/10 shadow-sm uppercase tracking-wider`}>
+                        <div className={`absolute top-0 right-0 ${expertStyle?.btnMain || 'bg-indigo-500 text-white'} text-[10px] font-black px-4 py-1.5 rounded-bl-2xl z-20 border-b-2 border-l-2 border-black/10 shadow-sm uppercase tracking-wider`}>
                             UZMAN
                         </div>
                         
                         {/* Header Pattern */}
-                        <div className={`h-24 ${getExpertStyle(expert.profession || expert.type).bg} w-full relative overflow-hidden`}>
+                        <div className={`h-24 ${expertStyle.bg} w-full relative overflow-hidden`}>
                             <div className="absolute inset-0 opacity-20 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.5)_50%,transparent_75%)] bg-[length:250%_250%] animate-shine"></div>
-                            <i className={`fa-solid ${getExpertStyle(expert.profession || expert.type).decorationIcon} ${getExpertStyle(expert.profession || expert.type).iconColor} text-7xl absolute -bottom-4 -right-2 rotate-12 opacity-30`}></i>
-                            <i className={`fa-solid ${getExpertStyle(expert.profession || expert.type).decorationIcon} ${getExpertStyle(expert.profession || expert.type).iconColor} text-5xl absolute top-2 left-4 -rotate-12 opacity-30`}></i>
+                            <i className={`fa-solid ${expertStyle.decorationIcon} ${expertStyle.iconColor} text-7xl absolute -bottom-4 -right-2 rotate-12 opacity-30`}></i>
+                            <i className={`fa-solid ${expertStyle.decorationIcon} ${expertStyle.iconColor} text-5xl absolute top-2 left-4 -rotate-12 opacity-30`}></i>
                         </div>
 
                         {/* Avatar & Info */}
@@ -571,11 +576,11 @@ export default function ExpertProfilePage() {
                             
                             <div className="mt-2">
                                 <h1 className="text-xl font-extrabold text-gray-800 leading-tight">
-                                    {getProfessionPrefix(expert.profession || expert.type) ? `${getProfessionPrefix(expert.profession || expert.type)} ${expert.name}` : expert.name}
+                                    {displayName}
                                 </h1>
                                 {/* Dinamik Meslek Badge */}
-                                <span className={`inline-flex items-center gap-1.5 ${getExpertStyle(expert.profession || expert.type)?.badgeBg || 'bg-gray-100'} ${getExpertStyle(expert.profession || expert.type)?.text || 'text-gray-700'} text-[10px] font-black px-3 py-1 rounded-full border-b-2 border-black/5 mt-2 uppercase tracking-wider`}>
-                                    <i className={`fa-solid ${getExpertStyle(expert.profession || expert.type).decorationIcon}`}></i>
+                                <span className={`inline-flex items-center gap-1.5 ${expertStyle?.badgeBg || 'bg-gray-100'} ${expertStyle?.text || 'text-gray-700'} text-[10px] font-black px-3 py-1 rounded-full border-b-2 border-black/5 mt-2 uppercase tracking-wider`}>
+                                    <i className={`fa-solid ${expertStyle.decorationIcon}`}></i>
                                     {getProfessionLabel(expert.profession || expert.type) || expert.title || 'Rejimde Uzmanı'}
                                 </span>
                                 
@@ -664,7 +669,7 @@ export default function ExpertProfilePage() {
                         <div className="px-6 pb-6 space-y-3 mt-4">
                             <button 
                                 onClick={() => setShowRequestModal(true)}
-                                className={`w-full font-bold py-3 rounded-2xl border-b-[4px] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 uppercase text-sm shadow-md ${getExpertStyle(expert.profession || expert.type)?.btnMain || 'bg-indigo-500 hover:bg-indigo-600 border-indigo-700 text-white'}`}
+                                className={`w-full font-bold py-3 rounded-2xl border-b-[4px] active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 uppercase text-sm shadow-md ${expertStyle?.btnMain || 'bg-indigo-500 hover:bg-indigo-600 border-indigo-700 text-white'}`}
                             >
                                 <i className="fa-solid fa-calendar-check text-base"></i>
                                 Randevu Al
