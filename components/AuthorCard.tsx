@@ -62,7 +62,7 @@ export default function AuthorCard({ author, context = "Yazar" }: AuthorCardProp
             
             try {
                 const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'http://localhost/wp-json';
-                const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+                const token = localStorage.getItem('jwt_token');
                 const headers: HeadersInit = {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
