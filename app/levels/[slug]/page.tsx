@@ -8,7 +8,7 @@ import { LEVELS, getLevelBySlug, getLevelByScore } from '@/lib/constants';
 
 // Helper function for safe avatar URL
 function getSafeAvatarUrl(url: string | null, seed: string): string {
-  if (url && url.startsWith('http')) return url;
+  if (url && url.trim() && url.startsWith('http')) return url;
   return `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
 }
 
@@ -255,7 +255,7 @@ export default function LevelDetailPage() {
                         src={
                           isLeaderboardUser(topThree[1])
                             ? getSafeAvatarUrl(topThree[1].avatar, topThree[1].name)
-                            : topThree[1].logo || getSafeAvatarUrl(null, topThree[1].name)
+                            : getSafeAvatarUrl(topThree[1].logo, topThree[1].name)
                         }
                         alt={topThree[1].name}
                         className="w-16 h-16 rounded-full border-4 border-gray-300 shadow-lg"
@@ -278,7 +278,7 @@ export default function LevelDetailPage() {
                         src={
                           isLeaderboardUser(topThree[0])
                             ? getSafeAvatarUrl(topThree[0].avatar, topThree[0].name)
-                            : topThree[0].logo || getSafeAvatarUrl(null, topThree[0].name)
+                            : getSafeAvatarUrl(topThree[0].logo, topThree[0].name)
                         }
                         alt={topThree[0].name}
                         className="w-20 h-20 rounded-full border-4 border-yellow-500 shadow-lg"
@@ -301,7 +301,7 @@ export default function LevelDetailPage() {
                         src={
                           isLeaderboardUser(topThree[2])
                             ? getSafeAvatarUrl(topThree[2].avatar, topThree[2].name)
-                            : topThree[2].logo || getSafeAvatarUrl(null, topThree[2].name)
+                            : getSafeAvatarUrl(topThree[2].logo, topThree[2].name)
                         }
                         alt={topThree[2].name}
                         className="w-16 h-16 rounded-full border-4 border-orange-300 shadow-lg"
@@ -351,7 +351,7 @@ export default function LevelDetailPage() {
                         src={
                           isLeaderboardUser(item)
                             ? getSafeAvatarUrl(item.avatar, item.name)
-                            : item.logo || getSafeAvatarUrl(null, item.name)
+                            : getSafeAvatarUrl(item.logo, item.name)
                         }
                         alt={item.name}
                         className="w-12 h-12 rounded-full border-2 border-gray-200"
