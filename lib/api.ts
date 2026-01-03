@@ -797,7 +797,7 @@ export async function getPostBySlug(slug: string) {
                 authorData = {
                     id: author.id,
                     name: author.name,
-                    avatar: author. avatar_url || author.avatar_urls?. ['96'] || getDefaultAvatar(author.gender),
+                    avatar: author.avatar_url || author.avatar_urls?.['96'] || getDefaultAvatar(author.gender),
                     slug: author.slug,
                     is_expert: author.roles && author.roles.includes('rejimde_pro'),
                     profession: author.profession || ''
@@ -842,10 +842,10 @@ export async function getPostBySlug(slug: string) {
         date: new Date(post.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }),
         
         author_id: authorData.id,
-        author_name: authorData. name,
+        author_name: authorData.name,
         author_avatar: authorData.avatar,
         author_slug: authorData.slug,
-        author_is_expert: authorData. is_expert,
+        author_is_expert: authorData.is_expert,
         author_profession: authorData.profession,
         
         category:  categoryName,
