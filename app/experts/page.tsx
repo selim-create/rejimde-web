@@ -23,6 +23,10 @@ export default function ExpertsPage() {
   const [selectedGoal, setSelectedGoal] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState(5000); // Max fiyat
   const [consultationType, setConsultationType] = useState<string[]>([]); // 'online', 'face', 'hybrid'
+  
+  // PAGINATION STATE
+  const [currentPage, setCurrentPage] = useState(1);
+  const expertsPerPage = 12;
 
   // Veriyi ve Kullanıcı Rolünü Çek
   useEffect(() => {
@@ -112,6 +116,19 @@ export default function ExpertsPage() {
       return scoreB - scoreA;
     });
   }, [filteredExperts]);
+
+  // PAGINATION: Sayfalama mantığı
+  const totalPages = Math.ceil(sortedExperts.length / expertsPerPage);
+  const paginatedExperts = useMemo(() => {
+    const startIndex = (currentPage - 1) * expertsPerPage;
+    const endIndex = startIndex + expertsPerPage;
+    return sortedExperts.slice(startIndex, endIndex);
+  }, [sortedExperts, currentPage, expertsPerPage]);
+  
+  // Filtre değiştiğinde ilk sayfaya dön
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedProfession, selectedCity, selectedDistrict, consultationType]);
 
   // Seçilen şehre göre ilçeleri bul
   const activeCityData = CITIES.find(c => c.id === selectedCity);
@@ -283,7 +300,7 @@ export default function ExpertsPage() {
             
             {loading && <div className="text-center py-20 text-gray-400 font-bold animate-pulse">Uzmanlar sahaya çıkıyor...</div>}
 
-            {!loading && sortedExperts.length === 0 && (
+            {!loading && paginatedExperts.length === 0 && (
                 <div className="bg-gray-50 border-2 border-gray-100 rounded-3xl p-12 text-center col-span-3">
                     <MascotDisplay state="idle_dashboard" size={150} showBubble={false} />
                     <h3 className="font-extrabold text-gray-700 text-xl mt-4">Henüz Uzman Yok</h3>
@@ -298,7 +315,7 @@ export default function ExpertsPage() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {sortedExperts.map((expert) => {
+                {paginatedExperts.map((expert) => {
                     const prefix = getProfessionPrefix(expert.type || expert.profession || '');
                     const displayName = prefix ? `${prefix} ${expert.name}` : expert.name;
                     
@@ -314,6 +331,7 @@ export default function ExpertsPage() {
                                     : `https://api.dicebear.com/9.x/personas/svg?seed=${expert.slug}`}
                             rating={expert.rating || '5.0'}
                             scoreImpact={expert.score_impact || '+10 P'}
+                            trendPercentage={expert.trend_percentage}
                             
                             // Onay ve Editör Seçimi
                             isVerified={expert.is_verified}
@@ -344,6 +362,43 @@ export default function ExpertsPage() {
                     </div>
                 )}
             </div>
+            
+            {/* PAGINATION */}
+            {!loading && totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-8">
+                    <button 
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 rounded-xl font-bold text-sm border-2 border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                        <i className="fa-solid fa-chevron-left"></i>
+                    </button>
+                    
+                    <div className="flex gap-2">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                            <button
+                                key={pageNum}
+                                onClick={() => setCurrentPage(pageNum)}
+                                className={`px-4 py-2 rounded-xl font-bold text-sm border-2 transition ${
+                                    currentPage === pageNum 
+                                    ? 'bg-rejimde-blue text-white border-rejimde-blue shadow-btn shadow-rejimde-blueDark' 
+                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                }`}
+                            >
+                                {pageNum}
+                            </button>
+                        ))}
+                    </div>
+                    
+                    <button 
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 rounded-xl font-bold text-sm border-2 border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                        <i className="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            )}
         </div>
 
       </div>

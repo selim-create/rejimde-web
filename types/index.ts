@@ -45,6 +45,8 @@ export interface Expert {
     content_count?: number;
     career_start_date?: string;
     profession?: string; // type'ın alternatifi
+    trend_percentage?: string; // Haftalık/aylık performans trendi (örn: "+12%" veya "-5%")
+    experience_years?: number; // Deneyim yılı
 }
 
 // Blog Yazısı Tipi
