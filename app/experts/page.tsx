@@ -9,6 +9,15 @@ import MascotDisplay from "@/components/MascotDisplay";
 import { CITIES } from "@/lib/locations";
 import { PROFESSION_CATEGORIES, getProfessionLabel } from "@/lib/constants";
 
+// Helper function: Format trend percentage
+const formatTrend = (trend: number | string | undefined): string => {
+    if (trend === undefined || trend === null || trend === 0 || trend === '0') return '—';
+    const numTrend = typeof trend === 'string' ? parseFloat(trend) : trend;
+    if (isNaN(numTrend) || numTrend === 0) return '—';
+    const prefix = numTrend > 0 ? '+' : '';
+    return `${prefix}${numTrend}%`;
+};
+
 export default function ExpertsPage() {
   const [experts, setExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,14 +112,18 @@ export default function ExpertsPage() {
     });
   }, [experts, searchTerm, selectedProfession, selectedCity, selectedDistrict, consultationType]);
 
-  // SIRALAMA: is_featured ve RejiScore'a göre sırala
+  // SIRALAMA: is_featured, is_verified ve RejiScore'a göre sırala
   const sortedExperts = useMemo(() => {
     return [...filteredExperts].sort((a, b) => {
       // 1. Önce Editörün Seçimi (is_featured) en üste
       if (a.is_featured && !b.is_featured) return -1;
       if (!a.is_featured && b.is_featured) return 1;
       
-      // 2. Sonra RejiScore'a göre sırala (yüksekten düşüğe)
+      // 2. Sonra Onaylı Uzmanlar (is_verified)
+      if (a.is_verified && !b.is_verified) return -1;
+      if (!a.is_verified && b.is_verified) return 1;
+      
+      // 3. Son olarak RejiScore'a göre sırala (yüksekten düşüğe)
       const scoreA = a.reji_score || 0;
       const scoreB = b.reji_score || 0;
       return scoreB - scoreA;
@@ -316,7 +329,11 @@ export default function ExpertsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {paginatedExperts.map((expert) => {
-                    const prefix = getProfessionPrefix(expert.type || expert.profession || '');
+                    // Uzmanın kendi yazdığı ünvan varsa onu kullan, yoksa profession label
+                    const displayTitle = expert.title || getProfessionLabel(expert.type || expert.profession || '') || 'Sağlık Uzmanı';
+                    
+                    // Prefix'i sadece title yoksa ekle
+                    const prefix = !expert.title ? getProfessionPrefix(expert.type || expert.profession || '') : '';
                     const displayName = prefix ? `${prefix} ${expert.name}` : expert.name;
                     
                     return (
@@ -325,17 +342,17 @@ export default function ExpertsPage() {
                             type={expert.type as any || 'dietitian'}
                             name={displayName}
                             slug={expert.slug}
-                            title={getProfessionLabel(expert.type || expert.profession || '') || 'Sağlık Uzmanı'}
+                            title={displayTitle}
                             image={expert.image && expert.image !== 'https://placehold.co/150' 
                                     ? expert.image 
                                     : `https://api.dicebear.com/9.x/personas/svg?seed=${expert.slug}`}
                             rating={expert.rating || '5.0'}
                             scoreImpact={expert.score_impact || '+10 P'}
-                            trendPercentage={expert.trend_percentage}
+                            trendPercentage={formatTrend(expert.trend_percentage)}
                             
                             // Onay ve Editör Seçimi
                             isVerified={expert.is_verified}
-                            isFeatured={expert.is_featured === true || (expert as any).is_featured === '1' || (expert as any).is_featured === 1}
+                            isFeatured={Boolean(expert.is_featured)}
                             
                             isOnline={expert.is_online}
                             

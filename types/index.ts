@@ -45,7 +45,8 @@ export interface Expert {
     content_count?: number;
     career_start_date?: string;
     profession?: string; // type'ın alternatifi
-    trend_percentage?: string; // Haftalık/aylık performans trendi (örn: "+12%" veya "-5%")
+    trend_percentage?: number | string; // Haftalık/aylık performans trendi (sayısal değer veya string)
+    trend_direction?: string; // Trend yönü ('up', 'down', 'stable')
     experience_years?: number; // Deneyim yılı
 }
 
