@@ -219,10 +219,10 @@ export interface FollowingUser {
     slug: string;
     avatar_url: string;
     last_activity: {
-        type: string;
-        label: string;
-        icon: string;
-        time_ago: string;
+        type: string;      // Activity type, e.g., "water_added", "workout_completed"
+        label: string;     // Human-readable activity description, e.g., "Su hedefini tamamladı"
+        icon: string;      // Emoji icon representing the activity, e.g., "💧"
+        time_ago: string;  // Relative time since activity, e.g., "5 dakika önce"
     } | null;
 }
 

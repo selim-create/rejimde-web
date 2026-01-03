@@ -596,7 +596,7 @@ export default function DashboardPage() {
                                           <p className="text-xs font-bold text-gray-700">{friend.name}</p>
                                           <p className="text-[10px] text-green-500 font-bold">
                                               {friend.last_activity 
-                                                  ? `${friend.last_activity.icon || ''} ${friend.last_activity.label || friend.last_activity.time_ago || 'Aktif'}`
+                                                  ? [friend.last_activity.icon, friend.last_activity.label || friend.last_activity.time_ago || 'Aktif'].filter(Boolean).join(' ')
                                                   : 'Aktif'
                                               }
                                           </p>
