@@ -6,7 +6,8 @@ interface ExpertCardProps {
   title: string;
   image: string;
   rating: string;
-  scoreImpact: string;
+  scoreImpact?: string; // Kept for backward compatibility
+  trendPercentage?: string; // Yeni trend gösterimi (örn: "+12%" veya "-5%")
   slug: string;
   isOnline?: boolean;
   isFeatured?: boolean; // Editörün Seçimi (Sarı Yıldız)
@@ -19,7 +20,15 @@ interface ExpertCardProps {
   contentCount?: number;
 }
 
-export default function ExpertCard({ name, title, image, rating, scoreImpact, slug, isOnline, isFeatured, isVerified, isNew, type, rejiScore, clientCount, followersCount, contentCount }: ExpertCardProps) {
+export default function ExpertCard({ name, title, image, rating, scoreImpact, trendPercentage, slug, isOnline, isFeatured, isVerified, isNew, type, rejiScore, clientCount, followersCount, contentCount }: ExpertCardProps) {
+  
+  // Trend verisi varsa onu kullan, yoksa scoreImpact'i kullan (backward compatibility)
+  const displayTrend = trendPercentage || scoreImpact || '—';
+  
+  // Trend pozitif mi negatif mi kontrol et (renk için)
+  const isPositiveTrend = displayTrend.startsWith('+');
+  const isNegativeTrend = displayTrend.startsWith('-');
+  const trendColor = isPositiveTrend ? 'text-green-600' : isNegativeTrend ? 'text-red-600' : 'text-gray-500';
   
   // Onaysız hesap (Gri Kart)
   if (type === 'unclaimed') {
@@ -99,8 +108,8 @@ export default function ExpertCard({ name, title, image, rating, scoreImpact, sl
                 </div>
                 <div className="w-px bg-gray-100"></div>
                 <div>
-                    <div className="font-black text-rejimde-green text-sm">{scoreImpact}</div>
-                    <div className="text-[9px] font-bold text-gray-400 uppercase">Skor Etkisi</div>
+                    <div className={`font-black text-sm ${trendColor}`}>{displayTrend}</div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase">Trend</div>
                 </div>
             </div>
 
