@@ -11,7 +11,7 @@ import { PROFESSION_CATEGORIES, getProfessionLabel } from "@/lib/constants";
 
 // Helper function: Format trend percentage
 const formatTrend = (trend: number | string | undefined | null): string => {
-    if (trend === undefined || trend === null || trend === 0 || trend === '0') return '—';
+    if (trend === undefined || trend === null) return '—';
     const numTrend = typeof trend === 'string' ? parseFloat(trend) : trend;
     if (isNaN(numTrend) || numTrend === 0) return '—';
     const prefix = numTrend > 0 ? '+' : '';
