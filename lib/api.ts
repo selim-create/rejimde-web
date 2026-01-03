@@ -19,12 +19,15 @@ export async function fetchWithRetry(
   retries = 3, 
   delay = 1000
 ): Promise<Response> {
+  let lastResponse: Response | null = null;
+  
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const res = await fetch(url, options);
       
       // Rate limited (429) - bekle ve tekrar dene
       if (res.status === 429) {
+        lastResponse = res;
         if (attempt < retries - 1) {
           const waitTime = delay * Math.pow(2, attempt); // Exponential backoff
           console.warn(`Rate limited. Retrying in ${waitTime}ms... (attempt ${attempt + 1}/${retries})`);
@@ -44,6 +47,12 @@ export async function fetchWithRetry(
       }
       throw error;
     }
+  }
+  
+  // Eğer buraya geldiyse, tüm denemeler 429 ile başarısız olmuş demektir
+  // Son 429 response'u döndür
+  if (lastResponse) {
+    return lastResponse;
   }
   
   throw new Error('Maximum retry attempts reached');
