@@ -87,8 +87,18 @@ export default function DashboardPage() {
             setAssignedPlans(plans.filter(p => p.status === 'active'));
 
             // 6. Takip edilen kullanıcıların aktivitelerini çek
-            const followingData = await getFollowingActivity();
-            setFollowingActivity(followingData.data || []);
+            try {
+                const followingData = await getFollowingActivity();
+                // data array olduğundan emin ol
+                if (followingData && Array.isArray(followingData.data)) {
+                    setFollowingActivity(followingData.data);
+                } else {
+                    setFollowingActivity([]);
+                }
+            } catch (error) {
+                console.error('Following activity fetch error:', error);
+                setFollowingActivity([]);
+            }
             setFollowingLoading(false);
 
         } catch (error) {
@@ -559,15 +569,7 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-center py-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
                       </div>
-                  ) : followingActivity.length === 0 ? (
-                      <div className="text-center py-6">
-                          <i className="fa-solid fa-user-plus text-4xl text-gray-300 mb-3"></i>
-                          <p className="text-sm font-bold text-gray-500 mb-4">Henüz takip ettiğin kimse yok. Hemen takip et!</p>
-                          <Link href="/explore" className="inline-block bg-blue-500 text-white px-6 py-2 rounded-xl font-extrabold text-xs uppercase hover:bg-blue-600 transition">
-                              Keşfet
-                          </Link>
-                      </div>
-                  ) : (
+                  ) : Array.isArray(followingActivity) && followingActivity.length > 0 ? (
                       <>
                           <div className="space-y-4">
                               {followingActivity.slice(0, 2).map((friend: any, idx: number) => (
@@ -584,6 +586,14 @@ export default function DashboardPage() {
                               Tümünü Gör
                           </Link>
                       </>
+                  ) : (
+                      <div className="text-center py-4">
+                          <i className="fa-solid fa-user-plus text-3xl text-gray-300 mb-2"></i>
+                          <p className="text-xs font-bold text-gray-400 mb-3">Henüz takip ettiğin kimse yok.</p>
+                          <Link href="/community" className="text-xs font-bold text-blue-500 hover:underline">
+                              Keşfet →
+                          </Link>
+                      </div>
                   )}
               </div>
 

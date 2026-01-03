@@ -6955,8 +6955,14 @@ export async function getFollowingActivity() {
     const res = await fetchAPI('/rejimde/v1/profile/following', {
       headers: getAuthHeaders()
     });
-    return res;
+    // API'den gelen response'un yapısını kontrol et
+    if (res && res.data && Array.isArray(res.data)) {
+      return res;
+    }
+    // Fallback: boş array döndür
+    return { data: [], total_following: 0 };
   } catch (error) {
+    console.warn('Following activity fetch failed:', error);
     return { data: [], total_following: 0 };
   }
 }
