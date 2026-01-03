@@ -26,10 +26,8 @@ export function useExpertNotifications() {
       setNotifications(result.notifications || []);
       setUnreadCount(result.unread_count || 0);
     } catch (error) {
-      // Continue silently if API is unavailable or error occurs
       console.warn('Expert notifications API not available:', error);
-      setNotifications([]);
-      setUnreadCount(0);
+      // Keep existing state, don't clear
     } finally {
       setIsLoading(false);
     }

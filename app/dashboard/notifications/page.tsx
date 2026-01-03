@@ -14,6 +14,16 @@ const CATEGORIES = [
   { value: 'points', label: 'Puan', icon: 'fa-star' },
 ];
 
+const EMPTY_MESSAGES: Record<string, string> = {
+  all: 'Henüz hiç bildiriminiz yok.',
+  social: 'Sosyal bildiriminiz yok.',
+  system: 'Sistem bildirimi yok.',
+  level: 'Seviye bildirimi yok.',
+  circle: 'Circle bildirimi yok.',
+  points: 'Puan bildirimi yok.',
+  expert: 'Uzman bildirimi yok.',
+};
+
 export default function NotificationsPage() {
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -21,6 +31,10 @@ export default function NotificationsPage() {
 
   const handleMarkSingleAsRead = (id: number) => {
     markAsRead([id]);
+  };
+
+  const getEmptyMessage = (category: string) => {
+    return EMPTY_MESSAGES[category] || EMPTY_MESSAGES.all;
   };
 
   const filteredNotifications = notifications.filter((notification) => {
@@ -107,7 +121,7 @@ export default function NotificationsPage() {
               <p className="text-gray-500">
                 {showUnreadOnly
                   ? 'Tüm bildirimlerinizi okudunuz!'
-                  : 'Henüz hiç bildiriminiz yok.'}
+                  : getEmptyMessage(selectedCategory)}
               </p>
             </div>
           ) : (
