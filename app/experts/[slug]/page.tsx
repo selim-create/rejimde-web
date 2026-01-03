@@ -63,6 +63,7 @@ interface ExpertDetail {
     score_impact: string;
     is_verified: boolean;
     is_featured?:  boolean;
+    is_online?: boolean;  // Online/offline status
     location?:  string;
     brand?: string;
     bio?: string;
@@ -564,8 +565,8 @@ export default function ExpertProfilePage() {
                             <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
                                 <div className="relative">
                                     <img src={expert.image} alt={expert.name} className="w-32 h-32 rounded-3xl border-4 border-white shadow-md bg-white object-cover" />
-                                    <div className="absolute bottom-0 right-0 w-8 h-8 bg-rejimde-green border-4 border-white rounded-full flex items-center justify-center" title="Online">
-                                        <i className="fa-solid fa-check text-white text-xs"></i>
+                                    <div className={`absolute bottom-0 right-0 w-8 h-8 ${expert.is_online ? 'bg-rejimde-green' : 'bg-gray-400'} border-4 border-white rounded-full flex items-center justify-center`} title={expert.is_online ? 'Online' : 'Offline'}>
+                                        <i className={`fa-solid ${expert.is_online ? 'fa-check' : 'fa-minus'} text-white text-xs`}></i>
                                     </div>
                                 </div>
                             </div>
@@ -1155,7 +1156,7 @@ export default function ExpertProfilePage() {
                                 <i className="fa-solid fa-newspaper text-rejimde-blue"></i>
                                 Blog Yazıları
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {blogPosts.slice(0, 4).map((post) => (
                                     <Link 
                                         href={`/blog/${post.slug}`} 
@@ -1201,10 +1202,10 @@ export default function ExpertProfilePage() {
                                 <i className="fa-solid fa-utensils text-rejimde-green"></i>
                                 Diyet Planları
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {dietPlans.slice(0, 4).map((plan) => (
                                     <Link 
-                                        href={`/diet-plans/${plan.slug}`} 
+                                        href={`/plans/${plan.slug}`} 
                                         key={plan.id}
                                         className="bg-white border-2 border-gray-200 rounded-3xl p-6 shadow-card hover:shadow-xl transition-shadow group"
                                     >
@@ -1252,7 +1253,7 @@ export default function ExpertProfilePage() {
                                 <i className="fa-solid fa-dumbbell text-rejimde-red"></i>
                                 Egzersiz Planları
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {exercisePlans.slice(0, 4).map((plan) => (
                                     <Link 
                                         href={`/exercises/${plan.slug}`} 

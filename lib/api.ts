@@ -911,7 +911,10 @@ export async function deletePost(id: number) {
  */
 export async function getExpertBySlug(slug: string) {
   try {
-    const data = await fetchAPI(`/rejimde/v1/professionals/${slug}`);
+    // Use authenticated headers to get is_following status
+    const data = await fetchAPI(`/rejimde/v1/professionals/${slug}`, {
+      headers: getAuthHeaders()
+    });
     
     // RejiScore alanlarını varsayılan değerlerle birlikte döndür
     if (data) {
