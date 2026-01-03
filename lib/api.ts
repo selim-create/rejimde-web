@@ -667,9 +667,10 @@ export async function getExperts(filterType?: string) {
 /**
  * BLOG YAZILARI
  */
-export async function getBlogPosts() {
+export async function getBlogPosts(authorId?: number) {
   try {
-    const data = await fetchAPI('/wp/v2/posts?_embed');
+    const authorParam = authorId ? `&author=${authorId}` : '';
+    const data = await fetchAPI(`/wp/v2/posts?_embed${authorParam}`);
     // @ts-ignore
     return data.map((item: any) => {
         // Kategoriyi _embedded üzerinden al
@@ -688,6 +689,7 @@ export async function getBlogPosts() {
             image: item._embedded?.['wp:featuredmedia']?.[0]?.source_url || 'https://placehold.co/600x400',
             date: new Date(item.date).toLocaleDateString('tr-TR'),
             author_name: item._embedded?.author?.[0]?.name || 'Rejimde Editör',
+            author_id: item.author,
             category: categoryName,
             read_time: readTime,
             comment_count: item._embedded?.['replies']?.[0]?.length || 0
@@ -1376,7 +1378,7 @@ export async function createComment(postId: number, content: string, context: st
  * DİYET PLANLARINI LİSTELE
  * Backend'den gelen planları alır ve tutarlı format sağlar
  */
-export async function getPlans(category?: string, difficulty?: string): Promise<PlanListItem[]> {
+export async function getPlans(category?: string, difficulty?: string, authorId?: number): Promise<PlanListItem[]> {
   try {
     let endpoint = '/rejimde/v1/plans'; 
     const params = new URLSearchParams();
@@ -1387,6 +1389,9 @@ export async function getPlans(category?: string, difficulty?: string): Promise<
     }
     if (difficulty && difficulty.trim() !== '') {
       params.append('difficulty', difficulty);
+    }
+    if (authorId) {
+      params.append('author', authorId.toString());
     }
     
     if (params.toString()) endpoint += `?${params.toString()}`;
@@ -1636,7 +1641,7 @@ export async function getPlan(id: number | string): Promise<ApiResponse<PlanEdit
  * Egzersiz Planlarını Listele
  * Backend'den gelen egzersiz planlarını alır ve tutarlı format sağlar
  */
-export async function getExercisePlans(category?: string, difficulty?: string) {
+export async function getExercisePlans(category?: string, difficulty?: string, authorId?: number) {
   try {
     let endpoint = '/rejimde/v1/exercises'; 
     const params = new URLSearchParams();
@@ -1647,6 +1652,9 @@ export async function getExercisePlans(category?: string, difficulty?: string) {
     }
     if (difficulty && difficulty.trim() !== '') {
       params.append('difficulty', difficulty);
+    }
+    if (authorId) {
+      params.append('author', authorId.toString());
     }
     
     if (params.toString()) endpoint += `?${params.toString()}`;
