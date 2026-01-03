@@ -28,6 +28,13 @@ function isPlanObject(response: any): boolean {
   return response && typeof response === 'object' && 'id' in response && typeof response.id === 'number';
 }
 
+/**
+ * Helper to convert API value to boolean
+ */
+function toBooleanFromApi(value: any): boolean {
+  return value === true || value === '1' || value === 1;
+}
+
 // --- AVATAR PAKETİ ---
 export const AVATAR_PACK = [
   { id: '1', url: 'https://api.dicebear.com/9.x/personas/svg?seed=Felix', gender: 'male' },
@@ -644,24 +651,25 @@ export async function getExperts(filterType?: string) {
         id: item.id,
         name: item.name,
         slug: item.slug,
-        type: item.type || 'dietitian',
-        title: item.title || 'Uzman',
+        type: item.profession || item.type || 'dietitian',  // profession'ı type olarak kullan
+        title: item.title || '',  // Uzmanın kendi yazdığı ünvan (Dyt., Dr., vs.)
         image: item.image,
         rating: item.rating || '5.0',
         score_impact: item.score_impact || '+10 P',
-        is_verified: item.is_verified,
-        is_featured: item.is_featured,
+        is_verified: toBooleanFromApi(item.is_verified),
+        is_featured: toBooleanFromApi(item.is_featured),
         is_online: item.is_online,
         location: item.location,
         
-        // YENİ FIELD'LAR - RejiScore ve metrikler
-        reji_score: item.reji_score,
-        trend_percentage: item.trend_percentage,
-        client_count: item.client_count,
-        profession: item.profession,
-        experience_years: item.experience_years,
-        followers_count: item.followers_count,
-        content_count: item.content_count
+        // RejiScore ve metrikler
+        reji_score: item.reji_score || 50,
+        trend_percentage: item.trend_percentage || 0,
+        trend_direction: item.trend_direction || 'stable',
+        client_count: item.client_count || 0,
+        profession: item.profession || 'dietitian',
+        experience_years: item.experience_years || 0,
+        followers_count: item.followers_count || 0,
+        content_count: item.content_count || 0
       }));
       if (filterType) {
           experts = experts.filter((e: any) => e.type === filterType);
