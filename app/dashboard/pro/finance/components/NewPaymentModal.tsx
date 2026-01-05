@@ -14,14 +14,24 @@ export default function NewPaymentModal({ onClose, onSuccess }: NewPaymentModalP
   const [services, setServices] = useState<Service[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    client_id: string;
+    service_id: string;
+    amount: string;
+    payment_method: 'cash' | 'bank_transfer' | 'credit_card' | 'online' | 'other';
+    payment_date: string;
+    due_date: string;
+    status: 'pending' | 'paid' | 'partial' | 'overdue' | 'cancelled' | 'refunded';
+    description: string;
+    notes: string;
+  }>({
     client_id: '',
     service_id: '',
     amount: '',
-    payment_method: 'cash' as const,
+    payment_method: 'cash',
     payment_date: new Date().toISOString().split('T')[0],
     due_date: '',
-    status: 'pending' as const,
+    status: 'pending',
     description: '',
     notes: ''
   });
