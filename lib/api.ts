@@ -3681,6 +3681,34 @@ export async function updateClientPackage(clientId: number, data: {
   }
 }
 
+/**
+ * Update package end date
+ * Uses separate endpoint: POST /pro/clients/{id}/package/end-date
+ */
+export async function updateClientPackageEndDate(
+  clientId: number, 
+  endDate: string
+): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/rejimde/v1/pro/clients/${clientId}/package/end-date`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ end_date: endDate }),
+    });
+
+    const json = await res.json();
+    
+    if (json.status === 'success') {
+      return { success: true, message: json.message };
+    }
+
+    return { success: false, message: json.message || 'Bitiş tarihi güncellenemedi.' };
+  } catch (error) {
+    console.error('updateClientPackageEndDate error:', error);
+    return { success: false, message: 'Sunucu hatası.' };
+  }
+}
+
 // Not ekle
 export async function addClientNote(clientId: number, data: {
   type: 'general' | 'health' | 'progress' | 'reminder';
