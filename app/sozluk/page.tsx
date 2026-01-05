@@ -9,6 +9,12 @@ export const metadata: Metadata = {
     title: "Fitness & Beslenme Sözlüğü | Rejimde Wiki",
     description: "Hareketi doğrusunu öğren, terimleri keşfet.",
     type: "website",
+    url: "https://rejimde.com/sozluk",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fitness & Beslenme Sözlüğü | Rejimde Wiki",
+    description: "Hareketi doğrusunu öğren, terimleri keşfet.",
   },
 };
 
