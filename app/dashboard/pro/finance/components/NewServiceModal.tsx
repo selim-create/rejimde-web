@@ -22,16 +22,26 @@ const COLORS = [
 
 export default function NewServiceModal({ onClose, onSuccess, onError }: NewServiceModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    type: 'online' as const,
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string;
+    type: 'online' | 'face_to_face' | 'group' | 'package' | 'consultation' | 'session' | 'one_time';
+    price:  string;
+    duration_minutes: string;
+    session_count: string;
+    validity_days: string;
+    capacity:  string;
+    color: string;
+  }>({
+    name:  '',
+    description:  '',
+    type:  'online',
     price: '',
-    duration_minutes: '60',
+    duration_minutes:  '60',
     session_count: '',
     validity_days: '',
-    capacity: '1',
-    color: '#3b82f6'
+    capacity: '',
+    color: '#3B82F6'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {

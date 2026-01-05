@@ -173,7 +173,7 @@ export default function ReportsPage() {
                       borderRadius: '8px'
                     }}
                     labelStyle={{ color: '#fff' }}
-                    formatter={(value: number) => [`${formatCurrency(value)}`, 'Gelir']}
+                    formatter={(value) => [`${formatCurrency(Number(value) || 0)}`, 'Gelir']}
                   />
                   <Bar dataKey="revenue" fill="#3b82f6" radius={[8, 8, 0, 0]} />
                 </BarChart>
@@ -190,7 +190,7 @@ export default function ReportsPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ method, percent }) => `${method} ${(percent * 100).toFixed(0)}%`}
+                    label={({ method, percent }) => `${method} ${((percent ??  0) * 100).toFixed(0)}%`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="amount"
@@ -206,7 +206,7 @@ export default function ReportsPage() {
                       borderRadius: '8px'
                     }}
                     labelStyle={{ color: '#fff' }}
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value) => formatCurrency(Number(value) || 0)}
                   />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                 </PieChart>
