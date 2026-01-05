@@ -41,7 +41,7 @@ export default function AboutPage() {
                 <p className="text-gray-500 font-medium leading-relaxed">
                     Türkiye'de her yıl milyonlarca insan diyete başlıyor ama sadece %5'i sürdürebiliyor. Sorun iradesizlik değil, yöntem. 
                     <br/><br/>
-                    Biz, <strong>"Yalnız zayıflanmaz, beraber başarılır"</strong> mottosuyla yola çıktık. Rejimde Skoru, Klanlar ve AI Co-Pilot teknolojimizle, sağlıklı yaşamı bir zorunluluktan çıkarıp keyifli bir statü oyununa dönüştürdük.
+                    Biz, <strong>"Yalnız zayıflanmaz, beraber başarılır"</strong> mottosuyla yola çıktık. Rejimde Skoru, Circle'lar ve AI Co-Pilot teknolojimizle, sağlıklı yaşamı bir zorunluluktan çıkarıp keyifli bir statü oyununa dönüştürdük.
                 </p>
             </div>
         </div>

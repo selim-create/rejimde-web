@@ -15,7 +15,7 @@ export default function Footer() {
             </Link>
             
             <p className="text-gray-500 font-bold text-sm leading-relaxed mb-6">
-              Türkiye'nin ilk sosyal sağlık ve performans platformu. Rejimde Skoru ile sağlığını oyunlaştır, klanınla birlikte başar.
+              Türkiye'nin ilk sosyal sağlık ve performans platformu. Rejimde Skoru ile sağlığını oyunlaştır, circle'ınla birlikte başar.
             </p>
             <div className="flex items-center gap-2 text-xs font-bold text-gray-400">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>

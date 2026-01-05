@@ -52,7 +52,7 @@ export default function Home() {
         setFeaturedDiets(diets.slice(0, 3));
         setFeaturedExercises(exercises.slice(0, 3));
         
-        // Klanları puana göre sıralayıp ilk 3'ü al
+        // Circle puana göre sıralayıp ilk 3'ü al
         const sortedClans = Array.isArray(clans) ? clans.sort((a: any, b: any) => (b.total_score || 0) - (a.total_score || 0)).slice(0, 3) : [];
         setTopClans(sortedClans);
 
@@ -128,7 +128,7 @@ export default function Home() {
                                     <span className="text-blue-600">{currentUser?.name?.split(' ')[0]}?</span>
                                 </h1>
                                 <p className="text-xl text-gray-500 font-bold mb-8 max-w-md mx-auto lg:mx-0 leading-relaxed">
-                                    Klanın seni bekliyor, hedeflerin çok yakın. Bugün kendin için harika bir şey yap.
+                                    Circle'ın seni bekliyor, hedeflerin çok yakın. Bugün kendin için harika bir şey yap.
                                 </p>
                                 <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                                     <Link href="/dashboard" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-extrabold text-lg shadow-[0_4px_0_rgb(37,99,235)] hover:bg-blue-700 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(37,99,235)] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-3">
@@ -153,7 +153,7 @@ export default function Home() {
                             hep benim peşimde!&quot;
                         </h1>
                         <p className="text-lg text-gray-500 font-bold mb-8 max-w-md mx-auto lg:mx-0 leading-relaxed">
-                            Yalnız zayıflanmaz, beraber başarılır. Klanını seç, oyunlaştırılmış görevlerle hedefine ulaş.
+                            Yalnız zayıflanmaz, beraber başarılır. Circle'ını seç, oyunlaştırılmış görevlerle hedefine ulaş.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
                             <Link href="/register/user" className="bg-green-500 text-white px-8 py-4 rounded-2xl font-extrabold text-lg shadow-[0_4px_0_rgb(21,128,61)] hover:bg-green-600 hover:translate-y-[2px] hover:shadow-[0_2px_0_rgb(21,128,61)] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-2">
@@ -289,7 +289,7 @@ export default function Home() {
             <div className="mb-16">
                 <div className="text-center mb-10">
                     <span className="text-xs font-black text-purple-500 uppercase tracking-widest bg-purple-100 px-3 py-1 rounded-full border border-purple-200">Topluluk</span>
-                    <h2 className="text-3xl font-black text-gray-800 mt-3 mb-2">En İyi Klanlar</h2>
+                    <h2 className="text-3xl font-black text-gray-800 mt-3 mb-2">En İyi Circle'lar</h2>
                     <p className="text-gray-500 font-bold">Bu hafta rekabet çok kızışmalı!</p>
                 </div>
 
@@ -316,7 +316,7 @@ export default function Home() {
                     <div className="bg-purple-600 rounded-3xl p-6 shadow-[0_4px_0_rgb(88,28,135)] text-white flex flex-col justify-center items-center text-center cursor-pointer hover:scale-[1.02] hover:bg-purple-700 transition" onClick={() => window.location.href = '/clans'}>
                         <i className="fa-solid fa-trophy text-4xl mb-3 text-yellow-300 animate-bounce-slow"></i>
                         <h3 className="font-black text-xl mb-1">Tüm Sıralama</h3>
-                        <p className="text-purple-200 text-xs font-bold">Kendi klanını bul veya oluştur!</p>
+                        <p className="text-purple-200 text-xs font-bold">Kendi circle'ını bul veya oluştur!</p>
                     </div>
                 </div>
             </div>
@@ -400,7 +400,7 @@ export default function Home() {
                         </div>
                         <h3 className="text-2xl font-extrabold text-white mb-2 relative z-10">Uzman Mısın?</h3>
                         <p className="text-purple-100 text-sm font-bold mb-8 relative z-10 px-4">
-                            Kendi klanını kur, danışanlarını ücretsiz yönet, gelirini artır.
+                            Kendi circle'ını kur, danışanlarını ücretsiz yönet, gelirini artır.
                         </p>
                         <Link href="/register/pro" className="bg-white text-rejimde-purple px-8 py-3 rounded-xl font-extrabold uppercase tracking-wide text-sm relative z-10 group-hover:bg-purple-50 transition shadow-btn shadow-purple-900/20">
                             BAŞVUR
