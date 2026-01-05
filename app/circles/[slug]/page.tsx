@@ -1,32 +1,3 @@
-import { Metadata } from "next";
-
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params;
-  const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'https://api.rejimde.com/wp-json';
-  
-  try {
-    const res = await fetch(`${apiUrl}/rejimde/v1/circles/${slug}`, { next: { revalidate: 3600 } });
-    if (!res.ok) return { title: "Circle Bulunamadı - Rejimde" };
-    
-    const circle = await res.json();
-    const name = circle.name || 'Circle';
-    const description = circle.description?.slice(0, 160) || `${name} - Rejimde motivasyon grubu`;
-    
-    return {
-      title: `${name} Circle | Rejimde`,
-      description,
-      openGraph: {
-        title: `${name} | Rejimde`,
-        description,
-        type: "website",
-        images: circle.logo ? [circle.logo] : [],
-      },
-    };
-  } catch {
-    return { title: "Circle - Rejimde" };
-  }
-}
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';

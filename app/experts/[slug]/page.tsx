@@ -1,34 +1,3 @@
-import { Metadata } from "next";
-
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params;
-  const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'https://api.rejimde.com/wp-json';
-  
-  try {
-    const res = await fetch(`${apiUrl}/rejimde/v1/professionals/${slug}`, { next: { revalidate: 3600 } });
-    if (!res.ok) return { title: "Uzman Bulunamadı - Rejimde" };
-    
-    const data = await res.json();
-    const expert = data.data || data;
-    const name = expert.name || 'Rejimde Uzmanı';
-    const profession = expert.profession || expert.type || 'Uzman';
-    const bio = expert.bio?.replace(/<[^>]+>/g, '').slice(0, 160) || `${name} - Rejimde uzmanı`;
-    
-    return {
-      title: `${name} - ${profession} | Rejimde`,
-      description: bio,
-      openGraph: {
-        title: `${name} | Rejimde`,
-        description: bio,
-        type: "profile",
-        images: expert.image ? [expert.image] : [],
-      },
-    };
-  } catch {
-    return { title: "Uzman - Rejimde" };
-  }
-}
-
 "use client";
 
 import Link from "next/link";

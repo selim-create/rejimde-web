@@ -1,32 +1,3 @@
-import { Metadata } from "next";
-
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params;
-  const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'https://api.rejimde.com/wp-json';
-  
-  try {
-    const res = await fetch(`${apiUrl}/rejimde/v1/plans/slug/${slug}`, { next: { revalidate: 3600 } });
-    if (!res.ok) return { title: "Diyet Planı Bulunamadı - Rejimde" };
-    
-    const plan = await res.json();
-    const title = plan.title?.replace(/<[^>]+>/g, '') || 'Diyet Planı';
-    const description = plan.excerpt?.replace(/<[^>]+>/g, '').slice(0, 160) || plan.content?.replace(/<[^>]+>/g, '').slice(0, 160) || 'Rejimde diyet planı';
-    
-    return {
-      title: `${title} - Diyet Planı | Rejimde`,
-      description,
-      openGraph: {
-        title: `${title} | Rejimde`,
-        description,
-        type: "article",
-        images: plan.image ? [plan.image] : ["/og-diets.png"],
-      },
-    };
-  } catch {
-    return { title: "Diyet Planı - Rejimde" };
-  }
-}
-
 "use client";
 
 import Link from "next/link";
