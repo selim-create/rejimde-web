@@ -4159,8 +4159,8 @@ export async function getUnreadInboxCount(): Promise<number> {
 // ==========================================
 
 export interface Appointment {
-  id: number;
-  client: {
+  id:  number;
+  client?: {
     id: number;
     name: string;
     avatar: string;
@@ -4171,17 +4171,18 @@ export interface Appointment {
     id: number;
     name: string;
   };
-  title: string;
+  title?:  string;
   description?: string;
   date: string;
   start_time: string;
   end_time: string;
-  duration: number;
+  duration?: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
   type: 'online' | 'in_person' | 'phone';
   location?: string;
   meeting_link?: string;
   notes?: string;
+  is_recurring?:  boolean;  // ← BU SATIRI EKLEYİN
   created_at: string;
 }
 

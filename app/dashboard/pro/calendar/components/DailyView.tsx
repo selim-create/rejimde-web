@@ -205,12 +205,14 @@ export default function DailyView({
                       {appointment.title || 'Randevu'}
                     </div>
 
-                    {appointment.is_recurring && (
-                      <div className="mt-2 inline-flex items-center gap-1 text-xs text-purple-400">
-                        <i className="fa-solid fa-repeat"></i>
-                        <span>Tekrarlayan</span>
-                      </div>
-                    )}
+                  {/* Tekrarlayan randevu özelliği henüz aktif değil
+                  {appointment.is_recurring && (
+                    <div className="mt-2 inline-flex items-center gap-1 text-xs text-purple-400">
+                      <i className="fa-solid fa-repeat"></i>
+                      <span>Tekrarlayan</span>
+                    </div>
+                  )}
+                  */}
 
                     {appointment.location && (
                       <div className="mt-2 text-xs text-slate-400">
