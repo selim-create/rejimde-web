@@ -1,3 +1,31 @@
+import { Metadata } from "next";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'https://api.rejimde.com/wp-json';
+  
+  try {
+    const res = await fetch(`${apiUrl}/rejimde/v1/dictionary/${slug}`, { next: { revalidate: 3600 } });
+    if (!res.ok) return { title: "Terim Bulunamadı - Rejimde Wiki" };
+    
+    const item = await res.json();
+    const title = item.title || item.name || 'Terim';
+    const description = item.description?.replace(/<[^>]+>/g, '').slice(0, 160) || `${title} nedir? Rejimde Wiki'de öğren.`;
+    
+    return {
+      title: `${title} Nedir? | Rejimde Wiki`,
+      description,
+      openGraph: {
+        title: `${title} | Rejimde Wiki`,
+        description,
+        type: "article",
+      },
+    };
+  } catch {
+    return { title: "Rejimde Wiki" };
+  }
+}
+
 "use client";
 
 import { useState, useEffect } from 'react';
