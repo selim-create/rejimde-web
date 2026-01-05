@@ -267,16 +267,8 @@ export default function ServicesPage() {
           <div className="text-center py-12 text-slate-500">
             <i className="fa-solid fa-layer-group text-4xl mb-4"></i>
             <p className="mb-2">
-              {activeFilter === 'all' ? 'Henüz hizmet eklenmedi' : 'Bu filtre için hizmet bulunamadı'}
+              Bu filtre için hizmet bulunamadı
             </p>
-            {activeFilter === 'all' && (
-              <button
-                onClick={() => setShowNewServiceModal(true)}
-                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold transition"
-              >
-                İlk Hizmeti Ekle
-              </button>
-            )}
           </div>
         )}
       </div>
