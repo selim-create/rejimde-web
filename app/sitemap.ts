@@ -19,29 +19,58 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || 'https://api.rejimde.com/wp-json';
   
   try {
-    // Blog posts
-    const blogRes = await fetch(`${apiUrl}/rejimde/v1/posts?per_page=100`, { next: { revalidate: 3600 } });
-    const blogPosts = blogRes.ok ? await blogRes.json() : [];
+    // Blog posts - Use standard WordPress endpoint
+    const blogRes = await fetch(`${apiUrl}/wp/v2/posts?per_page=100`, { next: { revalidate: 3600 } });
+    let blogPosts = [];
+    if (blogRes.ok) {
+      // Standard WordPress returns array directly
+      blogPosts = await blogRes.json();
+    }
     
-    // Diet plans
+    // Diet plans - Returns { status: "success", data: [...] }
     const dietsRes = await fetch(`${apiUrl}/rejimde/v1/plans?per_page=100`, { next: { revalidate: 3600 } });
-    const dietPlans = dietsRes.ok ? await dietsRes.json() : [];
+    let dietPlans = [];
+    if (dietsRes.ok) {
+      const dietsData = await dietsRes.json();
+      // Handle both response formats
+      dietPlans = dietsData.status === 'success' && dietsData.data ? dietsData.data : (Array.isArray(dietsData) ? dietsData : []);
+    }
     
-    // Exercise plans
-    const exercisesRes = await fetch(`${apiUrl}/rejimde/v1/exercise-plans?per_page=100`, { next: { revalidate: 3600 } });
-    const exercisePlans = exercisesRes.ok ? await exercisesRes.json() : [];
+    // Exercise plans - Check lib/api.ts for correct endpoint, skip if not working
+    let exercisePlans: any[] = [];
+    try {
+      const exercisesRes = await fetch(`${apiUrl}/rejimde/v1/exercises?per_page=100`, { next: { revalidate: 3600 } });
+      if (exercisesRes.ok) {
+        const exercisesData = await exercisesRes.json();
+        exercisePlans = exercisesData.status === 'success' && exercisesData.data ? exercisesData.data : (Array.isArray(exercisesData) ? exercisesData : []);
+      }
+    } catch (e) {
+      console.warn('Exercise plans endpoint not available, skipping');
+    }
     
     // Experts
     const expertsRes = await fetch(`${apiUrl}/rejimde/v1/professionals?per_page=100`, { next: { revalidate: 3600 } });
-    const experts = expertsRes.ok ? await expertsRes.json() : [];
+    let experts = [];
+    if (expertsRes.ok) {
+      const expertsData = await expertsRes.json();
+      experts = expertsData.status === 'success' && expertsData.data ? expertsData.data : (Array.isArray(expertsData) ? expertsData : []);
+    }
     
     // Dictionary items
     const dictionaryRes = await fetch(`${apiUrl}/rejimde/v1/dictionary?per_page=100`, { next: { revalidate: 3600 } });
-    const dictionaryItems = dictionaryRes.ok ? await dictionaryRes.json() : [];
+    let dictionaryItems = [];
+    if (dictionaryRes.ok) {
+      const dictionaryData = await dictionaryRes.json();
+      dictionaryItems = dictionaryData.status === 'success' && dictionaryData.data ? dictionaryData.data : (Array.isArray(dictionaryData) ? dictionaryData : []);
+    }
     
     // Circles
     const circlesRes = await fetch(`${apiUrl}/rejimde/v1/circles?per_page=100`, { next: { revalidate: 3600 } });
-    const circles = circlesRes.ok ? await circlesRes.json() : [];
+    let circles = [];
+    if (circlesRes.ok) {
+      const circlesData = await circlesRes.json();
+      circles = circlesData.status === 'success' && circlesData.data ? circlesData.data : (Array.isArray(circlesData) ? circlesData : []);
+    }
 
     const dynamicPages = [
       ...blogPosts.map((post: any) => ({
