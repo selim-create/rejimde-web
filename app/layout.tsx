@@ -49,9 +49,6 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  verification: {
-    google: '', // Add Google Search Console verification code here if available
-  },
 };
 
 // YENİ: Müşteri tarafından sağlanan Client ID
