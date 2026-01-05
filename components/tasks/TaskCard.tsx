@@ -102,8 +102,8 @@ export default function TaskCard({ task, type = 'user' }: TaskCardProps) {
       {/* Stats */}
       <div className="flex justify-between items-center">
         <div className="text-sm">
-          <span className="font-black text-gray-800 dark:text-gray-100">{progress.toLocaleString('tr-TR')}</span>
-          <span className="text-gray-400 dark:text-gray-500 font-bold"> / {target.toLocaleString('tr-TR')}</span>
+          <span className="font-black text-gray-800 dark:text-gray-100">{(progress ?? 0).toLocaleString('tr-TR')}</span>
+          <span className="text-gray-400 dark:text-gray-500 font-bold"> / {(target ?? 1).toLocaleString('tr-TR')}</span>
           <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({percent}%)</span>
         </div>
         
@@ -119,7 +119,7 @@ export default function TaskCard({ task, type = 'user' }: TaskCardProps) {
           {/* Circle Stats */}
           {isCircleTask && circleTask && (
             <div className="text-xs font-bold text-gray-600 dark:text-gray-400">
-              <span className="text-blue-600 dark:text-blue-400">{circleTask.members_contributing}</span> üye katkıda
+              <span className="text-blue-600 dark:text-blue-400">{circleTask.members_contributing ?? 0}</span> üye katkıda
             </div>
           )}
           
@@ -137,7 +137,7 @@ export default function TaskCard({ task, type = 'user' }: TaskCardProps) {
           <div className="flex justify-between items-center text-xs">
             <span className="font-bold text-gray-600 dark:text-gray-400">Senin Katkın:</span>
             <span className="font-black text-blue-600 dark:text-blue-400">
-              {circleTask.my_contribution.toLocaleString('tr-TR')} ({circleTask.my_contribution_percent}%)
+              {(circleTask.my_contribution ?? 0).toLocaleString('tr-TR')} ({circleTask.my_contribution_percent ?? 0}%)
             </span>
           </div>
         </div>
