@@ -14,8 +14,41 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "Rejimde - Sağlık Oyunu Başlasın!",
-  description: "Türkiye'nin en eğlenceli diyet ve spor platformu.",
+  metadataBase: new URL('https://rejimde.com'),
+  title: {
+    default: "Rejimde - Sağlık Oyunu Başlasın!",
+    template: "%s | Rejimde"
+  },
+  description: "Türkiye'nin en eğlenceli diyet ve spor platformu. Uzman diyetisyenler, kişisel antrenörler ve oyunlaştırılmış sağlık deneyimi.",
+  keywords: ["diyet", "fitness", "sağlıklı yaşam", "spor", "beslenme", "kilo verme", "diyetisyen", "personal trainer"],
+  authors: [{ name: "Rejimde" }],
+  creator: "Rejimde",
+  publisher: "Rejimde",
+  openGraph: {
+    type: "website",
+    locale: "tr_TR",
+    url: "https://rejimde.com",
+    title: "Rejimde - Sağlık Oyunu Başlasın!",
+    description: "Türkiye'nin en eğlenceli diyet ve spor platformu. Uzman diyetisyenler, kişisel antrenörler ve oyunlaştırılmış sağlık deneyimi.",
+    siteName: "Rejimde",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Rejimde - Sağlık Oyunu Başlasın!",
+    description: "Türkiye'nin en eğlenceli diyet ve spor platformu.",
+    creator: "@rejimdecom",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 };
 
 // YENİ: Müşteri tarafından sağlanan Client ID
