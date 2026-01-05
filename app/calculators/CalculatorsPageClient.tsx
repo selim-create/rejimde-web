@@ -55,7 +55,12 @@ export default function CalculatorsPageClient() {
                     setAge(calculatedAge > 0 ? calculatedAge : 30);
                 }
                 
-                if (user.activity_level) setActivity(parseFloat(user.activity_level));
+                if (user.activity_level) {
+                    const parsedActivity = parseFloat(user.activity_level);
+                    if (!isNaN(parsedActivity)) {
+                        setActivity(parsedActivity);
+                    }
+                }
             }
         }
     }
@@ -474,8 +479,11 @@ export default function CalculatorsPageClient() {
                         <div>
                             <label className="block text-xs font-black text-gray-400 uppercase mb-2">Aktivite Seviyesi</label>
                             <select 
-                                value={activity} 
-                                onChange={(e) => setActivity(parseFloat(e.target.value))}
+                                value={isNaN(activity) ? 1.2 : activity} 
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    setActivity(isNaN(val) ? 1.2 : val);
+                                }}
                                 className="w-full bg-gray-100 border-2 border-transparent focus:border-rejimde-blue rounded-xl py-3 px-4 font-bold text-gray-600 outline-none cursor-pointer text-sm"
                             >
                                 <option value={1.2}>Hareketsiz (Masa başı)</option>
