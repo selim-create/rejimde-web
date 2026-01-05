@@ -174,7 +174,7 @@ export default function AppointmentModal({ appointment, onClose, onUpdate }: App
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Client Info */}
-          {!isPersonal ? (
+         {! isPersonal && appointment.client ?  (
             <div>
               <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Danışan Bilgileri</h3>
               <div className="flex items-center gap-4">
