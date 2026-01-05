@@ -2190,12 +2190,19 @@ export async function updateCircleSettings(circleId: number, settings: Partial<C
 // Circle Task Management (for mentors to manage tasks within circles)
 export async function getCircleManagedTasks(circleId: number): Promise<CircleTask[]> {
     try {
-        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/tasks/manage`, {
+        const res = await fetch(`${API_URL}/rejimde/v1/circles/${circleId}/tasks`, {
             method: 'GET',
             headers: getAuthHeaders()
         });
         const json = await res.json();
-        if (res.ok) return json;
+        if (res.ok) {
+            // Backend returns { status: 'success', data: [...] }
+            if (json.status === 'success' && json.data) {
+                return json.data;
+            }
+            // Fallback for direct array response
+            return Array.isArray(json) ? json : [];
+        }
         throw new Error(json.message || 'Görevler yüklenemedi');
     } catch (error: any) {
         throw new Error(error.message || 'Hata oluştu');
@@ -2210,7 +2217,14 @@ export async function createCircleTask(circleId: number, task: CreateTaskData): 
             body: JSON.stringify(task)
         });
         const json = await res.json();
-        if (res.ok) return json;
+        if (res.ok) {
+            // Backend returns { status: 'success', data: {...} }
+            if (json.status === 'success' && json.data) {
+                return json.data;
+            }
+            // Fallback for direct object response
+            return json;
+        }
         throw new Error(json.message || 'Görev oluşturulamadı');
     } catch (error: any) {
         throw new Error(error.message || 'Hata oluştu');
@@ -2225,7 +2239,14 @@ export async function updateCircleTask(circleId: number, taskId: string, data: P
             body: JSON.stringify(data)
         });
         const json = await res.json();
-        if (res.ok) return json;
+        if (res.ok) {
+            // Backend returns { status: 'success', data: {...} }
+            if (json.status === 'success' && json.data) {
+                return json.data;
+            }
+            // Fallback for direct object response
+            return json;
+        }
         throw new Error(json.message || 'Görev güncellenemedi');
     } catch (error: any) {
         throw new Error(error.message || 'Hata oluştu');
@@ -2239,7 +2260,10 @@ export async function deleteCircleTask(circleId: number, taskId: string): Promis
             headers: getAuthHeaders()
         });
         const json = await res.json();
-        if (!res.ok) throw new Error(json.message || 'Görev silinemedi');
+        if (!res.ok) {
+            throw new Error(json.message || 'Görev silinemedi');
+        }
+        // Backend returns { status: 'success' } or similar, no need to return data
     } catch (error: any) {
         throw new Error(error.message || 'Hata oluştu');
     }
@@ -2267,7 +2291,14 @@ export async function getCircleMembers(circleId: number): Promise<CircleMember[]
             headers: getAuthHeaders()
         });
         const json = await res.json();
-        if (res.ok) return json;
+        if (res.ok) {
+            // Backend returns { status: 'success', data: [...] }
+            if (json.status === 'success' && json.data) {
+                return json.data;
+            }
+            // Fallback for direct array response
+            return Array.isArray(json) ? json : [];
+        }
         throw new Error(json.message || 'Üyeler yüklenemedi');
     } catch (error: any) {
         throw new Error(error.message || 'Hata oluştu');
