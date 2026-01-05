@@ -351,22 +351,30 @@ export default function CircleDetailPage() {
                     </div>
                     <div className="divide-y divide-gray-100">
                         {circle.members && circle.members.length > 0 ? (
-                            circle.members.map((member: any, index: number) => (
-                                <div key={member.id} className={`flex items-center px-6 py-4 transition ${currentUser && currentUser.id === member.id ? 'bg-green-50/50 border-l-4 border-green-500 pl-5' : 'hover:bg-gray-50'}`}>
-                                    <span className={`font-black w-6 text-lg text-center ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-700' : 'text-gray-300'}`}>{index + 1}</span>
-                                    <div className="relative mr-4 ml-2">
-                                        <img src={member.avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${member.name}`} className={`w-12 h-12 rounded-2xl bg-gray-200 ${currentUser && currentUser.id === member.id ? 'border-2 border-green-500' : ''}`} alt={member.name} />
-                                        {index === 0 && <i className="fa-solid fa-crown text-yellow-500 absolute -top-3 -right-2 text-xl drop-shadow-sm transform rotate-12"></i>}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`font-extrabold ${currentUser && currentUser.id === member.id ? 'text-green-600' : 'text-gray-800'}`}>{currentUser && currentUser.id === member.id ? 'SEN' : member.name}</span>
-                                            {member.id === circle.leader_id && <span className="text-[10px] bg-purple-600 text-white px-1.5 py-0.5 rounded uppercase font-bold">Mentor</span>}
+                            circle.members.map((member: any, index: number) => {
+                                // Check if member is a mentor (rejimde_pro) or has null score
+                                const isMentor = member.id === circle.leader_id || member.score === null || member.score === undefined;
+                                const displayScore = isMentor ? 'Mentor' : `${member.score || 0} Puan Katkı`;
+                                
+                                return (
+                                    <div key={member.id} className={`flex items-center px-6 py-4 transition ${currentUser && currentUser.id === member.id ? 'bg-green-50/50 border-l-4 border-green-500 pl-5' : 'hover:bg-gray-50'}`}>
+                                        <span className={`font-black w-6 text-lg text-center ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-700' : 'text-gray-300'}`}>{index + 1}</span>
+                                        <div className="relative mr-4 ml-2">
+                                            <img src={member.avatar || `https://api.dicebear.com/9.x/personas/svg?seed=${member.name}`} className={`w-12 h-12 rounded-2xl bg-gray-200 ${currentUser && currentUser.id === member.id ? 'border-2 border-green-500' : ''}`} alt={member.name} />
+                                            {index === 0 && !isMentor && <i className="fa-solid fa-crown text-yellow-500 absolute -top-3 -right-2 text-xl drop-shadow-sm transform rotate-12"></i>}
                                         </div>
-                                        <span className="text-xs font-bold text-gray-400">0 Puan Katkı</span>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`font-extrabold ${currentUser && currentUser.id === member.id ? 'text-green-600' : 'text-gray-800'}`}>{currentUser && currentUser.id === member.id ? 'SEN' : member.name}</span>
+                                                {member.id === circle.leader_id && <span className="text-[10px] bg-purple-600 text-white px-1.5 py-0.5 rounded uppercase font-bold">Mentor</span>}
+                                            </div>
+                                            <span className={`text-xs font-bold ${isMentor ? 'text-purple-500' : 'text-gray-400'}`}>
+                                                {displayScore}
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
-                            ))
+                                );
+                            })
                         ) : (
                             <div className="p-8 text-center text-gray-400 font-bold">Henüz üye listesi yüklenemedi.</div>
                         )}
