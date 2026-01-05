@@ -9,6 +9,7 @@ import {
   deleteClientNote, 
   getClientPlans, 
   updateClientPackage,
+  updateClientPackageEndDate,
   getProServices,
   getAppointmentRequests,
   ClientDetail,
@@ -270,10 +271,7 @@ export default function ClientManagementPage({ params }: { params: Promise<{ id:
     }
 
     setAddingPackage(true);
-    const result = await updateClientPackage(clientId, {
-      action: 'update_end_date',
-      end_date: newEndDate
-    });
+    const result = await updateClientPackageEndDate(clientId, newEndDate);
 
     if (result.success) {
       showToast({
