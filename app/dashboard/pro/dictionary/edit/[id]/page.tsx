@@ -240,8 +240,15 @@ export default function EditDictionaryItemPage() {
                         </div>
                     </div>
 
-                    {/* Form fields same as create page - shortened for brevity */}
+                    {/* 2. TEMEL BİLGİLER */}
                     <div className="bg-white border-2 border-gray-200 rounded-[2rem] p-8 shadow-sm">
+                        <div className="flex items-center gap-2 mb-6 border-b-2 border-gray-100 pb-4">
+                            <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeConfig.color.replace('text-', 'bg-').replace('500', '100')} ${activeConfig.color}`}>
+                                <i className={`fa-solid ${activeConfig.icon}`}></i>
+                            </span>
+                            <h3 className="text-lg font-black text-gray-800 uppercase tracking-wide">Terim Detayları</h3>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div className="col-span-2">
                                 <label className="block text-xs font-black text-gray-400 uppercase mb-1">Terim Adı</label>
@@ -254,7 +261,58 @@ export default function EditDictionaryItemPage() {
                                     className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 font-black text-gray-800 text-lg focus:border-indigo-500 outline-none transition"
                                 />
                             </div>
-                            <div className="col-span-2">
+
+                            <div>
+                                <label className="block text-xs font-black text-gray-400 uppercase mb-1">Alternatif İsimler</label>
+                                <input 
+                                    type="text" 
+                                    value={formData.alt_names}
+                                    onChange={e => setFormData({...formData, alt_names: e.target.value})}
+                                    placeholder="Örn: Çömelme"
+                                    className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-600 focus:border-indigo-500 outline-none transition"
+                                />
+                            </div>
+
+                            {/* DİNAMİK ALANLAR */}
+                            {activeConfig.fields.includes('sanskrit_name') && (
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase mb-1">{activeConfig.labels.sanskrit_name}</label>
+                                    <input 
+                                        type="text" 
+                                        value={formData.sanskrit_name}
+                                        onChange={e => setFormData({...formData, sanskrit_name: e.target.value})}
+                                        className="w-full bg-purple-50 border-2 border-purple-100 rounded-xl px-4 py-3 font-bold text-purple-700 focus:border-purple-500 outline-none transition"
+                                    />
+                                </div>
+                            )}
+
+                            {activeConfig.fields.includes('food_group') && (
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase mb-1">{activeConfig.labels.food_group}</label>
+                                    <select 
+                                        value={formData.food_group} 
+                                        onChange={e => setFormData({...formData, food_group: e.target.value})}
+                                        className="w-full bg-green-50 border-2 border-green-100 rounded-xl px-4 py-3 font-bold text-green-700 focus:border-green-500 outline-none transition appearance-none cursor-pointer"
+                                    >
+                                        <option value="">Seçiniz</option>
+                                        {FOOD_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-black text-gray-400 uppercase mb-1">Ana Fayda (Motto)</label>
+                                <input 
+                                    type="text" 
+                                    value={formData.benefit}
+                                    onChange={e => setFormData({...formData, benefit: e.target.value})}
+                                    placeholder="Örn: Tüm vücudu güçlendirir."
+                                    className="w-full bg-yellow-50 border-2 border-yellow-100 rounded-xl px-4 py-3 font-bold text-yellow-700 focus:border-yellow-500 outline-none transition"
+                                />
+                            </div>
+                            <div>
                                 <label className="block text-xs font-black text-gray-400 uppercase mb-1">Detaylı Açıklama</label>
                                 <textarea 
                                     rows={5}
@@ -266,6 +324,165 @@ export default function EditDictionaryItemPage() {
                             </div>
                         </div>
                     </div>
+
+                    {/* 3. MEDYA SEÇİMİ */}
+                    <div className="bg-white border-2 border-gray-200 rounded-[2rem] p-8 shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                            <h3 className="text-lg font-black text-gray-800 uppercase tracking-wide">Medya Ekle</h3>
+                            <div className="bg-gray-100 p-1 rounded-xl flex self-start sm:self-auto">
+                                <button 
+                                    type="button"
+                                    onClick={() => setMediaInputType('video')}
+                                    className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase transition flex items-center gap-2 ${mediaInputType === 'video' ? 'bg-white shadow-sm text-red-500' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    <i className="fa-brands fa-youtube"></i> Video
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setMediaInputType('image_upload')}
+                                    className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase transition flex items-center gap-2 ${mediaInputType === 'image_upload' ? 'bg-white shadow-sm text-indigo-500' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    <i className="fa-solid fa-cloud-arrow-up"></i> Yükle
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setMediaInputType('image_url')}
+                                    className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase transition flex items-center gap-2 ${mediaInputType === 'image_url' ? 'bg-white shadow-sm text-green-500' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    <i className="fa-solid fa-link"></i> Link
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Video Input */}
+                        {mediaInputType === 'video' && (
+                            <div className="space-y-4 animate-in fade-in">
+                                <div className="flex gap-2">
+                                    <div className="w-12 h-12 bg-red-100 text-red-500 rounded-xl flex items-center justify-center text-xl shrink-0">
+                                        <i className="fa-brands fa-youtube"></i>
+                                    </div>
+                                    <input 
+                                        type="text" 
+                                        value={formData.video_url}
+                                        onChange={e => setFormData({...formData, video_url: e.target.value})}
+                                        placeholder="Youtube Video ID (Örn: dQw4w9WgXcQ)"
+                                        className="flex-1 bg-gray-50 border-2 border-gray-200 rounded-xl px-4 font-mono text-gray-600 focus:border-red-400 outline-none transition"
+                                    />
+                                </div>
+                                {formData.video_url && (
+                                    <div className="rounded-xl overflow-hidden shadow-md aspect-video">
+                                        <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${formData.video_url}`} allowFullScreen className="border-0"></iframe>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Image Upload Input */}
+                        {mediaInputType === 'image_upload' && (
+                            <div className="animate-in fade-in">
+                                <div 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="border-4 border-dashed border-gray-200 rounded-2xl p-8 text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50 transition group relative"
+                                >
+                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                                    
+                                    {formData.image_url && !formData.video_url ? (
+                                        <div className="relative h-64 w-full">
+                                            <img src={formData.image_url} className="w-full h-full object-contain rounded-xl" alt="Preview" />
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-xl">
+                                                <span className="text-white font-bold"><i className="fa-solid fa-pen mr-2"></i> Değiştir</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="py-8">
+                                            <i className="fa-solid fa-cloud-arrow-up text-4xl text-gray-300 mb-3 group-hover:text-indigo-400 transition"></i>
+                                            <p className="text-gray-500 font-bold">Görsel Yüklemek İçin Tıkla</p>
+                                            <p className="text-xs text-gray-400 mt-1">İllüstrasyon veya fotoğraf (Max 2MB)</p>
+                                        </div>
+                                    )}
+                                    {uploading && (
+                                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+                                            <p className="text-indigo-500 font-bold animate-pulse">Yükleniyor...</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Image URL Input */}
+                        {mediaInputType === 'image_url' && (
+                            <div className="space-y-4 animate-in fade-in">
+                                <div className="flex gap-2">
+                                    <div className="w-12 h-12 bg-green-100 text-green-500 rounded-xl flex items-center justify-center text-xl shrink-0">
+                                        <i className="fa-solid fa-link"></i>
+                                    </div>
+                                    <input 
+                                        type="text" 
+                                        value={formData.image_url}
+                                        onChange={e => setFormData({...formData, image_url: e.target.value, video_url: ''})} // Link girilince videoyu temizle
+                                        placeholder="https://ornek-gorsel-linki.com/resim.jpg"
+                                        className="flex-1 bg-gray-50 border-2 border-gray-200 rounded-xl px-4 font-mono text-gray-600 focus:border-green-400 outline-none transition"
+                                    />
+                                </div>
+                                {formData.image_url && !formData.video_url && (
+                                    <div className="rounded-xl overflow-hidden shadow-md h-64 bg-gray-100 relative">
+                                        <img src={formData.image_url} className="w-full h-full object-contain" alt="Preview" />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 4. ETİKETLER */}
+                    {(activeConfig.fields.includes('muscles') || activeConfig.fields.includes('equipment')) && (
+                        <div className="bg-white border-2 border-gray-200 rounded-[2rem] p-8 shadow-sm">
+                            <h3 className="text-lg font-black text-gray-800 uppercase tracking-wide mb-6">Etiketler</h3>
+                            
+                            {activeConfig.fields.includes('muscles') && (
+                                <div className="mb-6">
+                                    <label className="block text-xs font-black text-gray-400 uppercase mb-2">{activeConfig.labels.muscles || 'Kas Grupları'}</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {MUSCLE_GROUPS.map(muscle => (
+                                            <button
+                                                type="button"
+                                                key={muscle}
+                                                onClick={() => toggleSelection('muscles', muscle)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ${
+                                                    formData.muscles.includes(muscle) 
+                                                    ? 'bg-red-500 text-white border-red-500 shadow-sm' 
+                                                    : 'bg-white text-gray-500 border-gray-200 hover:border-red-300'
+                                                }`}
+                                            >
+                                                {muscle}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeConfig.fields.includes('equipment') && (
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase mb-2">{activeConfig.labels.equipment || 'Ekipman'}</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {EQUIPMENTS.map(eq => (
+                                            <button
+                                                type="button"
+                                                key={eq}
+                                                onClick={() => toggleSelection('equipment', eq)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ${
+                                                    formData.equipment.includes(eq) 
+                                                    ? 'bg-blue-500 text-white border-blue-500 shadow-sm' 
+                                                    : 'bg-white text-gray-500 border-gray-200 hover:border-blue-300'
+                                                }`}
+                                            >
+                                                {eq}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* SUBMIT */}
                     <div className="pt-4 border-t-2 border-gray-100">
