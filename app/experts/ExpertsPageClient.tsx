@@ -17,6 +17,37 @@ const formatTrend = (trend: number | string | undefined | null): string => {
     return `${prefix}${numTrend}%`;
 };
 
+// Helper function: Get smart pagination page numbers with ellipsis
+const getPageNumbers = (currentPage: number, totalPages: number): (number | string)[] => {
+  const pages: (number | string)[] = [];
+  const delta = 2; // Aktif sayfanın her iki yanında gösterilecek sayfa sayısı
+  
+  // Her zaman ilk sayfayı ekle
+  pages.push(1);
+  
+  // Sol ellipsis gerekli mi?
+  if (currentPage - delta > 2) {
+    pages.push('...');
+  }
+  
+  // Aktif sayfa etrafındaki sayfalar
+  for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+    pages.push(i);
+  }
+  
+  // Sağ ellipsis gerekli mi?
+  if (currentPage + delta < totalPages - 1) {
+    pages.push('...');
+  }
+  
+  // Her zaman son sayfayı ekle (eğer birden fazla sayfa varsa)
+  if (totalPages > 1) {
+    pages.push(totalPages);
+  }
+  
+  return pages;
+};
+
 export default function ExpertsPageClient() {
   const [experts, setExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,13 +171,20 @@ export default function ExpertsPageClient() {
 
       // 2. Meslek Filtresi (Tablar)
       if (selectedProfession !== 'all') {
-          // Backend'den gelen 'type' veya 'profession' alanını kontrol et
-          // Eğer 'other' seçildiyse ana kategoriler dışındakileri getir
-          if (selectedProfession === 'other') {
-              const mainProfessions = ['dietitian', 'pt', 'yoga'];
-              if (mainProfessions.includes(expert.type)) return false;
-          } else {
-              if (expert.type !== selectedProfession) return false;
+          // Seçilen kategoriyi bul
+          const selectedCategory = PROFESSION_CATEGORIES.find(cat => cat.id === selectedProfession);
+          
+          if (selectedCategory) {
+              // Bu kategorideki tüm meslek ID'lerini al
+              const categoryProfessionIds = selectedCategory.items.map(item => item.id);
+              
+              // Uzmanın mesleği bu kategoride mi kontrol et
+              const expertProfession = (expert.type || expert.profession || '').toLowerCase();
+              const matchesCategory = categoryProfessionIds.some(id => 
+                  expertProfession === id || expertProfession.includes(id)
+              );
+              
+              if (!matchesCategory) return false;
           }
       }
 
@@ -230,21 +268,28 @@ export default function ExpertsPageClient() {
                 
                 {/* Profession Tabs */}
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                    <button onClick={() => setSelectedProfession('all')} className={`px-4 py-2 rounded-xl font-extrabold text-sm shadow-btn btn-game flex items-center gap-2 transition ${selectedProfession === 'all' ? 'bg-rejimde-text text-white shadow-gray-800' : 'bg-white border-2 border-gray-200 text-gray-500 shadow-gray-200'}`}>
+                    <button 
+                        onClick={() => setSelectedProfession('all')} 
+                        className={`px-4 py-2 rounded-xl font-extrabold text-sm shadow-btn btn-game flex items-center gap-2 transition ${
+                            selectedProfession === 'all' ? 'bg-rejimde-green text-white shadow-rejimde-greenDark' : 'bg-white text-gray-500 border-2 border-gray-200'
+                        }`}
+                    >
                         <i className="fa-solid fa-filter"></i> Tümü
                     </button>
-                    <button onClick={() => setSelectedProfession('dietitian')} className={`px-4 py-2 rounded-xl font-extrabold text-sm shadow-btn btn-game transition ${selectedProfession === 'dietitian' ? 'bg-rejimde-green text-white shadow-rejimde-greenDark' : 'bg-white border-2 border-gray-200 text-gray-500 hover:text-rejimde-green hover:border-rejimde-green'}`}>
-                        🥦 Diyetisyen
-                    </button>
-                    <button onClick={() => setSelectedProfession('pt')} className={`px-4 py-2 rounded-xl font-extrabold text-sm shadow-btn btn-game transition ${selectedProfession === 'pt' ? 'bg-rejimde-blue text-white shadow-rejimde-blueDark' : 'bg-white border-2 border-gray-200 text-gray-500 hover:text-rejimde-blue hover:border-rejimde-blue'}`}>
-                        🏋️ PT / Koç
-                    </button>
-                    <button onClick={() => setSelectedProfession('yoga')} className={`px-4 py-2 rounded-xl font-extrabold text-sm shadow-btn btn-game transition ${selectedProfession === 'yoga' ? 'bg-rejimde-purple text-white shadow-purple-800' : 'bg-white border-2 border-gray-200 text-gray-500 hover:text-rejimde-purple hover:border-rejimde-purple'}`}>
-                        🧘 Yoga / Pilates
-                    </button>
-                    <button onClick={() => setSelectedProfession('other')} className={`px-4 py-2 rounded-xl font-extrabold text-sm shadow-btn btn-game transition ${selectedProfession === 'other' ? 'bg-gray-600 text-white shadow-gray-800' : 'bg-white border-2 border-gray-200 text-gray-500 hover:text-gray-600 hover:border-gray-600'}`}>
-                        ✨ Diğer
-                    </button>
+                    
+                    {PROFESSION_CATEGORIES.map((category) => (
+                        <button 
+                            key={category.id}
+                            onClick={() => setSelectedProfession(category.id)} 
+                            className={`px-4 py-2 rounded-xl font-extrabold text-sm shadow-btn btn-game transition ${
+                                selectedProfession === category.id 
+                                ? `bg-${category.theme}-500 text-white shadow-${category.theme}-700` 
+                                : 'bg-white text-gray-500 border-2 border-gray-200 hover:bg-gray-50'
+                            }`}
+                        >
+                            <i className={`fa-solid ${category.icon} mr-1`}></i> {category.title}
+                        </button>
+                    ))}
                 </div>
 
                 {/* Search Bar */}
@@ -445,37 +490,44 @@ export default function ExpertsPageClient() {
             
             {/* PAGINATION */}
             {!loading && pagination.total_pages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-8">
+                <div className="flex justify-center items-center gap-2 mt-8 flex-wrap">
+                    {/* Önceki Butonu */}
                     <button 
-                        onClick={() => handlePageChange(Math.max(pagination.current_page - 1, 1))}
+                        onClick={() => handlePageChange(pagination.current_page - 1)}
                         disabled={pagination.current_page === 1}
                         className="px-4 py-2 rounded-xl font-bold text-sm border-2 border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
-                        <i className="fa-solid fa-chevron-left"></i>
+                        <i className="fa-solid fa-chevron-left mr-1"></i> Önceki
                     </button>
                     
-                    <div className="flex gap-2">
-                        {Array.from({ length: pagination.total_pages }, (_, i) => i + 1).map((pageNum) => (
-                            <button
-                                key={pageNum}
-                                onClick={() => handlePageChange(pageNum)}
-                                className={`px-4 py-2 rounded-xl font-bold text-sm border-2 transition ${
-                                    pagination.current_page === pageNum 
-                                    ? 'bg-rejimde-blue text-white border-rejimde-blue shadow-btn shadow-rejimde-blueDark' 
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                }`}
-                            >
-                                {pageNum}
-                            </button>
+                    {/* Sayfa Numaraları */}
+                    <div className="flex gap-1">
+                        {getPageNumbers(pagination.current_page, pagination.total_pages).map((pageNum, index) => (
+                            pageNum === '...' ? (
+                                <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-400 font-bold">...</span>
+                            ) : (
+                                <button
+                                    key={pageNum}
+                                    onClick={() => handlePageChange(pageNum as number)}
+                                    className={`min-w-[40px] px-3 py-2 rounded-xl font-bold text-sm border-2 transition ${
+                                        pagination.current_page === pageNum 
+                                        ? 'bg-rejimde-blue text-white border-rejimde-blue shadow-btn shadow-rejimde-blueDark' 
+                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {pageNum}
+                                </button>
+                            )
                         ))}
                     </div>
                     
+                    {/* Sonraki Butonu */}
                     <button 
-                        onClick={() => handlePageChange(Math.min(pagination.current_page + 1, pagination.total_pages))}
+                        onClick={() => handlePageChange(pagination.current_page + 1)}
                         disabled={pagination.current_page === pagination.total_pages}
                         className="px-4 py-2 rounded-xl font-bold text-sm border-2 border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
-                        <i className="fa-solid fa-chevron-right"></i>
+                        Sonraki <i className="fa-solid fa-chevron-right ml-1"></i>
                     </button>
                 </div>
             )}
