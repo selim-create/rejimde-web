@@ -17,7 +17,7 @@ export default function ProEarningsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-3"><HelpSidebar /></div>
           <div className="lg:col-span-6">
-            <HelpArticle title="Gelir Yönetimi" description="Kazandığın parayi takip et, ödemeleri yönet ve gelir raporlarını incele." lastUpdated="8 Ocak 2026">
+            <HelpArticle title="Gelir Yönetimi" description="Kazandığın parayı takip et, ödemeleri yönet ve gelir raporlarını incele." lastUpdated="8 Ocak 2026">
               <section className="mb-8">
                 <h2 className="text-2xl font-black text-gray-800 mb-4">Bakiye ve Kazançlar</h2>
                 <p className="mb-4">Uzman Panelindeki "Gelirlerim" bölümünden tüm kazançlarını görebilirsin:</p>

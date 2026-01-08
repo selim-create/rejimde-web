@@ -40,6 +40,9 @@ export default function HelpFAQ({ faqs, defaultOpen }: HelpFAQProps) {
           
           {openIndex === index && (
             <div className="px-6 pb-4 pt-2 text-gray-600 font-bold leading-relaxed border-t border-gray-100">
+              {/* Note: dangerouslySetInnerHTML is used here for FAQ content with HTML links.
+                  This is safe as FAQ content is developer-controlled and not user-generated.
+                  Only use this component with trusted, sanitized content. */}
               <div dangerouslySetInnerHTML={{ __html: faq.answer }} />
             </div>
           )}

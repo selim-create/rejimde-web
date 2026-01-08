@@ -11,13 +11,13 @@ export const metadata: Metadata = {
 
 export default function LevelsPage() {
   const levels = [
-    { name: 'BEGIN', range: '0-200', color: 'gray', icon: '🌱' },
-    { name: 'ADAPT', range: '200-300', color: 'blue', icon: '🌿' },
-    { name: 'GROW', range: '300-400', color: 'green', icon: '🌳' },
-    { name: 'PUSH', range: '400-600', color: 'yellow', icon: '⚡' },
-    { name: 'PEAK', range: '600-800', color: 'orange', icon: '🔥' },
-    { name: 'MASTER', range: '800-1000', color: 'red', icon: '👑' },
-    { name: 'TRANSFORM', range: '1000+', color: 'purple', icon: '🏆' }
+    { name: 'BEGIN', range: '0-200', color: 'gray', icon: '🌱', bgClass: 'bg-gradient-to-r from-gray-50 to-white', borderClass: 'border-gray-200', badgeBg: 'bg-gray-100', badgeText: 'text-gray-700' },
+    { name: 'ADAPT', range: '200-300', color: 'blue', icon: '🌿', bgClass: 'bg-gradient-to-r from-blue-50 to-white', borderClass: 'border-blue-200', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700' },
+    { name: 'GROW', range: '300-400', color: 'green', icon: '🌳', bgClass: 'bg-gradient-to-r from-green-50 to-white', borderClass: 'border-green-200', badgeBg: 'bg-green-100', badgeText: 'text-green-700' },
+    { name: 'PUSH', range: '400-600', color: 'yellow', icon: '⚡', bgClass: 'bg-gradient-to-r from-yellow-50 to-white', borderClass: 'border-yellow-200', badgeBg: 'bg-yellow-100', badgeText: 'text-yellow-700' },
+    { name: 'PEAK', range: '600-800', color: 'orange', icon: '🔥', bgClass: 'bg-gradient-to-r from-orange-50 to-white', borderClass: 'border-orange-200', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700' },
+    { name: 'MASTER', range: '800-1000', color: 'red', icon: '👑', bgClass: 'bg-gradient-to-r from-red-50 to-white', borderClass: 'border-red-200', badgeBg: 'bg-red-100', badgeText: 'text-red-700' },
+    { name: 'TRANSFORM', range: '1000+', color: 'purple', icon: '🏆', bgClass: 'bg-gradient-to-r from-purple-50 to-white', borderClass: 'border-purple-200', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700' }
   ];
 
   return (
@@ -46,7 +46,7 @@ export default function LevelsPage() {
 
                 <div className="space-y-4">
                   {levels.map((level, index) => (
-                    <div key={index} className={`bg-gradient-to-r from-${level.color}-50 to-white border-2 border-${level.color}-200 rounded-2xl p-5 hover:shadow-lg transition`}>
+                    <div key={index} className={`${level.bgClass} border-2 ${level.borderClass} rounded-2xl p-5 hover:shadow-lg transition`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <span className="text-4xl">{level.icon}</span>
@@ -55,7 +55,7 @@ export default function LevelsPage() {
                             <p className="text-sm font-bold text-gray-600">{level.range} Puan</p>
                           </div>
                         </div>
-                        <div className={`bg-${level.color}-100 text-${level.color}-700 px-4 py-2 rounded-xl font-black text-xs uppercase`}>
+                        <div className={`${level.badgeBg} ${level.badgeText} px-4 py-2 rounded-xl font-black text-xs uppercase`}>
                           Level {index + 1}
                         </div>
                       </div>
