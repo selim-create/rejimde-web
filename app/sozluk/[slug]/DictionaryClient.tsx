@@ -304,6 +304,16 @@ export default function DictionaryDetailPage() {
                          </button>
                     </div>
 
+                    {/* Edit Button - Only for authorized users */}
+                    {currentUser && (currentUser.role === 'rejimde_pro' || currentUser.role === 'administrator' || currentUser.id === item?.author_id) && (
+                        <Link 
+                            href={`/dashboard/pro/dictionary/edit/${item.id}`}
+                            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-extrabold text-xs uppercase hover:bg-indigo-700 transition flex items-center justify-center gap-2"
+                        >
+                            <i className="fa-solid fa-pen-to-square"></i> Düzenle
+                        </Link>
+                    )}
+
                 </div>
 
             </div>

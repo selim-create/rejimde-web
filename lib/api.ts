@@ -2371,6 +2371,17 @@ export async function getDictionaryItem(slug: string) {
     }
 }
 
+// Get dictionary item by ID (for editing)
+export async function getDictionaryItemById(id: string | number) {
+    try {
+        const data = await fetchAPI(`/rejimde/v1/dictionary/${id}`);
+        return data;
+    } catch (error) {
+        console.error("Terim detayı çekilemedi", error);
+        return null;
+    }
+}
+
 // YENİ: Sözlük Terimi Oluştur
 export async function createDictionaryItem(data: any) {
     try {
@@ -2802,6 +2813,7 @@ export const auth = {
     requestService,       // Service Requests
     getDictionaryItems,   // Dictionary
     getDictionaryItem,
+    getDictionaryItemById,
     createDictionaryItem,
     updateDictionaryItem,
     deleteDictionaryItem,
