@@ -295,6 +295,7 @@ export default function Home() {
                     <p className="text-gray-500 font-bold">Bu hafta rekabet çok kızışmalı!</p>
                 </div>
 
+                {/* Grid layout: 4 columns on desktop to fit 3 top circles + "Tüm Sıralama" button on same row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {topClans.length > 0 ? topClans.map((clan, index) => (
                         <Link key={clan.id} href={`/clans/${clan.slug}`} className="bg-white rounded-3xl p-6 shadow-sm border-b-4 border-gray-200 hover:border-purple-500 hover:-translate-y-1 transition group relative overflow-hidden">
