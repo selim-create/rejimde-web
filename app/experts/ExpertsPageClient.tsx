@@ -22,6 +22,11 @@ const getPageNumbers = (currentPage: number, totalPages: number): (number | stri
   const pages: (number | string)[] = [];
   const delta = 2; // Aktif sayfanın her iki yanında gösterilecek sayfa sayısı
   
+  // Tek sayfa varsa sadece onu döndür
+  if (totalPages === 1) {
+    return [1];
+  }
+  
   // Her zaman ilk sayfayı ekle
   pages.push(1);
   
@@ -40,10 +45,8 @@ const getPageNumbers = (currentPage: number, totalPages: number): (number | stri
     pages.push('...');
   }
   
-  // Her zaman son sayfayı ekle (eğer birden fazla sayfa varsa)
-  if (totalPages > 1) {
-    pages.push(totalPages);
-  }
+  // Her zaman son sayfayı ekle
+  pages.push(totalPages);
   
   return pages;
 };
@@ -255,6 +258,39 @@ export default function ExpertsPageClient() {
       }
   };
 
+  // Helper function: Get Tailwind classes for profession category theme
+  const getCategoryClasses = (theme: string, isActive: boolean) => {
+      const themeClasses: Record<string, { active: string; inactive: string }> = {
+          green: {
+              active: 'bg-green-500 text-white shadow-green-700',
+              inactive: 'bg-white text-gray-500 border-2 border-gray-200 hover:bg-gray-50'
+          },
+          blue: {
+              active: 'bg-blue-500 text-white shadow-blue-700',
+              inactive: 'bg-white text-gray-500 border-2 border-gray-200 hover:bg-gray-50'
+          },
+          teal: {
+              active: 'bg-teal-500 text-white shadow-teal-700',
+              inactive: 'bg-white text-gray-500 border-2 border-gray-200 hover:bg-gray-50'
+          },
+          purple: {
+              active: 'bg-purple-500 text-white shadow-purple-700',
+              inactive: 'bg-white text-gray-500 border-2 border-gray-200 hover:bg-gray-50'
+          },
+          red: {
+              active: 'bg-red-500 text-white shadow-red-700',
+              inactive: 'bg-white text-gray-500 border-2 border-gray-200 hover:bg-gray-50'
+          },
+          orange: {
+              active: 'bg-orange-500 text-white shadow-orange-700',
+              inactive: 'bg-white text-gray-500 border-2 border-gray-200 hover:bg-gray-50'
+          }
+      };
+      
+      const classes = themeClasses[theme] || themeClasses.green;
+      return isActive ? classes.active : classes.inactive;
+  };
+
   return (
     <div className="min-h-screen pb-20 font-sans text-rejimde-text">
       
@@ -282,9 +318,7 @@ export default function ExpertsPageClient() {
                             key={category.id}
                             onClick={() => setSelectedProfession(category.id)} 
                             className={`px-4 py-2 rounded-xl font-extrabold text-sm shadow-btn btn-game transition ${
-                                selectedProfession === category.id 
-                                ? `bg-${category.theme}-500 text-white shadow-${category.theme}-700` 
-                                : 'bg-white text-gray-500 border-2 border-gray-200 hover:bg-gray-50'
+                                getCategoryClasses(category.theme, selectedProfession === category.id)
                             }`}
                         >
                             <i className={`fa-solid ${category.icon} mr-1`}></i> {category.title}

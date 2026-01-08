@@ -130,7 +130,7 @@ export default function DictionaryDetailPage() {
       if (!currentUser || !item) return false;
       
       // Rol kontrolü - farklı formatları destekle
-      const userRoles = currentUser.roles || [currentUser.role] || [];
+      const userRoles = currentUser.roles || (currentUser.role ? [currentUser.role] : []);
       const isAdmin = userRoles.includes('administrator') || currentUser.role === 'administrator';
       const isPro = userRoles.includes('rejimde_pro') || currentUser.role === 'rejimde_pro';
       
