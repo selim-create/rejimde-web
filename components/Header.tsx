@@ -176,6 +176,13 @@ export default function Header() {
             <Link href="/leagues" className={`flex items-center gap-2 px-4 py-2 rounded-xl font-extrabold text-sm uppercase tracking-wide transition-all duration-200 ${isActive('/leagues') ? 'bg-rejimde-yellow text-white shadow-md shadow-yellow-200 transform scale-105' : 'text-rejimde-yellowDark bg-yellow-50 border border-yellow-100 hover:bg-yellow-100'}`}>
               <i className="fa-solid fa-trophy text-lg"></i> Levels
             </Link>
+            
+            <div className="flex-1"></div>
+            
+            <Link href="/help" className={`flex items-center gap-2 px-4 py-2 rounded-xl font-extrabold text-sm uppercase tracking-wide group transition-all duration-200 ${isActive('/help') ? 'bg-blue-50 text-rejimde-blue shadow-inner' : 'text-gray-400 hover:bg-blue-50 hover:text-rejimde-blue'}`}>
+              <i className={`fa-solid fa-circle-question text-lg transition ${isActive('/help') ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}></i>
+              Yardım
+            </Link>
           </nav>
 
           {/* 3. ACTIONS */}
@@ -335,6 +342,11 @@ export default function Header() {
             <Link href="/leagues" className="block px-4 py-3 rounded-xl font-extrabold text-rejimde-yellowDark bg-yellow-50 border border-yellow-100 flex items-center shadow-sm" onClick={() => setIsMobileMenuOpen(false)}>
                 <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-rejimde-yellow mr-3 shadow-sm"><i className="fa-solid fa-trophy"></i></div>
                 Rejimde Levels
+            </Link>
+            
+            <Link href="/help" className="block px-4 py-3 rounded-xl font-extrabold text-gray-600 bg-gray-50 border border-gray-100 hover:bg-blue-50 hover:text-rejimde-blue hover:border-blue-200 transition flex items-center" onClick={() => setIsMobileMenuOpen(false)}>
+                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-gray-400 mr-3 shadow-sm"><i className="fa-solid fa-circle-question"></i></div>
+                Yardım & Destek
             </Link>
           </div>
           
