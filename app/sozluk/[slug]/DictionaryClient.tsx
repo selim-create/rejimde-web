@@ -125,6 +125,21 @@ export default function DictionaryDetailPage() {
       }
   };
 
+  // Helper function: Check if user can edit dictionary entry
+  const canEditDictionary = () => {
+      if (!currentUser || !item) return false;
+      
+      // Rol kontrolü - farklı formatları destekle
+      const userRoles = currentUser.roles || (currentUser.role ? [currentUser.role] : []);
+      const isAdmin = userRoles.includes('administrator');
+      const isPro = userRoles.includes('rejimde_pro');
+      
+      // Yazar kontrolü
+      const isAuthor = currentUser.id === item.author_id || currentUser.id === item.author?.id;
+      
+      return isAdmin || isPro || isAuthor;
+  };
+
   if (loading) return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600"></div>
@@ -305,7 +320,7 @@ export default function DictionaryDetailPage() {
                     </div>
 
                     {/* Edit Button - Only for authorized users */}
-                    {currentUser && (currentUser.role === 'rejimde_pro' || currentUser.role === 'administrator' || currentUser.id === item?.author_id) && (
+                    {canEditDictionary() && (
                         <Link 
                             href={`/dashboard/pro/dictionary/edit/${item.id}`}
                             className="w-full bg-indigo-600 text-white py-3 rounded-xl font-extrabold text-xs uppercase hover:bg-indigo-700 transition flex items-center justify-center gap-2"
