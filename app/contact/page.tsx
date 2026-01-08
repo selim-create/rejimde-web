@@ -1,8 +1,72 @@
 "use client";
 
+import { useState, FormEvent } from "react";
 import MascotDisplay from "@/components/MascotDisplay";
 
 export default function ContactPage() {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    subject: "Genel Sorular",
+    message: ""
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus(null);
+
+    // Basic validation
+    if (!formData.name || !formData.email || !formData.message) {
+      setSubmitStatus({
+        type: 'error',
+        message: 'Lütfen tüm alanları doldurunuz.'
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSubmitStatus({
+          type: 'success',
+          message: data.message
+        });
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          subject: "Genel Sorular",
+          message: ""
+        });
+      } else {
+        setSubmitStatus({
+          type: 'error',
+          message: data.error || 'Bir hata oluştu.'
+        });
+      }
+    } catch (error) {
+      setSubmitStatus({
+        type: 'error',
+        message: 'Bağlantı hatası. Lütfen tekrar deneyiniz.'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen pb-20 font-sans text-rejimde-text bg-[#f7f7f7]">
       
@@ -48,21 +112,52 @@ export default function ContactPage() {
 
             {/* Right: Form */}
             <div className="w-full md:w-3/5 p-10 bg-white">
-                <form className="space-y-6">
+                {submitStatus && (
+                  <div className={`mb-6 p-4 rounded-xl border-2 ${
+                    submitStatus.type === 'success' 
+                      ? 'bg-green-50 border-green-200 text-green-700' 
+                      : 'bg-red-50 border-red-200 text-red-700'
+                  }`}>
+                    <div className="flex items-center gap-2 font-bold">
+                      <i className={`fa-solid ${submitStatus.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i>
+                      {submitStatus.message}
+                    </div>
+                  </div>
+                )}
+                
+                <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-xs font-black text-gray-400 uppercase mb-2">Adın</label>
-                            <input type="text" className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-700 focus:border-rejimde-blue outline-none transition" placeholder="Ali Veli" />
+                            <input 
+                              type="text" 
+                              value={formData.name}
+                              onChange={(e) => setFormData({...formData, name: e.target.value})}
+                              className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-700 focus:border-rejimde-blue outline-none transition" 
+                              placeholder="Ali Veli"
+                              required
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-black text-gray-400 uppercase mb-2">E-posta</label>
-                            <input type="email" className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-700 focus:border-rejimde-blue outline-none transition" placeholder="ali@ornek.com" />
+                            <input 
+                              type="email" 
+                              value={formData.email}
+                              onChange={(e) => setFormData({...formData, email: e.target.value})}
+                              className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-700 focus:border-rejimde-blue outline-none transition" 
+                              placeholder="ali@ornek.com"
+                              required
+                            />
                         </div>
                     </div>
                     
                     <div>
                         <label className="block text-xs font-black text-gray-400 uppercase mb-2">Konu</label>
-                        <select className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-700 focus:border-rejimde-blue outline-none transition cursor-pointer">
+                        <select 
+                          value={formData.subject}
+                          onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                          className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-700 focus:border-rejimde-blue outline-none transition cursor-pointer"
+                        >
                             <option>Genel Sorular</option>
                             <option>Uzmanlık Başvurusu</option>
                             <option>Teknik Destek</option>
@@ -72,11 +167,21 @@ export default function ContactPage() {
 
                     <div>
                         <label className="block text-xs font-black text-gray-400 uppercase mb-2">Mesajın</label>
-                        <textarea className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-700 focus:border-rejimde-blue outline-none transition h-32 resize-none" placeholder="Nasıl yardımcı olabiliriz?"></textarea>
+                        <textarea 
+                          value={formData.message}
+                          onChange={(e) => setFormData({...formData, message: e.target.value})}
+                          className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-gray-700 focus:border-rejimde-blue outline-none transition h-32 resize-none" 
+                          placeholder="Nasıl yardımcı olabiliriz?"
+                          required
+                        ></textarea>
                     </div>
 
-                    <button className="w-full bg-rejimde-blue text-white py-4 rounded-xl font-extrabold text-lg shadow-btn shadow-rejimde-blueDark btn-game uppercase tracking-wide">
-                        Gönder
+                    <button 
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-rejimde-blue text-white py-4 rounded-xl font-extrabold text-lg shadow-btn shadow-rejimde-blueDark btn-game uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? 'Gönderiliyor...' : 'Gönder'}
                     </button>
                 </form>
             </div>
