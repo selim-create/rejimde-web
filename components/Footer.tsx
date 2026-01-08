@@ -39,6 +39,7 @@ export default function Footer() {
             <h5 className="font-extrabold text-gray-700 uppercase tracking-wide text-sm mb-4">Kurumsal</h5>
             <ul className="space-y-3">
               <li><Link href="/about" className="text-gray-500 font-bold hover:text-rejimde-blue transition block hover:translate-x-1 duration-200">Hakkımızda</Link></li>
+              <li><Link href="/help" className="text-gray-500 font-bold hover:text-rejimde-blue transition block hover:translate-x-1 duration-200">Yardım & Destek</Link></li>
               <li><Link href="/register/pro" className="text-gray-500 font-bold hover:text-rejimde-blue transition block hover:translate-x-1 duration-200">Uzman Başvurusu</Link></li>
               <li><Link href="/contact" className="text-gray-500 font-bold hover:text-rejimde-blue transition block hover:translate-x-1 duration-200">İletişim</Link></li>
               <li><Link href="/privacy" className="text-gray-500 font-bold hover:text-rejimde-blue transition block hover:translate-x-1 duration-200">KVKK ve Gizlilik</Link></li>
