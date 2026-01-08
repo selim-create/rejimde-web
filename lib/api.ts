@@ -713,7 +713,11 @@ export function logoutUser() {
  */
 export async function getExperts(filterType?: string) {
   try {
-      const data = await fetchAPI('/rejimde/v1/professionals');
+      const response = await fetchAPI('/rejimde/v1/professionals');
+      
+      // Yeni API formatı: { data: [], pagination: {} } veya eski format: []
+      const data = response?.data || (Array.isArray(response) ? response : []);
+      
       // @ts-ignore
       let experts = data.map((item: any) => ({
         id: item.id,
