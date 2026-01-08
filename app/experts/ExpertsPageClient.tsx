@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import ExpertCard from "@/components/ExpertCard";
-import { getExperts } from "@/lib/api"; 
 import { Expert } from "@/types"; 
 import MascotDisplay from "@/components/MascotDisplay";
 import { CITIES } from "@/lib/locations";
@@ -21,7 +20,6 @@ const formatTrend = (trend: number | string | undefined | null): string => {
 export default function ExpertsPageClient() {
   const [experts, setExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [userRole, setUserRole] = useState("");
 
   // FİLTRE STATE'LERİ
@@ -107,7 +105,6 @@ export default function ExpertsPageClient() {
       }
     } catch (err) {
       console.error("Uzmanlar yüklenirken hata:", err);
-      setError("Uzman listesi şu an alınamıyor.");
     } finally {
       setLoading(false);
     }
@@ -206,6 +203,7 @@ export default function ExpertsPageClient() {
     if (!loading) {
       fetchExperts(1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, selectedProfession, selectedCity, selectedDistrict, consultationType]);
 
   // Seçilen şehre göre ilçeleri bul

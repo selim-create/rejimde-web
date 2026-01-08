@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import LayoutWrapper from '@/components/LayoutWrapper';
 import { auth } from '@/lib/api';
 
 export default function CirclesPageClient() {
