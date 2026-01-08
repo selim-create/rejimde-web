@@ -131,8 +131,8 @@ export default function DictionaryDetailPage() {
       
       // Rol kontrolü - farklı formatları destekle
       const userRoles = currentUser.roles || (currentUser.role ? [currentUser.role] : []);
-      const isAdmin = userRoles.includes('administrator') || currentUser.role === 'administrator';
-      const isPro = userRoles.includes('rejimde_pro') || currentUser.role === 'rejimde_pro';
+      const isAdmin = userRoles.includes('administrator');
+      const isPro = userRoles.includes('rejimde_pro');
       
       // Yazar kontrolü
       const isAuthor = currentUser.id === item.author_id || currentUser.id === item.author?.id;

@@ -35,7 +35,7 @@ const getPageNumbers = (currentPage: number, totalPages: number): (number | stri
     pages.push('...');
   }
   
-  // Aktif sayfa etrafındaki sayfalar
+  // Aktif sayfa etrafındaki sayfalar (2'den totalPages-1'e kadar)
   for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
     pages.push(i);
   }
@@ -45,7 +45,7 @@ const getPageNumbers = (currentPage: number, totalPages: number): (number | stri
     pages.push('...');
   }
   
-  // Her zaman son sayfayı ekle
+  // Son sayfayı ekle (loop zaten totalPages-1'e kadar gittiği için totalPages henüz eklenmedi)
   pages.push(totalPages);
   
   return pages;
