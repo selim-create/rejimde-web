@@ -309,7 +309,7 @@ export default function Home() {
                             </div>
                         </Link>
                     )) : (
-                        <div className="col-span-3 text-center py-10 bg-white rounded-3xl border-2 border-dashed border-gray-200">
+                        <div className="col-span-full text-center py-10 bg-white rounded-3xl border-2 border-dashed border-gray-200">
                              <p className="text-gray-400 font-bold">Henüz liderlik tablosu oluşmadı.</p>
                         </div>
                     )}
