@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import LayoutWrapper from '@/components/LayoutWrapper';
 import { auth } from '@/lib/api';
 
 export default function CirclesPageClient() {
@@ -89,7 +88,7 @@ export default function CirclesPageClient() {
         </div>
       </div>
 
-      <LayoutWrapper>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* CIRCLES GRID */}
         <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-12">
             
@@ -228,7 +227,7 @@ export default function CirclesPageClient() {
             ))}
 
         </div>
-      </LayoutWrapper>
+      </div>
     </div>
   );
 }

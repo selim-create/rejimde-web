@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import ExpertCard from "@/components/ExpertCard";
-import { getExperts } from "@/lib/api"; 
 import { Expert } from "@/types"; 
 import MascotDisplay from "@/components/MascotDisplay";
 import { CITIES } from "@/lib/locations";
@@ -21,7 +20,6 @@ const formatTrend = (trend: number | string | undefined | null): string => {
 export default function ExpertsPageClient() {
   const [experts, setExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [userRole, setUserRole] = useState("");
 
   // FİLTRE STATE'LERİ
@@ -33,9 +31,84 @@ export default function ExpertsPageClient() {
   const [priceRange, setPriceRange] = useState(5000); // Max fiyat
   const [consultationType, setConsultationType] = useState<string[]>([]); // 'online', 'face', 'hybrid'
   
-  // PAGINATION STATE
-  const [currentPage, setCurrentPage] = useState(1);
-  const expertsPerPage = 12;
+  // PAGINATION STATE - Server-side pagination
+  const [pagination, setPagination] = useState({
+    total: 0,
+    per_page: 24,
+    current_page: 1,
+    total_pages: 1
+  });
+
+  // Fetch experts with server-side pagination
+  const fetchExperts = async (page = 1) => {
+    setLoading(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://api.rejimde.com/wp-json';
+      const res = await fetch(`${API_URL}/rejimde/v1/professionals?page=${page}&per_page=24`);
+      const data = await res.json();
+      
+      // Yeni response yapısı: { data: [], pagination: {} }
+      if (data.data && Array.isArray(data.data)) {
+        const experts = data.data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          slug: item.slug,
+          type: item.profession || item.type || 'dietitian',
+          title: item.title || '',
+          image: item.image,
+          rating: item.rating || '5.0',
+          score_impact: item.score_impact || '+10 P',
+          is_verified: item.is_verified === true || item.is_verified === '1' || item.is_verified === 1,
+          is_featured: item.is_featured === true || item.is_featured === '1' || item.is_featured === 1,
+          is_online: item.is_online,
+          location: item.location,
+          reji_score: item.reji_score || 50,
+          trend_percentage: item.trend_percentage || 0,
+          trend_direction: item.trend_direction || 'stable',
+          client_count: item.client_count || 0,
+          profession: item.profession || 'dietitian',
+          experience_years: item.experience_years || 0,
+          followers_count: item.followers_count || 0,
+          content_count: item.content_count || 0
+        }));
+        setExperts(experts);
+        
+        if (data.pagination) {
+          setPagination(data.pagination);
+        }
+      } else {
+        // Eski response yapısı için fallback
+        const expertsData = Array.isArray(data) ? data : [];
+        const mappedExperts = expertsData.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          slug: item.slug,
+          type: item.profession || item.type || 'dietitian',
+          title: item.title || '',
+          image: item.image,
+          rating: item.rating || '5.0',
+          score_impact: item.score_impact || '+10 P',
+          is_verified: item.is_verified === true || item.is_verified === '1' || item.is_verified === 1,
+          is_featured: item.is_featured === true || item.is_featured === '1' || item.is_featured === 1,
+          is_online: item.is_online,
+          location: item.location,
+          reji_score: item.reji_score || 50,
+          trend_percentage: item.trend_percentage || 0,
+          trend_direction: item.trend_direction || 'stable',
+          client_count: item.client_count || 0,
+          profession: item.profession || 'dietitian',
+          experience_years: item.experience_years || 0,
+          followers_count: item.followers_count || 0,
+          content_count: item.content_count || 0
+        }));
+        setExperts(mappedExperts);
+      }
+    } catch (err) {
+      console.error("Uzmanlar yüklenirken hata:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Veriyi ve Kullanıcı Rolünü Çek
   useEffect(() => {
@@ -45,18 +118,7 @@ export default function ExpertsPageClient() {
         setUserRole(role);
     }
 
-    async function fetchData() {
-      try {
-        const data = await getExperts();
-        setExperts(data);
-      } catch (err) {
-        console.error("Uzmanlar yüklenirken hata:", err);
-        setError("Uzman listesi şu an alınamıyor.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
+    fetchExperts(1);
   }, []);
 
   // Helper fonksiyon: Meslek prefix'ini al
@@ -130,17 +192,18 @@ export default function ExpertsPageClient() {
     });
   }, [filteredExperts]);
 
-  // PAGINATION: Sayfalama mantığı
-  const totalPages = Math.ceil(sortedExperts.length / expertsPerPage);
-  const paginatedExperts = useMemo(() => {
-    const startIndex = (currentPage - 1) * expertsPerPage;
-    const endIndex = startIndex + expertsPerPage;
-    return sortedExperts.slice(startIndex, endIndex);
-  }, [sortedExperts, currentPage, expertsPerPage]);
+  // Sayfa değiştiğinde API'yi tekrar çağır
+  const handlePageChange = (page: number) => {
+    fetchExperts(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   
-  // Filtre değiştiğinde ilk sayfaya dön
+  // Filtre değiştiğinde ilk sayfaya dön ve yeniden fetch et
   useEffect(() => {
-    setCurrentPage(1);
+    if (!loading) {
+      fetchExperts(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, selectedProfession, selectedCity, selectedDistrict, consultationType]);
 
   // Seçilen şehre göre ilçeleri bul
@@ -160,7 +223,7 @@ export default function ExpertsPageClient() {
       {/* Page Header */}
       <div className="bg-white border-b-2 border-gray-200 py-8 sticky top-20 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-800 mb-2">Takım Kaptanını Seç</h1>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-800 mb-2">Uzmanını Bul, Mentörünü Seç</h1>
             
             {/* Search & Main Filter */}
             <div className="mt-6 flex flex-col md:flex-row gap-4 justify-between items-center">
@@ -313,7 +376,7 @@ export default function ExpertsPageClient() {
             
             {loading && <div className="text-center py-20 text-gray-400 font-bold animate-pulse">Uzmanlar sahaya çıkıyor...</div>}
 
-            {!loading && paginatedExperts.length === 0 && (
+            {!loading && sortedExperts.length === 0 && (
                 <div className="bg-gray-50 border-2 border-gray-100 rounded-3xl p-12 text-center col-span-3">
                     <MascotDisplay state="idle_dashboard" size={150} showBubble={false} />
                     <h3 className="font-extrabold text-gray-700 text-xl mt-4">Henüz Uzman Yok</h3>
@@ -328,7 +391,7 @@ export default function ExpertsPageClient() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {paginatedExperts.map((expert) => {
+                {sortedExperts.map((expert) => {
                     // Uzmanın kendi yazdığı ünvan varsa onu kullan, yoksa profession label
                     const displayTitle = expert.title || getProfessionLabel(expert.type || expert.profession || '') || 'Sağlık Uzmanı';
                     
@@ -381,23 +444,23 @@ export default function ExpertsPageClient() {
             </div>
             
             {/* PAGINATION */}
-            {!loading && totalPages > 1 && (
+            {!loading && pagination.total_pages > 1 && (
                 <div className="flex justify-center items-center gap-2 mt-8">
                     <button 
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
+                        onClick={() => handlePageChange(Math.max(pagination.current_page - 1, 1))}
+                        disabled={pagination.current_page === 1}
                         className="px-4 py-2 rounded-xl font-bold text-sm border-2 border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
                         <i className="fa-solid fa-chevron-left"></i>
                     </button>
                     
                     <div className="flex gap-2">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        {Array.from({ length: pagination.total_pages }, (_, i) => i + 1).map((pageNum) => (
                             <button
                                 key={pageNum}
-                                onClick={() => setCurrentPage(pageNum)}
+                                onClick={() => handlePageChange(pageNum)}
                                 className={`px-4 py-2 rounded-xl font-bold text-sm border-2 transition ${
-                                    currentPage === pageNum 
+                                    pagination.current_page === pageNum 
                                     ? 'bg-rejimde-blue text-white border-rejimde-blue shadow-btn shadow-rejimde-blueDark' 
                                     : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                                 }`}
@@ -408,8 +471,8 @@ export default function ExpertsPageClient() {
                     </div>
                     
                     <button 
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
+                        onClick={() => handlePageChange(Math.min(pagination.current_page + 1, pagination.total_pages))}
+                        disabled={pagination.current_page === pagination.total_pages}
                         className="px-4 py-2 rounded-xl font-bold text-sm border-2 border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
                         <i className="fa-solid fa-chevron-right"></i>

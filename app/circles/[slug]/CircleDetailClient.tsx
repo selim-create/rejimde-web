@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import LayoutWrapper from '@/components/LayoutWrapper';
 import { auth, getComments, createComment, getCircleTasks } from '@/lib/api';
 import TaskCard from '@/components/tasks/TaskCard';
 import type { CircleTask as GamificationCircleTask } from '@/types/gamification';
@@ -251,11 +250,9 @@ export default function CircleDetailPage() {
 
   if (loading) {
     return (
-        <LayoutWrapper>
-            <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
-            </div>
-        </LayoutWrapper>
+        <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+        </div>
     );
   }
 
@@ -315,8 +312,7 @@ export default function CircleDetailPage() {
           </div>
       </div>
 
-      <LayoutWrapper>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 pb-12">
             
             {/* SOL KOLON: TASKS & MEMBERS */}
             <div className="lg:col-span-8 space-y-8">
@@ -457,7 +453,6 @@ export default function CircleDetailPage() {
                 )}
             </div>
         </div>
-      </LayoutWrapper>
 
       {/* SETTINGS MODAL - Note: This is deprecated, now using separate settings page */}
       <Modal isOpen={activeModal === 'settings'} onClose={closeModal} title="Circle Ayarları" footer={<button onClick={handleSaveSettings} disabled={actionLoading} className="w-full bg-purple-600 text-white py-3 rounded-xl font-extrabold uppercase shadow-btn shadow-purple-200 hover:bg-purple-700 hover:shadow-lg active:translate-y-1 active:shadow-none transition-all">{actionLoading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}</button>}>
