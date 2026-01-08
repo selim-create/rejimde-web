@@ -57,8 +57,10 @@ export default function Home() {
         setTopClans(sortedClans);
 
         // Rastgele 2 Uzman Seç
-        if (Array.isArray(experts) && experts.length > 0) {
-            const shuffled = [...experts].sort(() => 0.5 - Math.random());
+        // Yeni API formatı: { data: [], pagination: {} } veya eski format: []
+        const expertsArray = experts?.data || (Array.isArray(experts) ? experts : []);
+        if (expertsArray.length > 0) {
+            const shuffled = [...expertsArray].sort(() => 0.5 - Math.random());
             setRandomExperts(shuffled.slice(0, 2));
         }
 
@@ -293,7 +295,8 @@ export default function Home() {
                     <p className="text-gray-500 font-bold">Bu hafta rekabet çok kızışmalı!</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Grid layout: 4 columns on desktop to fit 3 top circles + "Tüm Sıralama" button on same row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {topClans.length > 0 ? topClans.map((clan, index) => (
                         <Link key={clan.id} href={`/clans/${clan.slug}`} className="bg-white rounded-3xl p-6 shadow-sm border-b-4 border-gray-200 hover:border-purple-500 hover:-translate-y-1 transition group relative overflow-hidden">
                             <div className="absolute top-0 right-0 bg-gray-100 text-gray-400 font-black text-4xl px-4 pt-2 rounded-bl-3xl opacity-30">#{index + 1}</div>
@@ -307,7 +310,7 @@ export default function Home() {
                             </div>
                         </Link>
                     )) : (
-                        <div className="col-span-3 text-center py-10 bg-white rounded-3xl border-2 border-dashed border-gray-200">
+                        <div className="col-span-full text-center py-10 bg-white rounded-3xl border-2 border-dashed border-gray-200">
                              <p className="text-gray-400 font-bold">Henüz liderlik tablosu oluşmadı.</p>
                         </div>
                     )}
