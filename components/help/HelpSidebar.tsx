@@ -40,8 +40,16 @@ const sidebarSections: SidebarSection[] = [
     icon: 'fa-solid fa-briefcase',
     items: [
       { label: 'Uzman Paneli', href: '/help/pro' },
+      { label: 'Uzman RejiScore', href: '/help/pro/reji-score' },
       { label: 'Danışan Yönetimi', href: '/help/pro/clients' },
       { label: 'Plan Oluşturma', href: '/help/pro/plans' },
+      { label: 'Takvim Yönetimi', href: '/help/pro/calendar' },
+      { label: 'Değerlendirmeler', href: '/help/pro/reviews' },
+      { label: 'Hizmet/Paket Yönetimi', href: '/help/pro/services' },
+      { label: 'Mesajlaşma (Inbox)', href: '/help/pro/inbox' },
+      { label: 'Duyurular', href: '/help/pro/announcements' },
+      { label: 'Medya Kütüphanesi', href: '/help/pro/media' },
+      { label: 'SSS Yönetimi', href: '/help/pro/faq-management' },
       { label: 'Gelir Yönetimi', href: '/help/pro/earnings' },
       { label: 'Onaylı Uzman Olma', href: '/help/pro/verification' }
     ]

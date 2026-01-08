@@ -83,7 +83,7 @@ export default function HelpPage() {
       icon: 'fa-solid fa-briefcase',
       href: '/help/pro',
       color: 'purple' as const,
-      articleCount: 5
+      articleCount: 13
     },
     {
       title: 'Sıkça Sorulan Sorular',
