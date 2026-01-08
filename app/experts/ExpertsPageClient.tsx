@@ -219,10 +219,10 @@ export default function ExpertsPageClient() {
           if (!a.is_featured && b.is_featured) return 1;
           if (a.is_verified && !b.is_verified) return -1;
           if (!a.is_verified && b.is_verified) return 1;
-          return (b.reji_score || 0) - (a.reji_score || 0);
+          return (Number(b.reji_score) || 0) - (Number(a.reji_score) || 0);
         
         case 'trend':
-          return (b.trend_percentage || 0) - (a.trend_percentage || 0);
+          return (Number(b.trend_percentage) || 0) - (Number(a.trend_percentage) || 0);
         
         case 'newest':
           return new Date((b as any).created_at || 0).getTime() - new Date((a as any).created_at || 0).getTime();
