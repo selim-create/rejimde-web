@@ -16,6 +16,7 @@ export default function ProVerificationPage() {
     certificate: null as File | null,
     workplaceDoc: null as File | null
   });
+  const [submitStatus, setSubmitStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFileChange = (field: keyof typeof files, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,17 +28,24 @@ export default function ProVerificationPage() {
     e.preventDefault();
     
     if (!formData.fullName || !formData.idNumber || !files.idDocument || !files.certificate) {
-      alert('Lütfen tüm zorunlu alanları doldurun ve gerekli belgeleri yükleyin.');
+      setSubmitStatus({
+        type: 'error',
+        message: 'Lütfen tüm zorunlu alanları doldurun ve gerekli belgeleri yükleyin.'
+      });
       return;
     }
 
     setIsSubmitting(true);
     
-    // Simulate API call
+    // TODO: Implement actual file upload and form submission to backend API
+    // This is a placeholder simulation for UI demonstration
     setTimeout(() => {
       setStatus('pending');
       setIsSubmitting(false);
-      alert('Başvurunuz başarıyla gönderildi! Ekibimiz 2-5 iş günü içinde inceleyecektir.');
+      setSubmitStatus({
+        type: 'success',
+        message: 'Başvurunuz başarıyla gönderildi! Ekibimiz 2-5 iş günü içinde inceleyecektir.'
+      });
     }, 1500);
   };
 
@@ -143,6 +151,20 @@ export default function ProVerificationPage() {
         {(status === 'not_submitted' || status === 'rejected') && (
           <div className="bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-card">
             <h2 className="font-black text-white text-xl mb-6">Başvuru Formu</h2>
+            
+            {/* Status Message */}
+            {submitStatus && (
+              <div className={`mb-6 p-4 rounded-xl border-2 ${
+                submitStatus.type === 'success' 
+                  ? 'bg-green-500/10 border-green-500/30 text-green-400' 
+                  : 'bg-red-500/10 border-red-500/30 text-red-400'
+              }`}>
+                <div className="flex items-center gap-2 font-bold">
+                  <i className={`fa-solid ${submitStatus.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i>
+                  {submitStatus.message}
+                </div>
+              </div>
+            )}
             
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Personal Information */}

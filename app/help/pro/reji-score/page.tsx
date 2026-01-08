@@ -197,7 +197,7 @@ export default function ProRejiScorePage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-4 p-4 bg-gray-100 border-l-4 border-gray-400 rounded-r-2xl">
                     <div className="w-12 h-12 bg-gray-200 rounded-xl flex items-center justify-center font-black text-gray-600">
-                      &lt;50
+                      {'<'}50
                     </div>
                     <div>
                       <h3 className="font-black text-gray-800">Yeni Uzman</h3>

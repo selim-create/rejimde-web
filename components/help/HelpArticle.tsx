@@ -26,7 +26,21 @@ export default function HelpArticle({ children, title, description, lastUpdated,
         setShowThankYou(true);
       }
     }
-  }, [slug]);
+
+    // Auto-hide thank you message after 3 seconds
+    let timeoutId: NodeJS.Timeout;
+    if (showThankYou && feedback) {
+      timeoutId = setTimeout(() => {
+        setShowThankYou(false);
+      }, 3000);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [slug, showThankYou, feedback]);
 
   const handleFeedback = (isHelpful: boolean) => {
     const feedbackValue = isHelpful ? 'helpful' : 'not-helpful';
@@ -37,11 +51,6 @@ export default function HelpArticle({ children, title, description, lastUpdated,
     if (typeof window !== 'undefined') {
       localStorage.setItem(`help_feedback_${slug}`, feedbackValue);
     }
-
-    // Hide thank you message after 3 seconds
-    setTimeout(() => {
-      setShowThankYou(false);
-    }, 3000);
   };
 
   return (
