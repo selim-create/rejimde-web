@@ -266,7 +266,7 @@ export default function Header() {
                 <Link href="/login" className="hidden md:block font-extrabold text-gray-400 hover:text-rejimde-blue hover:bg-blue-50 px-4 py-2 rounded-xl transition uppercase tracking-wide text-sm whitespace-nowrap">
                   Giriş Yap
                 </Link>
-                <Link href="/register/user" className="bg-rejimde-green text-white px-5 py-2.5 rounded-xl font-extrabold text-sm shadow-btn shadow-rejimde-greenDark btn-game uppercase tracking-wide hover:bg-green-50 transition whitespace-nowrap">
+                <Link href="/register" className="bg-rejimde-green text-white px-5 py-2.5 rounded-xl font-extrabold text-sm shadow-btn shadow-rejimde-greenDark btn-game uppercase tracking-wide hover:bg-green-50 transition whitespace-nowrap">
                   Hesap Oluştur
                 </Link>
               </div>
