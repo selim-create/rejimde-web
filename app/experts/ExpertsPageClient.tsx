@@ -65,6 +65,9 @@ export default function ExpertsPageClient() {
   const [priceRange, setPriceRange] = useState(5000); // Max fiyat
   const [consultationType, setConsultationType] = useState<string[]>([]); // 'online', 'face', 'hybrid'
   
+  // SIRALAMA STATE
+  const [sortBy, setSortBy] = useState('score'); // 'score', 'trend', 'newest', 'oldest', 'rating'
+  
   // PAGINATION STATE - Server-side pagination
   const [pagination, setPagination] = useState({
     total: 0,
@@ -73,12 +76,19 @@ export default function ExpertsPageClient() {
     total_pages: 1
   });
 
-  // Fetch experts with server-side pagination
-  const fetchExperts = async (page = 1) => {
+  // Fetch experts with server-side pagination and profession filter
+  const fetchExperts = async (page = 1, profession = 'all') => {
     setLoading(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'http://api.rejimde.com/wp-json';
-      const res = await fetch(`${API_URL}/rejimde/v1/professionals?page=${page}&per_page=24`);
+      
+      // Profession parametresini API'ye gönder
+      let url = `${API_URL}/rejimde/v1/professionals?page=${page}&per_page=24`;
+      if (profession && profession !== 'all') {
+        url += `&profession=${profession}`;
+      }
+      
+      const res = await fetch(url);
       const data = await res.json();
       
       // Yeni response yapısı: { data: [], pagination: {} }
@@ -152,8 +162,8 @@ export default function ExpertsPageClient() {
         setUserRole(role);
     }
 
-    fetchExperts(1);
-  }, []);
+    fetchExperts(1, selectedProfession);
+  }, [selectedProfession]);
 
   // Helper fonksiyon: Meslek prefix'ini al
   const getProfessionPrefix = (profession: string): string => {
@@ -164,7 +174,7 @@ export default function ExpertsPageClient() {
     return '';
   };
 
-  // FİLTRELEME MANTIĞI
+  // FİLTRELEME MANTIĞI (Client-side filtering for other filters)
   const filteredExperts = useMemo(() => {
     return experts.filter(expert => {
       // 1. Arama (İsim veya Unvan)
@@ -172,24 +182,8 @@ export default function ExpertsPageClient() {
                           expert.title.toLowerCase().includes(searchTerm.toLowerCase());
       if (!searchMatch) return false;
 
-      // 2. Meslek Filtresi (Tablar)
-      if (selectedProfession !== 'all') {
-          // Seçilen kategoriyi bul
-          const selectedCategory = PROFESSION_CATEGORIES.find(cat => cat.id === selectedProfession);
-          
-          if (selectedCategory) {
-              // Bu kategorideki tüm meslek ID'lerini al
-              const categoryProfessionIds = selectedCategory.items.map(item => item.id);
-              
-              // Uzmanın mesleği bu kategoride mi kontrol et
-              const expertProfession = (expert.type || expert.profession || '').toLowerCase();
-              const matchesCategory = categoryProfessionIds.some(id => 
-                  expertProfession === id || expertProfession.includes(id)
-              );
-              
-              if (!matchesCategory) return false;
-          }
-      }
+      // 2. Meslek Filtresi - REMOVED (now server-side)
+      // The profession filtering is now handled by the API
 
       // 3. Lokasyon (Şehir ve İlçe)
       if (selectedCity) {
@@ -201,7 +195,7 @@ export default function ExpertsPageClient() {
           if (expertDistrict !== selectedDistrict) return false;
       }
 
-      // 5. Görüşme Tipi
+      // 4. Görüşme Tipi
       if (consultationType.length > 0) {
           const expType = (expert as any).consultation_types || "online";
           const matches = consultationType.some(type => {
@@ -213,39 +207,51 @@ export default function ExpertsPageClient() {
 
       return true;
     });
-  }, [experts, searchTerm, selectedProfession, selectedCity, selectedDistrict, consultationType]);
+  }, [experts, searchTerm, selectedCity, selectedDistrict, consultationType]);
 
-  // SIRALAMA: is_featured, is_verified ve RejiScore'a göre sırala
+  // SIRALAMA MANTIĞI
   const sortedExperts = useMemo(() => {
     return [...filteredExperts].sort((a, b) => {
-      // 1. Önce Editörün Seçimi (is_featured) en üste
-      if (a.is_featured && !b.is_featured) return -1;
-      if (!a.is_featured && b.is_featured) return 1;
-      
-      // 2. Sonra Onaylı Uzmanlar (is_verified)
-      if (a.is_verified && !b.is_verified) return -1;
-      if (!a.is_verified && b.is_verified) return 1;
-      
-      // 3. Son olarak RejiScore'a göre sırala (yüksekten düşüğe)
-      const scoreA = a.reji_score || 0;
-      const scoreB = b.reji_score || 0;
-      return scoreB - scoreA;
+      switch (sortBy) {
+        case 'score':
+          // Önce featured, sonra verified, sonra score
+          if (a.is_featured && !b.is_featured) return -1;
+          if (!a.is_featured && b.is_featured) return 1;
+          if (a.is_verified && !b.is_verified) return -1;
+          if (!a.is_verified && b.is_verified) return 1;
+          return (b.reji_score || 0) - (a.reji_score || 0);
+        
+        case 'trend':
+          return (b.trend_percentage || 0) - (a.trend_percentage || 0);
+        
+        case 'newest':
+          return new Date((b as any).created_at || 0).getTime() - new Date((a as any).created_at || 0).getTime();
+        
+        case 'oldest':
+          return new Date((a as any).created_at || 0).getTime() - new Date((b as any).created_at || 0).getTime();
+        
+        case 'rating':
+          return parseFloat(b.rating || '0') - parseFloat(a.rating || '0');
+        
+        default:
+          return 0;
+      }
     });
-  }, [filteredExperts]);
+  }, [filteredExperts, sortBy]);
 
   // Sayfa değiştiğinde API'yi tekrar çağır
   const handlePageChange = (page: number) => {
-    fetchExperts(page);
+    fetchExperts(page, selectedProfession);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   
-  // Filtre değiştiğinde ilk sayfaya dön ve yeniden fetch et
+  // Filtre değiştiğinde ilk sayfaya dön ve yeniden fetch et (profession hariç - o zaten useEffect'te)
   useEffect(() => {
     if (!loading) {
-      fetchExperts(1);
+      fetchExperts(1, selectedProfession);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, selectedProfession, selectedCity, selectedDistrict, consultationType]);
+  }, [searchTerm, selectedCity, selectedDistrict, consultationType]);
 
   // Seçilen şehre göre ilçeleri bul
   const activeCityData = CITIES.find(c => c.id === selectedCity);
@@ -295,15 +301,41 @@ export default function ExpertsPageClient() {
     <div className="min-h-screen pb-20 font-sans text-rejimde-text">
       
       {/* Page Header */}
-      <div className="bg-white border-b-2 border-gray-200 py-8 sticky top-20 z-30 shadow-sm">
+      <div className="bg-white border-b-2 border-gray-200 py-6 sticky top-20 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-800 mb-2">Uzmanını Bul, Mentörünü Seç</h1>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 mb-4">Uzmanını Bul, Mentörünü Seç</h1>
             
-            {/* Search & Main Filter */}
-            <div className="mt-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+            {/* Üst Satır: Search ve Sıralama */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-4">
+                {/* Search Bar - Sol */}
+                <div className="relative w-full sm:w-72">
+                    <input 
+                        type="text" 
+                        placeholder="İsim veya uzmanlık ara..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-gray-100 border-2 border-transparent focus:border-rejimde-blue rounded-xl py-2.5 pl-10 pr-4 font-bold text-gray-600 outline-none transition text-sm" 
+                    />
+                    <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                </div>
                 
-                {/* Profession Tabs */}
-                <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                {/* Sıralama Dropdown - Sağ */}
+                <select 
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 font-bold text-gray-600 text-sm w-full sm:w-auto appearance-none cursor-pointer hover:border-gray-300 transition"
+                >
+                    <option value="score">RejiScore'a Göre</option>
+                    <option value="trend">Trend Oranına Göre</option>
+                    <option value="newest">Yeniden Eskiye</option>
+                    <option value="oldest">Eskiden Yeniye</option>
+                    <option value="rating">Puana Göre</option>
+                </select>
+            </div>
+            
+            {/* Alt Satır: Meslek Filtreleri - Horizontal Scroll */}
+            <div className="overflow-x-auto pb-2 -mx-4 px-4">
+                <div className="flex gap-2 min-w-max">
                     <button 
                         onClick={() => setSelectedProfession('all')} 
                         className={`px-4 py-2 rounded-xl font-extrabold text-sm shadow-btn btn-game flex items-center gap-2 transition ${
@@ -324,18 +356,6 @@ export default function ExpertsPageClient() {
                             <i className={`fa-solid ${category.icon} mr-1`}></i> {category.title}
                         </button>
                     ))}
-                </div>
-
-                {/* Search Bar */}
-                <div className="relative w-full md:w-64">
-                    <input 
-                        type="text" 
-                        placeholder="İsim veya uzmanlık ara..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-gray-100 border-2 border-transparent focus:border-rejimde-blue rounded-xl py-2 pl-10 pr-4 font-bold text-gray-600 outline-none transition text-sm" 
-                    />
-                    <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 </div>
             </div>
         </div>
