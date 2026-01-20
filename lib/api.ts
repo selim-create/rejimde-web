@@ -7235,3 +7235,77 @@ export async function getFollowingActivity() {
     return { data: [], total_following: 0 };
   }
 }
+
+// --- TARIFTEN INTEGRATION ---
+
+/**
+ * Check if a recipe exists for a specific meal in Tariften
+ */
+export async function checkTariftenRecipe(dietId: number, mealId: string): Promise<{
+  exists: boolean;
+  recipe_id?: number;
+  slug?: string;
+  url?: string;
+}> {
+  const res = await fetch(`${API_URL}/rejimde/v1/tariften/check/${dietId}/${mealId}`, {
+    cache: "no-store"
+  });
+  if (!res.ok) return { exists: false };
+  return res.json();
+}
+
+/**
+ * Generate a new recipe in Tariften for a specific meal
+ */
+export async function generateTariftenRecipe(data: {
+  diet_id: number;
+  meal_id: string;
+  force_new?: boolean;
+}): Promise<{
+  success: boolean;
+  is_new?: boolean;
+  already_exists?: boolean;
+  similar_found?: boolean;
+  recipe?: {
+    id: number;
+    title: string;
+    slug: string;
+    url: string;
+    image?: string;
+  };
+  points_earned?: number;
+  message?: string;
+}> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem("jwt_token") : null;
+  if (!token) throw new Error("Giriş yapmalısınız");
+  
+  const res = await fetch(`${API_URL}/rejimde/v1/tariften/generate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+  
+  return res.json();
+}
+
+/**
+ * Get all Tariften recipes for a specific diet
+ */
+export async function getDietTariftenRecipes(dietId: number): Promise<{
+  diet_id: number;
+  recipes: Array<{
+    meal_id: string;
+    recipe_id: number;
+    slug: string;
+    url: string;
+  }>;
+}> {
+  const res = await fetch(`${API_URL}/rejimde/v1/tariften/recipes/${dietId}`, {
+    cache: "no-store"
+  });
+  if (!res.ok) return { diet_id: dietId, recipes: [] };
+  return res.json();
+}
