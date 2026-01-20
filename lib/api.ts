@@ -7276,7 +7276,7 @@ export async function generateTariftenRecipe(data: {
   points_earned?: number;
   message?: string;
 }> {
-  const token = localStorage.getItem("jwt_token");
+  const token = typeof window !== 'undefined' ? localStorage.getItem("jwt_token") : null;
   if (!token) throw new Error("Giriş yapmalısınız");
   
   const res = await fetch(`${API_URL}/rejimde/v1/tariften/generate`, {
