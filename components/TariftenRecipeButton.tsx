@@ -14,14 +14,16 @@ interface Recipe {
 
 interface Props {
   dietId: number;
-  mealId: string;
+  dayIndex: number;
+  mealIndex: number;
   onRecipeCreated?: (recipe: Recipe) => void;
   onPointsEarned?: (points: number, message: string) => void;
 }
 
 export default function TariftenRecipeButton({ 
   dietId, 
-  mealId, 
+  dayIndex,
+  mealIndex, 
   onRecipeCreated,
   onPointsEarned
 }: Props) {
@@ -30,17 +32,34 @@ export default function TariftenRecipeButton({
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Tariften URL constants
+  const TARIFTEN_WEB_URL = 'https://www.tariften.com';
+  const TARIFTEN_API_URL = 'https://api.tariften.com';
+
+  // Transform URL to correct format
+  const getCorrectUrl = (url: string, slug: string): string => {
+    if (slug) {
+      return `${TARIFTEN_WEB_URL}/recipe/${slug}`;
+    }
+    // Fallback: fix the URL format if slug is not available
+    return url
+      .replace(new RegExp(`${TARIFTEN_API_URL}/(tarif|recipe)/`), `${TARIFTEN_WEB_URL}/recipe/`)
+      .replace(/\/$/, ''); // Remove trailing slash
+  };
+
   // Sayfa yüklendiğinde tarif var mı kontrol et
   useEffect(() => {
     async function checkExisting() {
       try {
-        const result = await checkTariftenRecipe(dietId, mealId);
-        if (result.exists && result.slug) {
-          const tariftenUrl = process.env.NEXT_PUBLIC_TARIFTEN_URL || 'https://tariften.com';
+        const result = await checkTariftenRecipe(dietId, dayIndex, mealIndex);
+        // Only set recipe data if it exists AND is not deleted
+        if (result.exists && result.slug && result.status !== 'deleted') {
           setRecipeData({
             slug: result.slug,
-            url: result.url || `${tariftenUrl}/recipe/${result.slug}`
+            url: getCorrectUrl(result.url || '', result.slug)
           });
+        } else {
+          setRecipeData(null);
         }
       } catch (e) {
         console.error('Tarif kontrolü hatası:', e);
@@ -49,7 +68,7 @@ export default function TariftenRecipeButton({
       }
     }
     checkExisting();
-  }, [dietId, mealId]);
+  }, [dietId, dayIndex, mealIndex]);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -58,13 +77,14 @@ export default function TariftenRecipeButton({
     try {
       const result = await generateTariftenRecipe({
         diet_id: dietId,
-        meal_id: mealId
+        day_index: dayIndex,
+        meal_index: mealIndex
       });
       
       if (result.success && result.recipe) {
         setRecipeData({
           slug: result.recipe.slug,
-          url: result.recipe.url
+          url: getCorrectUrl(result.recipe.url, result.recipe.slug)
         });
         
         if (onRecipeCreated) {

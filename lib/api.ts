@@ -7241,13 +7241,14 @@ export async function getFollowingActivity() {
 /**
  * Check if a recipe exists for a specific meal in Tariften
  */
-export async function checkTariftenRecipe(dietId: number, mealId: string): Promise<{
+export async function checkTariftenRecipe(dietId: number, dayIndex: number, mealIndex: number): Promise<{
   exists: boolean;
   recipe_id?: number;
   slug?: string;
   url?: string;
+  status?: 'active' | 'deleted';
 }> {
-  const res = await fetch(`${API_URL}/rejimde/v1/tariften/check/${dietId}/${mealId}`, {
+  const res = await fetch(`${API_URL}/rejimde/v1/tariften/check/${dietId}?day_index=${dayIndex}&meal_index=${mealIndex}`, {
     cache: "no-store"
   });
   if (!res.ok) return { exists: false };
@@ -7259,7 +7260,8 @@ export async function checkTariftenRecipe(dietId: number, mealId: string): Promi
  */
 export async function generateTariftenRecipe(data: {
   diet_id: number;
-  meal_id: string;
+  day_index: number;
+  meal_index: number;
   force_new?: boolean;
 }): Promise<{
   success: boolean;

@@ -547,9 +547,13 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
   const isExpertUser = currentUser && Array.isArray(currentUser.roles) && (currentUser.roles. includes("rejimde_pro") || currentUser.roles.includes("administrator"));
   const hasCurrentUserApproved = isExpertUser && Array.isArray(plan.approvers) && plan.approvers.some((a: Approver) => a.id === currentUser?. id);
 
-  const currentDayData = planData.find((d: any) => d.dayNumber == activeDay) || planData[0] || { meals: [] };
+  const currentDayData = planData.find((d: any) => d.dayNumber === activeDay) || planData[0] || { meals: [] };
   const meals = Array.isArray(currentDayData.meals) ? currentDayData.meals : currentDayData.meals ?  Object.values(currentDayData.meals) : [];
   const shoppingList = Array. isArray(plan.shopping_list) ? plan.shopping_list : Array.isArray(plan.meta?.shopping_list) ? plan.meta. shopping_list : [];
+
+  // Find the current day's index in the planData array
+  const currentDayIndex = planData.findIndex((d: any) => d.dayNumber === activeDay);
+  const activeDayIndex = currentDayIndex >= 0 ? currentDayIndex : 0;
 
   // Approvers:  backend'den gelen veya approved_by'dan oluşturulan liste
   const approvers:  Approver[] = Array.isArray(plan.approvers) ? plan.approvers :  plan.approved_by ? [plan.approved_by] : [];
@@ -817,7 +821,8 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                               {meal.content && (
                                 <TariftenRecipeButton
                                   dietId={plan.id}
-                                  mealId={meal.id}
+                                  dayIndex={activeDayIndex}
+                                  mealIndex={mealIndex}
                                   onPointsEarned={(points, message) => {
                                     showModal("Tarif Oluşturuldu! 🍳", message, "success");
                                   }}
