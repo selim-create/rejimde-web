@@ -32,15 +32,18 @@ export default function TariftenRecipeButton({
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Tariften URL constants
+  const TARIFTEN_WEB_URL = 'https://www.tariften.com';
+  const TARIFTEN_API_URL = 'https://api.tariften.com';
+
   // Transform URL to correct format
   const getCorrectUrl = (url: string, slug: string): string => {
     if (slug) {
-      return `https://www.tariften.com/recipe/${slug}`;
+      return `${TARIFTEN_WEB_URL}/recipe/${slug}`;
     }
-    // Fallback: fix the URL format
+    // Fallback: fix the URL format if slug is not available
     return url
-      .replace('https://api.tariften.com/tarif/', 'https://www.tariften.com/recipe/')
-      .replace('https://api.tariften.com/recipe/', 'https://www.tariften.com/recipe/')
+      .replace(new RegExp(`${TARIFTEN_API_URL}/(tarif|recipe)/`), `${TARIFTEN_WEB_URL}/recipe/`)
       .replace(/\/$/, ''); // Remove trailing slash
   };
 
