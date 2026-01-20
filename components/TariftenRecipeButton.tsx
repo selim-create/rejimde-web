@@ -15,8 +15,6 @@ interface Recipe {
 interface Props {
   dietId: number;
   mealId: string;
-  mealContent: string;
-  mealTitle: string;
   onRecipeCreated?: (recipe: Recipe) => void;
   onPointsEarned?: (points: number, message: string) => void;
 }
@@ -38,9 +36,10 @@ export default function TariftenRecipeButton({
       try {
         const result = await checkTariftenRecipe(dietId, mealId);
         if (result.exists && result.slug) {
+          const tariftenUrl = process.env.NEXT_PUBLIC_TARIFTEN_URL || 'https://tariften.com';
           setRecipeData({
             slug: result.slug,
-            url: result.url || `https://tariften.com/recipe/${result.slug}`
+            url: result.url || `${tariftenUrl}/recipe/${result.slug}`
           });
         }
       } catch (e) {

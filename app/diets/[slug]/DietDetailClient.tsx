@@ -818,8 +818,6 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                                 <TariftenRecipeButton
                                   dietId={plan.id}
                                   mealId={meal.id}
-                                  mealContent={meal.content}
-                                  mealTitle={meal.title}
                                   onPointsEarned={(points, message) => {
                                     showModal("Tarif Oluşturuldu! 🍳", message, "success");
                                   }}

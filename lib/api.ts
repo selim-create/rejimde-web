@@ -7247,8 +7247,7 @@ export async function checkTariftenRecipe(dietId: number, mealId: string): Promi
   slug?: string;
   url?: string;
 }> {
-  const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || "https://api.rejimde.com/wp-json";
-  const res = await fetch(`${apiUrl}/rejimde/v1/tariften/check/${dietId}/${mealId}`, {
+  const res = await fetch(`${API_URL}/rejimde/v1/tariften/check/${dietId}/${mealId}`, {
     cache: "no-store"
   });
   if (!res.ok) return { exists: false };
@@ -7280,8 +7279,7 @@ export async function generateTariftenRecipe(data: {
   const token = localStorage.getItem("jwt_token");
   if (!token) throw new Error("Giriş yapmalısınız");
   
-  const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || "https://api.rejimde.com/wp-json";
-  const res = await fetch(`${apiUrl}/rejimde/v1/tariften/generate`, {
+  const res = await fetch(`${API_URL}/rejimde/v1/tariften/generate`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -7305,8 +7303,7 @@ export async function getDietTariftenRecipes(dietId: number): Promise<{
     url: string;
   }>;
 }> {
-  const apiUrl = process.env.NEXT_PUBLIC_WP_API_URL || "https://api.rejimde.com/wp-json";
-  const res = await fetch(`${apiUrl}/rejimde/v1/tariften/recipes/${dietId}`, {
+  const res = await fetch(`${API_URL}/rejimde/v1/tariften/recipes/${dietId}`, {
     cache: "no-store"
   });
   if (!res.ok) return { diet_id: dietId, recipes: [] };
