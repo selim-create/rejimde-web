@@ -9,6 +9,7 @@ import CommentsSection from "@/components/CommentsSection";
 import AuthorCard from "@/components/AuthorCard";
 import SocialShare from "@/components/SocialShare";
 import PointsToast from "@/components/PointsToast";
+import TariftenRecipeButton from "@/components/TariftenRecipeButton";
 import { useGamification } from "@/hooks/useGamification";
 import { getProfessionLabel } from "@/lib/constants";
 
@@ -810,7 +811,21 @@ export default function DietDetailPage({ params }: { params: Promise<{ slug: str
                             <span className="text-xs font-bold text-gray-400 uppercase">
                               {meal.title} ({meal.time})
                             </span>
-                            {meal.calories && <span className="text-xs font-black text-rejimde-green bg-green-50 px-2 py-1 rounded">{meal.calories} kcal</span>}
+                            <div className="flex items-center gap-3">
+                              {meal.calories && <span className="text-xs font-black text-rejimde-green bg-green-50 px-2 py-1 rounded">{meal.calories} kcal</span>}
+                              {/* Tariften butonu - öğün içeriği varsa göster */}
+                              {meal.content && (
+                                <TariftenRecipeButton
+                                  dietId={plan.id}
+                                  mealId={meal.id}
+                                  mealContent={meal.content}
+                                  mealTitle={meal.title}
+                                  onPointsEarned={(points, message) => {
+                                    showModal("Tarif Oluşturuldu! 🍳", message, "success");
+                                  }}
+                                />
+                              )}
+                            </div>
                           </div>
                           <h4 className={`font-extrabold text-lg text-gray-800 mb-2 transition-all ${isChecked ? "line-through text-green-800" : ""}`}>{meal.title}</h4>
                           <p className={`text-sm font-bold text-gray-500 mb-3 whitespace-pre-wrap ${isChecked ?  "text-green-700/70" : ""}`}>{meal.content}</p>
