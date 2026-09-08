@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import DietsPageClient from "./DietsPageClient";
+import LegacySidebarNewsletterBridge from "@/components/newsletter/LegacySidebarNewsletterBridge";
 
 export const metadata: Metadata = {
   title: "Diyet Listeleri & Beslenme Programları",
@@ -21,5 +22,14 @@ export const metadata: Metadata = {
 };
 
 export default function DietsPage() {
-  return <DietsPageClient />;
+  return (
+    <>
+      <DietsPageClient />
+      <LegacySidebarNewsletterBridge
+        source="rejimde_diet_sidebar"
+        title="Beslenme notları"
+        description="Yeni diyet planları, uzman seçkileri ve uygulanabilir beslenme fikirleri e-postana gelsin."
+      />
+    </>
+  );
 }
