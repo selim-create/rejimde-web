@@ -1,6 +1,5 @@
 import { Metadata } from 'next';
 import DietDetailClient from './DietDetailClient';
-import NewsletterForm from '@/components/newsletter/NewsletterForm';
 
 const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'https://api.rejimde.com/wp-json';
 
@@ -58,17 +57,5 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default function DietDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  return (
-    <>
-      <DietDetailClient params={params} />
-      <div className="max-w-6xl mx-auto px-4 pb-20 -mt-8">
-        <NewsletterForm
-          source="rejimde_diet_inline"
-          variant="horizontal"
-          title="Plan biter, iyi alışkanlık devam eder."
-          description="Yeni diyet planları, uzman seçkileri ve uygulanabilir iyi yaşam notları e-postana gelsin."
-        />
-      </div>
-    </>
-  );
+  return <DietDetailClient params={params} />;
 }
