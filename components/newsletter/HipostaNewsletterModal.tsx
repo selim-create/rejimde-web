@@ -50,7 +50,7 @@ export default function HipostaNewsletterModal({ open, options, selected, onClos
   const groups = useMemo(() => {
     const map = new Map<string, HipostaNewsletterOption[]>();
     filtered.forEach((option) => map.set(option.publicationSlug, [...(map.get(option.publicationSlug) || []), option]));
-    return [...map.entries()];
+    return Array.from(map.entries());
   }, [filtered]);
 
   if (!open || !mounted || typeof document === 'undefined') return null;
