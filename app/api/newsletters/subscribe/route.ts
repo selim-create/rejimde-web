@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   const consent = body.consent === true;
   const honeypot = typeof body.website === 'string' ? body.website.trim() : '';
   const requested = Array.isArray(body.newsletters)
-    ? [...new Set(body.newsletters.filter((value): value is string => typeof value === 'string').map((value) => value.trim()).filter(Boolean))]
+    ? Array.from(new Set(body.newsletters.filter((value): value is string => typeof value === 'string').map((value) => value.trim()).filter(Boolean)))
     : [];
 
   if (honeypot !== '') {
