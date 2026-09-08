@@ -1,6 +1,5 @@
 import { Metadata } from 'next';
 import ExerciseDetailClient from './ExerciseDetailClient';
-import NewsletterForm from '@/components/newsletter/NewsletterForm';
 
 const API_URL = process.env.NEXT_PUBLIC_WP_API_URL || 'https://api.rejimde.com/wp-json';
 
@@ -57,17 +56,5 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default function ExerciseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  return (
-    <>
-      <ExerciseDetailClient params={params} />
-      <div className="max-w-6xl mx-auto px-4 pb-20 -mt-8">
-        <NewsletterForm
-          source="rejimde_exercise_inline"
-          variant="horizontal"
-          title="Program biter, hareket devam eder."
-          description="Yeni antrenman planları, uzman seçkileri ve sürdürülebilir hareket önerileri e-postana gelsin."
-        />
-      </div>
-    </>
-  );
+  return <ExerciseDetailClient params={params} />;
 }
