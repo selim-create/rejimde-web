@@ -51,12 +51,12 @@ export default function NewsletterForm({
   const closeModal = useCallback(() => setModalOpen(false), []);
 
   const togglePrimary = (slug: string) => {
-    setSelected((current) => current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug]);
+    setSelected((current) => current.includes(slug) ? current.filter((item) => item !== slug) : current.concat(slug));
   };
 
   const applyNetwork = (networkSlugs: string[]) => {
     const primarySlugs = primary.filter((option) => selected.includes(option.slug)).map((option) => option.slug);
-    setSelected([...new Set([...primarySlugs, ...networkSlugs])]);
+    setSelected(Array.from(new Set(primarySlugs.concat(networkSlugs))));
   };
 
   const submit = async (event: React.FormEvent) => {
