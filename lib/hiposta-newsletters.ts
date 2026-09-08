@@ -9,6 +9,10 @@ export const NEWSLETTER_SOURCE_IDS = [
   'rejimde_registration',
   'rejimde_blog_inline',
   'rejimde_diet_inline',
+  'rejimde_exercise_inline',
+  'rejimde_blog_sidebar',
+  'rejimde_diet_sidebar',
+  'rejimde_exercise_sidebar',
 ] as const;
 
 export type NewsletterSourceId = (typeof NEWSLETTER_SOURCE_IDS)[number];
