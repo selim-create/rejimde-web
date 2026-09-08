@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getPostBySlug, getBlogPosts } from "@/lib/api";
 import MascotDisplay from "@/components/MascotDisplay";
 import ClientBlogPost from "./ClientBlogPost";
+import InlineNewsletterPlacement from "@/components/newsletter/InlineNewsletterPlacement";
 
 // --- SEO METADATA (Server Side) ---
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -13,18 +14,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   return {
     title: `${post.title} - Rejimde Blog`,
-    description: post.excerpt ?  post.excerpt. slice(0, 160) : "Rejimde Blog",
-    openGraph:  {
+    description: post.excerpt ? post.excerpt.slice(0, 160) : "Rejimde Blog",
+    openGraph: {
       images: [post.image],
     },
   };
 }
 
-export default async function BlogPostPage({ params }:  { params: Promise<{ slug: string }> }) {
+export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   
-  // Yan menü için rastgele 3 yazı çek
   const allPosts = await getBlogPosts();
   const relatedPosts = allPosts.filter((p: any) => p.slug !== slug).slice(0, 3);
 
@@ -39,7 +39,6 @@ export default async function BlogPostPage({ params }:  { params: Promise<{ slug
     );
   }
 
-  // Başlık Formatlayıcı (Kelime Vurgulama)
   const formatTitle = () => {
     const title = post.title;
     const highlighted = title.replace(
@@ -51,8 +50,14 @@ export default async function BlogPostPage({ params }:  { params: Promise<{ slug
 
   return (
     <div className="min-h-screen pb-20 relative font-sans text-rejimde-text">
-       {/* Client Component (State, Interactivity, Progress Bar) */}
        <ClientBlogPost post={post} relatedPosts={relatedPosts} formattedTitle={formatTitle()} />
+       <InlineNewsletterPlacement
+         source="rejimde_blog_inline"
+         targetHeading="Yorumlar"
+         title="İyi yaşam bilgisini rutine dönüştür."
+         description="Beslenme, hareket ve iyi yaşam için editör seçkileri düzenli olarak e-postana gelsin."
+         className="mt-12 mb-4"
+       />
     </div>
   );
 }
