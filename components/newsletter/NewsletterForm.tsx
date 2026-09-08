@@ -39,7 +39,9 @@ export default function NewsletterForm({
       if (!mounted) return;
       setOptions(rows);
       setSelected(rows.filter((option) => option.isPrimary).map((option) => option.slug));
-    }).finally(() => mounted && setLoading(false));
+    }).finally(() => {
+      if (mounted) setLoading(false);
+    });
     return () => { mounted = false; };
   }, []);
 
